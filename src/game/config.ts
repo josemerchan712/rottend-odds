@@ -113,9 +113,9 @@ export const CONFIG = {
 
   work: {
     /** Objetos de basura en el suelo como máximo. */
-    maxItems: 6,
+    maxItems: shared.work.maxItems,
     /** Segundos para que reaparezca uno si hay hueco. */
-    respawnInterval: 2,
+    respawnInterval: shared.work.respawnSeconds,
     /** Objetos con su valor y peso relativo de aparición. */
     items: [
       { id: 'colilla', name: 'Colilla', value: 1, weight: 45 },

@@ -20,6 +20,12 @@ describe('shared/config.json y config.ts no se desincronizan', () => {
     }
   });
 
+  it('los números del trabajo coinciden (el servidor los usa como límite físico)', () => {
+    expect(CONFIG.work.maxItems).toBe(shared.work.maxItems);
+    expect(CONFIG.work.respawnInterval).toBe(shared.work.respawnSeconds);
+    expect(Math.max(...CONFIG.work.items.map((i) => i.value))).toBe(shared.work.maxItemValue);
+  });
+
   it('el número de perfiles del ayudante coincide', () => {
     expect(CONFIG.helper.profiles.length).toBe(shared.helperProfiles);
     expect(CONFIG.upgrades.helperProfile.maxLevel).toBe(shared.helperProfiles - 1);

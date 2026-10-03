@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "simulate": "tsx sim/simulate.ts"
+    "simulate": "tsx sim/simulate.ts",
+    "plausibility": "tsx sim/plausibility.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

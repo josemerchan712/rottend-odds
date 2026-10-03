@@ -4,7 +4,8 @@ import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../src/game/config';
 import { selectHelperProfile } from '../src/game/helper';
 import { seededRng, type Rng } from '../src/game/rng';
 import { createInitialState, type BetChoice, type GameState } from '../src/game/state';
-import { buyUpgrade, canBuy, nextCost } from '../src/game/upgrades';
+import { payDebt } from '../src/game/debt';
+import { buyUpgrade, canBuy, nextCost, upgradeCost } from '../src/game/upgrades';
 import { update } from '../src/game/update';
 import { collectTrash } from '../src/game/work';
 
@@ -38,6 +39,22 @@ export interface PlayerModel {
   dt: number;
   /** Tiempo máximo antes de darse por vencido (s). */
   timeLimit: number;
+  /** Si al llegar a 10M paga la deuda y sigue jugando hasta timeLimit (para la tabla de plausibilidad). */
+  continueAfterDebt?: boolean;
+  /** Cada cuántos segundos se anota earnedCurve (0 = no se anota). */
+  sampleEvery?: number;
+}
+
+/**
+ * Fichas que el jugador ha tenido que ganar como mínimo: saldo + coste de lo comprado
+ * (+ la deuda si la pagó). Es la misma cuenta que hace el servidor para validar un guardado.
+ */
+export function minimumEarned(state: GameState): number {
+  let spent = 0;
+  for (const id of UPGRADE_IDS) {
+    for (let n = 0; n < state.upgrades[id]; n++) spent += upgradeCost(id, n);
+  }
+  return state.balance + spent + (state.debtPaid ? CONFIG.debt.amount : 0);
 }
 
 export const DEFAULT_PLAYER: PlayerModel = {
@@ -87,6 +104,10 @@ export interface RunResult {
   jackpotsCapped: number;
   /** Momento de cada compra. */
   purchases: { id: UpgradeId; level: number; time: number }[];
+  /** Momento en que reunió 10M por primera vez. */
+  debtTime: number | null;
+  /** minimumEarned() cada `sampleEvery` segundos. */
+  earnedCurve: number[];
   /** Apuestas del ayudante por fase: cuántas, suma de cambios de saldo y de fichas apostadas. */
   helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number; drawdowns: number }>;
 }
@@ -108,6 +129,8 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     jackpots: 0,
     jackpotsCapped: 0,
     purchases: [],
+    debtTime: null,
+    earnedCurve: [],
     helper: {
       inicio: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
       media: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
@@ -167,14 +190,28 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     }
   };
 
+  /** true si hay que terminar la partida (10M sin continuar). */
+  const reachedDebt = (): boolean => {
+    if (state.balance < CONFIG.debt.amount || state.debtPaid) return false;
+    result.debtTime ??= state.playTime;
+    if (!player.continueAfterDebt) return true;
+    payDebt(state);
+    return false;
+  };
+  let nextSample = 0;
+
   while (state.playTime < player.timeLimit) {
+    if (player.sampleEvery && state.playTime >= nextSample) {
+      result.earnedCurve.push(minimumEarned(state));
+      nextSample += player.sampleEvery;
+    }
     // 1. El mundo avanza: basura y ayudante.
     update(state, player.dt, rng);
     const helperSpins = state.stats.bets - spinsSeen;
     spinsSeen = state.stats.bets;
     recordSpins(Math.min(helperSpins, CONFIG.tech.recentSpins));
 
-    if (state.balance >= CONFIG.debt.amount) break;
+    if (reachedDebt()) break;
 
     // 2. Compras: primero las prioritarias; después siempre la más barata que pueda pagar.
     for (;;) {
@@ -219,10 +256,10 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
         recordSpins(1);
       }
     }
-    if (state.balance >= CONFIG.debt.amount) break;
+    if (reachedDebt()) break;
   }
 
-  result.time = state.playTime;
-  result.finished = state.balance >= CONFIG.debt.amount;
+  result.time = result.debtTime ?? state.playTime;
+  result.finished = result.debtTime !== null;
   return result;
 }

@@ -11,9 +11,9 @@
     "jackpot": { "baseCost": 2000, "growth": 1.8, "maxLevel": 10 },
     "dozenBet": { "baseCost": 200, "growth": 1, "maxLevel": 1 },
     "numberBet": { "baseCost": 1500, "growth": 1, "maxLevel": 1 },
-    "tweezers": { "baseCost": 120, "growth": 1, "maxLevel": 1 },
-    "bigBag": { "baseCost": 60, "growth": 2.5, "maxLevel": 4 },
-    "cleaner": { "baseCost": 250, "growth": 2.2, "maxLevel": 5 }
+    "tweezers": { "baseCost": 50, "growth": 1, "maxLevel": 1 },
+    "bigBag": { "baseCost": 35, "growth": 2.25, "maxLevel": 4 },
+    "cleaner": { "baseCost": 200, "growth": 2, "maxLevel": 5 }
   },
   "helperProfiles": 3,
   "work": { "maxItems": 6, "respawnSeconds": 2, "maxItemValue": 500, "bagValuePerLevel": 0.5 }

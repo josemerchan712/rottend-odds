@@ -112,11 +112,11 @@ Fórmula de coste: `coste(n) = base * crecimiento^n` (redondeado).
 | Jackpot | +0,07% de prob. de Cero Dorado | 2.000 | 1,8 | 10 | ~890K |
 | Apuesta a docena | Desbloquea la docena (2:1) | 200 | - | 1 | 200 |
 | Apuesta a número | Desbloquea el número (35:1) | 1.500 | - | 1 | 1,5K |
-| Pinzas | Recoge 2 objetos por clic | 120 | - | 1 | 120 |
-| Bolsa grande | +50% de valor por objeto | 60 | 2,5 | 4 | ~2,4K |
-| Ayudante de limpieza | Recoge solo; nivel 1 cada 4 s, −20% por nivel | 250 | 2,2 | 5 | ~10,7K |
+| Pinzas | Recoge 2 objetos por clic | 50 | - | 1 | 50 |
+| Bolsa grande | +50% de valor por objeto | 35 | 2,25 | 4 | ~1,3K |
+| Ayudante de limpieza | Recoge solo; nivel 1 cada 4 s, −20% por nivel | 200 | 2 | 5 | ~6,2K |
 
-Las tres mejoras del trabajo son del hito 4 y aún llevan los valores iniciales. Con ellos la mesa se alarga ~24 s (8:31 con la estrategia (c), antes 8:07). Hay una propuesta pendiente de aprobar para volver a ~8 minutos: pinzas 50, bolsa 35 · 2,25^n y limpieza 200 · 2^n.
+Las tres mejoras del trabajo (hito 4) están calibradas: con los valores iniciales (pinzas 120, bolsa 60 · 2,5^n, limpieza 250 · 2,2^n) la mesa se alargaba a 8:31. Con los actuales vuelve a ~8 minutos: 7:55 de media con la fracción óptima y 7:19 mezclando color, docena y número (200 partidas por estrategia).
 
 Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la curva convexa, entre los niveles 5 y 10 la ruleta apenas da dinero: el progreso depende del trabajo y de un saldo que crece despacio, y unos costes más altos alargan mucho la mesa (con la suerte en base 10, la mesa pasa de 8 a 12 minutos).
 
@@ -265,7 +265,7 @@ El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quie
    - **Mini-hito 2b. Pantalla de inicio**: Continuar, Nueva partida y Ajustes (CRT, volumen, borrar partida), un solo hueco de guardado, ajustes guardados aparte y botón de volver al menú desde el juego (ver 9.1).
 3. **Simulación** y ajuste de números hasta que la mesa 1 dure ~8 min.
    - **Hito 3b. Backend opcional** (ver 10.1): cuentas, guardado en la nube con conflictos, ranking de la mesa 1, validación de plausibilidad, configuración compartida con el frontend, Docker Compose para desarrollo y README para el portfolio. Cada vez que cambie la economía (por ejemplo, el hito 4) hay que regenerar `shared/plausibility.json`.
-4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo y guardado v4. Pendiente de aprobar el ajuste de costes de 4.3.
+4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo y guardado v4.
 5. **Ayudante de apuestas** con perfiles.
 6. **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases.
 7. **Efectos**: CRT, temblor, glitch, luces parpadeantes.

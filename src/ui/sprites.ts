@@ -1,16 +1,25 @@
 /**
  * Sprites generados por `npm run assets` en assets/sprites/. Vite los empaqueta (import.meta.glob)
- * y aquí se cargan como imágenes. Mientras no cargan, la escena dibuja un marcador.
+ * y aquí se cargan como imágenes. Mientras no cargan, la escena dibuja un marcador o nada.
  */
 
-const trashUrls = import.meta.glob<string>('../../assets/sprites/trash/*.png', { eager: true, query: '?url', import: 'default' });
-const playerUrls = import.meta.glob<string>('../../assets/sprites/player/*.png', { eager: true, query: '?url', import: 'default' });
+// Vite exige las opciones escritas literalmente en cada llamada a import.meta.glob.
+const urls = {
+  trash: import.meta.glob<string>('../../assets/sprites/trash/*.png', { eager: true, query: '?url', import: 'default' }),
+  player: import.meta.glob<string>('../../assets/sprites/player/*.png', { eager: true, query: '?url', import: 'default' }),
+  lender: import.meta.glob<string>('../../assets/sprites/lender/*.png', { eager: true, query: '?url', import: 'default' }),
+  roulette: import.meta.glob<string>('../../assets/sprites/roulette/*.png', { eager: true, query: '?url', import: 'default' }),
+  chips: import.meta.glob<string>('../../assets/sprites/chips/*.png', { eager: true, query: '?url', import: 'default' }),
+  helpers: import.meta.glob<string>('../../assets/sprites/helpers/*.png', { eager: true, query: '?url', import: 'default' }),
+  backgrounds: import.meta.glob<string>('../../assets/sprites/backgrounds/*.png', { eager: true, query: '?url', import: 'default' }),
+};
 
 export type PlayerFrame = 'walk-1' | 'walk-2' | 'crouch' | 'lift';
+export type Sprites = Record<keyof typeof urls, Map<string, HTMLImageElement>>;
 
-function loadAll(urls: Record<string, string>): Map<string, HTMLImageElement> {
+function loadAll(group: Record<string, string>): Map<string, HTMLImageElement> {
   const images = new Map<string, HTMLImageElement>();
-  for (const [path, url] of Object.entries(urls)) {
+  for (const [path, url] of Object.entries(group)) {
     const name = path.split('/').pop()!.replace('.png', '');
     const img = new Image();
     img.src = url;
@@ -19,13 +28,8 @@ function loadAll(urls: Record<string, string>): Map<string, HTMLImageElement> {
   return images;
 }
 
-export interface Sprites {
-  trash: Map<string, HTMLImageElement>;
-  player: Map<string, HTMLImageElement>;
-}
-
 export function loadSprites(): Sprites {
-  return { trash: loadAll(trashUrls), player: loadAll(playerUrls) };
+  return Object.fromEntries(Object.entries(urls).map(([k, group]) => [k, loadAll(group)])) as Sprites;
 }
 
 export function ready(img: HTMLImageElement | undefined): img is HTMLImageElement {

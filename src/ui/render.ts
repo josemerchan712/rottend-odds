@@ -195,7 +195,11 @@ export function mountUi(root: HTMLElement): Ui {
   };
 }
 
-export function render(ui: Ui, state: GameState): void {
+/**
+ * Pinta el estado. `revealedBets`: número de la última apuesta cuya bola ya ha caído en la escena;
+ * las tiradas posteriores aún no se muestran para no adelantar el resultado.
+ */
+export function render(ui: Ui, state: GameState, revealedBets = Infinity): void {
   const { upgrades } = state;
 
   setText(ui.balance, formatNumber(state.balance));
@@ -247,16 +251,20 @@ export function render(ui: Ui, state: GameState): void {
   ui.numberRow.hidden = !isBetTypeUnlocked(state, 'number');
   ui.betNumber.disabled = bet <= 0;
 
-  // Tiradas
-  const last = state.recentSpins[0];
+  // Tiradas: solo las que ya han caído en la ruleta de la escena.
+  const shownSpins = state.recentSpins.filter((_, i) => state.stats.bets - i <= revealedBets);
+  const last = shownSpins[0];
   if (last) {
     setText(ui.lastSpin, describeSpin(last));
     ui.lastSpin.dataset.outcome = last.outcome;
+  } else if (state.recentSpins.length) {
+    setText(ui.lastSpin, 'La ruleta gira…');
+    delete ui.lastSpin.dataset.outcome;
   }
-  const log = state.recentSpins.slice(1).map(describeSpin).join('\n');
+  const log = shownSpins.slice(1).map(describeSpin).join('\n');
   if (ui.spinLog.dataset.log !== log) {
     ui.spinLog.dataset.log = log;
-    ui.spinLog.innerHTML = state.recentSpins
+    ui.spinLog.innerHTML = shownSpins
       .slice(1)
       .map((s) => `<li class="${s.outcome}">${describeSpin(s)}</li>`)
       .join('');

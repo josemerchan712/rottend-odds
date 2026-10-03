@@ -177,6 +177,7 @@ Decisión pendiente: qué dispara el cambio de fase. Propuesta inicial: **% de l
 - Resolución interna **640x360**, escalado entero con `image-rendering: pixelated`, sin suavizado.
 - Paleta: negro casi puro, verde enfermizo, rojo sangre seco, naranja óxido, dorado sucio, blanco hueso.
 - Filtro CRT: scanlines, viñeta, grano, parpadeo leve. Debe poder desactivarse.
+- Implementado en la mesa 1 (hito 6): con el ajuste "Filtro CRT" activado, la escena tiene scanlines, viñeta, grano, parpadeo y apagones breves de las 5 lámparas del fondo, y temblor de pantalla al perder una apuesta grande (la apuesta era al menos el 25% del saldo). Con el ajuste desactivado no se dibuja ninguno de estos efectos. Los efectos se aplican solo a la escena, no a los paneles HTML. Pendiente: el glitch por tensión de la deuda.
 - Efectos: la pantalla tiembla al perder una apuesta grande, glitch cuando sube la tensión de la deuda, luces parpadeantes en los fondos.
 - Las mesas viejas se ven más podridas cuando las dejas atrás (versión sana y rota de cada asset).
 - Sonido (después de la lógica): zumbido de fondo, fichas huecas, susurro al perder, sonido de la ruleta. Efectos libres de Freesound.
@@ -210,6 +211,12 @@ Implementado para la basura y el jugador (`npm run assets`; código en `scripts/
 - El halo rosado del JPEG se limpia en los bordes por su tono, y las motas sueltas por tamaño.
 - Las hojas se trocean detectando bloques de columnas, y el alfa del resultado es binario.
 - Hoja del jugador: los frames 1-2 son otro personaje (cara verde, caminando) y los 3-4 el jugador (agachado con la pinza y levantando el objeto). Mientras falta el idle, el jugador usa el frame 3 en reposo y para agacharse (bajado 2 px), y el 4 para levantar. Los frames 1-2 los usa el ayudante de limpieza.
+- Ampliado en el hito 6:
+  - El color de fondo se detecta en el borde, así que vale para magenta y para cian (la ruleta). El halo se limpia por el tono del fondo.
+  - Los huecos encerrados se borran también por relleno: una región conectada parecida al fondo se borra entera solo si la mayoría de sus píxeles son casi idénticos al fondo. Nunca hay un filtro de color global.
+  - Fichas y ayudantes se trocean por cuadrícula, con un margen para saltar las líneas de la rejilla. Cada celda se recorta desde sus propios bordes.
+  - La fila de pilas de la hoja de fichas tiene dos pilas por celda y se parte en dos (8 pilas). Los paneles de ayudantes no miden lo mismo; solo se usa el brazo mecánico.
+  - Salidas: Encargado 3 × 128x128, ruleta sana y rota a 150x150 (tamaño en escena), 8 fichas y 8 pilas a 32x32, brazo a 64x64 y fondo de la mesa 1 a 640x360 (recorte centrado a 16:9, sin quitar fondo).
 
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
 
@@ -234,6 +241,21 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 - **Panel lateral**: saldo, selector de apuesta (1%, 10%, 50%, TODO), tienda de mejoras.
 - **Pestañas** para volver a mesas anteriores cuando se desbloqueen.
 - Al desbloquear el ayudante, aparece su sprite junto a la mesa apostando solo.
+
+Implementado (hito 6), sobre el canvas de 640x360:
+
+- **Fondo y luces:** el fondo real de la mesa 1; las lámparas parpadean si el filtro CRT está activado.
+- **Ruleta en el centro**, en el cono de luz. Gira en cada tirada y la bola se dibuja aparte:
+  - La rueda del arte trae la bola y el marcador pintados y casillas rojas y negras. Encima se dibuja un anillo de casillas propio que los tapa: 0 verde, Cero Dorado y del 1 al 36 alternando negro y blanco hueso. Arriba hay un indicador fijo.
+  - La rueda gira en sentido horario y se para recta; la bola gira al revés y cae en la casilla del resultado. El resultado visual coincide siempre con el lógico (`src/ui/wheelMath.ts`, con tests).
+  - Las tiradas del jugador duran 1,1 s y las del ayudante 0,55 s. Una tirada nueva interrumpe la anterior.
+  - El texto de la última tirada aparece cuando cae la bola. El saldo cambia en el momento de apostar.
+  - Al saldar la deuda se usa la versión rota de la ruleta.
+- **Retrato del Encargado** arriba a la derecha, con una mini barra de deuda. Frame según el % reunido: 0-33% calmado, 33-66% inquieto, 66-100% deformado; calmado otra vez con la deuda pagada.
+- **Sobre la mesa,** una ficha o una pila según el botón de apuesta (1%, 10%, 50%, TODO).
+- **Brazo mecánico** del crupier junto a la mesa cuando el ayudante está comprado; se estira al apostar.
+- **Jugador y basura** en el suelo, como en el hito 4.
+- **Escalado entero** en píxeles físicos. La interfaz HTML (deuda, ruleta, trabajo, ayudante y tienda) sigue debajo de la escena.
 
 ## 10. Técnico
 
@@ -269,8 +291,8 @@ Estado: ✅ hecho · 🔲 pendiente.
    - ✅ **Hito 3b. Backend opcional** (ver 10.1): cuentas, guardado en la nube con conflictos, ranking de la mesa 1, validación de plausibilidad, configuración compartida con el frontend, Docker Compose para desarrollo y README para el portfolio. Cada vez que cambie la economía (por ejemplo, el hito 4) hay que regenerar `shared/plausibility.json`.
 4. ✅ **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo (costes calibrados) y guardado v4.
 5. ✅ **Ayudante de apuestas** con perfiles. Se implementó dentro del hito 2: Crupier, velocidad, perfiles prudente/normal/agresivo con límite por saldo, suerte propia y bloqueo de 5 s; calibrado en el hito 3.
-6. 🔲 **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases.
-7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes.
+6. ✅ **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases. Hecho para la mesa 1 (ver 8.1 y 9.2). Falta el arte limpio de la ruleta y el idle del jugador.
+7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
 8. 🔲 **Deuda y paso a la mesa 2**: pago, pestañas, conversión de monedas.
 9. 🔲 Mesas 3 a 5, una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
 10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.

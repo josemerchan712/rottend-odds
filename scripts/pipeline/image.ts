@@ -29,6 +29,10 @@ function dist(a: Rgb, b: Rgb): number {
 
 /** Color de fondo: la mediana de los píxeles del borde (robusta ante el ruido del JPEG). */
 export function borderColor(img: RgbaImage): Rgb {
+  return borderColorOf(img);
+}
+
+function borderColorOf(img: RgbaImage): Rgb {
   const samples: Rgb[] = [];
   const { width: w, height: h } = img;
   for (let x = 0; x < w; x++) samples.push(px(img, x), px(img, (h - 1) * w + x));
@@ -49,9 +53,18 @@ export function removeBackground(
     fringeTolerance?: number;
     fringePasses?: number;
     holeTolerance?: number;
+    holeMinPixels?: number;
+    holeFraction?: number;
   } = {},
 ): RgbaImage {
-  const { tolerance = 110, fringeTolerance = 320, fringePasses = 3, holeTolerance = 70 } = options;
+  const {
+    tolerance = 110,
+    fringeTolerance = 320,
+    fringePasses = 3,
+    holeTolerance = 70,
+    holeMinPixels = 1,
+    holeFraction = 0.5,
+  } = options;
   const { width: w, height: h, data } = img;
   const bg = borderColor(img);
   const visited = new Uint8Array(w * h);
@@ -75,15 +88,38 @@ export function removeBackground(
     if (y < h - 1) push(i + w);
   }
 
-  // Huecos encerrados (fondo rodeado por el sprite, al que no llega el relleno desde el borde):
-  // se borran solo los píxeles casi idénticos al fondo. Es un umbral muy estricto: la sangre y
-  // el fieltro rojo quedan a más de 200 de distancia del magenta, así que no los toca.
-  for (let i = 0; i < w * h; i++) {
-    if (data[i * 4 + 3] !== 0 && dist(px(img, i), bg) < holeTolerance) data[i * 4 + 3] = 0;
+  // Huecos encerrados (fondo rodeado por el sprite, al que no llega el relleno desde el borde).
+  // También por relleno, nunca píxel a píxel: se buscan regiones conectadas parecidas al fondo y se
+  // borra la región entera solo si la mayoría de sus píxeles son casi idénticos al fondo. Una zona
+  // de sangre o fieltro no lo cumple, aunque tenga algún píxel suelto parecido.
+  const seen = new Uint8Array(w * h);
+  for (let start = 0; start < w * h; start++) {
+    if (seen[start] || data[start * 4 + 3] === 0 || dist(px(img, start), bg) >= tolerance) continue;
+    const region: number[] = [];
+    const queue = [start];
+    seen[start] = 1;
+    while (queue.length) {
+      const i = queue.pop()!;
+      region.push(i);
+      const x = i % w;
+      for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i >= w ? i - w : -1, i < w * (h - 1) ? i + w : -1]) {
+        if (j >= 0 && !seen[j] && data[j * 4 + 3] !== 0 && dist(px(img, j), bg) < tolerance) {
+          seen[j] = 1;
+          queue.push(j);
+        }
+      }
+    }
+    const nearBg = region.filter((i) => dist(px(img, i), bg) < holeTolerance).length;
+    if (nearBg >= holeMinPixels && nearBg / region.length >= holeFraction) {
+      for (const i of region) data[i * 4 + 3] = 0;
+    }
   }
 
-  // Halo: píxeles de tono rosado/morado (mezcla de magenta y contorno) pegados a la transparencia.
-  const pinkish = ([r, g, b]: Rgb) => r - g > 35 && b - g > 35 && Math.abs(r - b) < 90;
+  // Halo: píxeles teñidos del color del fondo (mezcla de fondo y contorno) pegados a la transparencia.
+  // "Teñido" = los dos canales altos del fondo dominan sobre el bajo (magenta: R y B sobre G; cian: G y B sobre R).
+  const lo = bg.indexOf(Math.min(...bg));
+  const [hi1, hi2] = [0, 1, 2].filter((c) => c !== lo);
+  const tinted = (c: Rgb) => c[hi1] - c[lo] > 35 && c[hi2] - c[lo] > 35 && Math.abs(c[hi1] - c[hi2]) < 90;
   for (let pass = 0; pass < fringePasses; pass++) {
     const clear: number[] = [];
     for (let i = 0; i < w * h; i++) {
@@ -95,7 +131,7 @@ export function removeBackground(
         (i >= w && data[(i - w) * 4 + 3] === 0) ||
         (i < w * (h - 1) && data[(i + w) * 4 + 3] === 0);
       const c = px(img, i);
-      if (touches && pinkish(c) && dist(c, bg) < fringeTolerance) clear.push(i);
+      if (touches && tinted(c) && dist(c, bg) < fringeTolerance) clear.push(i);
     }
     for (const i of clear) data[i * 4 + 3] = 0;
   }
@@ -203,6 +239,40 @@ export function fitNearest(img: RgbaImage, width: number, height: number): RgbaI
       data[to + 2] = img.data[from + 2];
       // Alfa binario: nada de bordes semitransparentes en pixel art.
       data[to + 3] = img.data[from + 3] >= 128 ? 255 : 0;
+    }
+  }
+  return { width, height, data };
+}
+
+/** Recorta una celda de una cuadrícula (columnas x filas), dejando fuera `inset` píxeles de cada borde (las líneas de la rejilla). */
+export function gridCell(img: RgbaImage, cols: number, rows: number, col: number, row: number, inset: number): RgbaImage {
+  const cw = img.width / cols;
+  const ch = img.height / rows;
+  const x = Math.round(col * cw + inset);
+  const y = Math.round(row * ch + inset);
+  return crop(img, { x, y, width: Math.round(cw - 2 * inset), height: Math.round(ch - 2 * inset) });
+}
+
+/** Caja ajustada a lo opaco (o null si la imagen está vacía). */
+export function opaqueBounds(img: RgbaImage): Box | null {
+  let x0 = img.width, y0 = img.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (img.data[(y * img.width + x) * 4 + 3] === 0) continue;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+  }
+  return x1 < 0 ? null : { x: x0, y: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 };
+}
+
+/** Reescala con vecino más próximo a un tamaño exacto (para fondos, sin mantener transparencia). */
+export function resizeNearest(img: RgbaImage, width: number, height: number): RgbaImage {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const sy = Math.min(img.height - 1, Math.floor(((y + 0.5) * img.height) / height));
+    for (let x = 0; x < width; x++) {
+      const sx = Math.min(img.width - 1, Math.floor(((x + 0.5) * img.width) / width));
+      data.set(img.data.subarray((sy * img.width + sx) * 4, (sy * img.width + sx) * 4 + 4), (y * width + x) * 4);
     }
   }
   return { width, height, data };

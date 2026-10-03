@@ -74,6 +74,31 @@ describe('pipeline de assets', () => {
     expect(crop(img, blocks[1]).width).toBe(3);
   });
 
+  it('detecta el color de fondo del borde: también funciona con fondo cian (la ruleta)', () => {
+    const cyan = [40, 230, 240];
+    const rows = ['ccccccc', 'cgooocc', 'coGoocc', 'cooooc' + 'c', 'ccccccc'];
+    const colors: Record<string, number[]> = { c: cyan, o: OUTLINE, g: [60, 190, 195], G: [70, 200, 90] };
+    const data = new Uint8ClampedArray(7 * 5 * 4);
+    rows.forEach((row, y) => [...row].forEach((ch, x) => data.set([...colors[ch], 255], (y * 7 + x) * 4)));
+    const img = removeBackground({ width: 7, height: 5, data });
+    // El halo cian (g) se va; el verde del marcador de la ruleta (G) se queda: no es "teñido de cian".
+    expect(alpha(img)).toEqual(['.......', '..###..', '.####..', '.####..', '.......']);
+  });
+
+  it('una zona grande de sangre rodeada por el sprite no se toma por un hueco de fondo', () => {
+    const img = removeBackground(
+      image([
+        'mmmmmmmmm',
+        'mooooooom',
+        'mobbbbbom',
+        'mobbbbbom',
+        'mooooooom',
+        'mmmmmmmmm',
+      ]),
+    );
+    expect(alpha(img).slice(1, 5)).toEqual(['.#######.', '.#######.', '.#######.', '.#######.']);
+  });
+
   it('reescala con vecino más próximo, centrado abajo y con alfa binario', () => {
     const src = image(['oo', 'bb']);
     const out = fitNearest(src, 8, 8);

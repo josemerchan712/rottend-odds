@@ -154,6 +154,11 @@ export const CONFIG = {
     amount: shared.debt.amount,
   },
 
+  lender: {
+    /** Fracción de la deuda reunida a partir de la cual el prestamista pasa a inquieto y a deformado. */
+    phaseThresholds: [1 / 3, 2 / 3] as readonly [number, number],
+  },
+
   /** coste(n) = base * crecimiento^n, con n = nivel actual. */
   upgrades: {
     luck: { name: 'Suerte', ...shared.upgrades.luck },

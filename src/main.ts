@@ -70,7 +70,7 @@ function show(next: Screen): void {
   if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
   if (next === 'game' && state) {
     fitScene();
-    render(gameUi, state);
+    render(gameUi, state, scene.revealedBets);
   }
 }
 
@@ -86,7 +86,7 @@ gameUi.sceneCanvas.addEventListener('click', (event) => {
   const item = itemAt(state.work.items, point.x, point.y);
   if (!item) return;
   scene.playerCollected(collectItem(state, item.id));
-  render(gameUi, state);
+  render(gameUi, state, scene.revealedBets);
 });
 gameUi.sceneCanvas.addEventListener('mousemove', (event) => scene.setHover(scene.toScene(event.clientX, event.clientY)));
 gameUi.sceneCanvas.addEventListener('mouseleave', () => scene.setHover(null));
@@ -95,12 +95,13 @@ window.addEventListener('keydown', (event) => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
   if (event.key !== 'e' && event.key !== 'E') return;
   scene.playerCollected(collectNearest(state));
-  render(gameUi, state);
+  render(gameUi, state, scene.revealedBets);
 });
 
 function enterGame(loaded: GameState): void {
   unlockAudio();
   state = loaded;
+  scene.reset(loaded);
   show('game');
 }
 
@@ -114,6 +115,7 @@ function save(): void {
 function applySettings(): void {
   document.documentElement.dataset.crt = settings.crtEnabled ? 'on' : 'off';
   setVolume(settings.volume);
+  scene.setEffectsEnabled(settings.crtEnabled);
   saveSettings(localStorage, settingsKey, settings);
 }
 
@@ -175,7 +177,7 @@ bindControls(
   gameUi,
   () => state!,
   defaultRng,
-  () => state && render(gameUi, state),
+  () => state && render(gameUi, state, scene.revealedBets),
   () => {
     save();
     state = null;
@@ -348,7 +350,7 @@ startLoop(
     },
     render: () => {
       if (screen === 'game' && state) {
-        render(gameUi, state);
+        render(gameUi, state, scene.revealedBets);
         scene.render(state, lastDt);
       }
     },

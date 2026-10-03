@@ -90,3 +90,19 @@ button.bet.white { background: #d9d2bf; color: #111; }
 .setting { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
 .setting input[type='range'] { flex: 1; accent-color: var(--gold); }
 .setting input[type='checkbox'] { accent-color: var(--gold); width: 16px; height: 16px; }
+
+.menu.wide { max-width: 560px; }
+.menu-section { margin-top: 24px; }
+.form { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.form input {
+  font: inherit;
+  color: var(--text);
+  background: #0f0e0b;
+  border: 1px solid #3a352b;
+  padding: 6px 8px;
+}
+.form input:focus { outline: 1px solid var(--gold); }
+.ranking { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.ranking th, .ranking td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); }
+.ranking th { color: var(--muted); font-weight: normal; }

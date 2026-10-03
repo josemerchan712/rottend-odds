@@ -12,6 +12,8 @@ export const CONFIG = {
     saveKey: 'casino-incremental-save',
     /** Clave aparte para los ajustes, que sobreviven a borrar la partida. */
     settingsKey: 'casino-incremental-settings',
+    /** Clave aparte para la sesión con el servidor (opcional). */
+    sessionKey: 'casino-incremental-session',
     /** Segundos entre autoguardados. */
     autosaveInterval: 5,
     /** Tope de tiempo delta por frame (s), para que una pestaña dormida no dé un salto enorme. */

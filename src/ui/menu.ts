@@ -8,6 +8,10 @@ export interface MenuUi {
   continueInfo: HTMLElement;
   newGame: HTMLButtonElement;
   settings: HTMLButtonElement;
+  login: HTMLButtonElement;
+  sync: HTMLButtonElement;
+  ranking: HTMLButtonElement;
+  account: HTMLElement;
 }
 
 export interface SettingsUi {
@@ -32,6 +36,13 @@ export function mountMenu(root: HTMLElement): MenuUi {
         <button data-ref="newGame">Nueva partida</button>
         <button data-ref="settings">Ajustes</button>
       </div>
+      <h2 class="menu-section">En línea (opcional)</h2>
+      <div class="menu-options">
+        <button data-ref="login">Iniciar sesión</button>
+        <button data-ref="sync">Sincronizar partida</button>
+        <button data-ref="ranking">Ranking</button>
+      </div>
+      <p class="muted" data-ref="account"></p>
     </section>
   `;
   const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
@@ -40,11 +51,18 @@ export function mountMenu(root: HTMLElement): MenuUi {
     continueInfo: ref('continueInfo'),
     newGame: ref('newGame'),
     settings: ref('settings'),
+    login: ref('login'),
+    sync: ref('sync'),
+    ranking: ref('ranking'),
+    account: ref('account'),
   };
 }
 
-/** Continuar solo aparece si hay partida guardada. */
-export function renderMenu(ui: MenuUi, info: ContinueInfo | null): void {
+/** Continuar solo aparece si hay partida guardada. Sincronizar, solo con sesión iniciada. */
+export function renderMenu(ui: MenuUi, info: ContinueInfo | null, displayName: string | null = null): void {
+  setText(ui.login, displayName ? 'Cerrar sesión' : 'Iniciar sesión');
+  ui.sync.disabled = !displayName;
+  setText(ui.account, displayName ? `Sesión iniciada como ${displayName}.` : 'Sin sesión: la partida se guarda solo en este navegador.');
   ui.continueButton.hidden = info === null;
   if (!info) return;
   const table = info.debtPaid ? 'Mesa 1 saldada' : `Mesa 1 · deuda ${formatPercent(info.debtProgress)} reunida`;

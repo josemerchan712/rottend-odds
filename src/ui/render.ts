@@ -26,6 +26,8 @@ export interface Ui {
   debtFill: HTMLElement;
   payDebt: HTMLButtonElement;
   debtNote: HTMLElement;
+  /** Mensaje del servidor al registrar la deuda saldada (lo escribe main.ts). */
+  debtOnline: HTMLElement;
   fractionButtons: HTMLButtonElement[];
   betInfo: HTMLElement;
   chanceInfo: HTMLElement;
@@ -70,6 +72,7 @@ export function mountUi(root: HTMLElement): Ui {
             <button data-ref="payDebt" class="gold">Pagar deuda</button>
           </div>
           <p class="note" data-ref="debtNote"></p>
+          <p class="muted" data-ref="debtOnline" role="status"></p>
         </section>
 
         <section class="panel">
@@ -161,6 +164,7 @@ export function mountUi(root: HTMLElement): Ui {
     debtFill: ref('debtFill'),
     payDebt: ref('payDebt'),
     debtNote: ref('debtNote'),
+    debtOnline: ref('debtOnline'),
     fractionButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-fraction]')],
     betInfo: ref('betInfo'),
     chanceInfo: ref('chanceInfo'),

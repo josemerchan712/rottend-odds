@@ -18,6 +18,7 @@ export function bindControls(
   rng: Rng,
   refresh: () => void,
   onMenu: () => void,
+  onDebtPaid: () => void = () => {},
 ): void {
   const on = (el: HTMLElement, action: (state: GameState) => unknown) =>
     el.addEventListener('click', () => {
@@ -36,7 +37,9 @@ export function bindControls(
   });
   on(ui.work, (s) => collectTrash(s, rng));
   ui.profileButtons.forEach((b, i) => on(b, (s) => selectHelperProfile(s, i)));
-  on(ui.payDebt, payDebt);
+  on(ui.payDebt, (s) => {
+    if (payDebt(s)) onDebtPaid();
+  });
   for (const id of UPGRADE_IDS) on(ui.shop[id].buy, (s) => buyUpgrade(s, id));
   ui.toMenu.addEventListener('click', onMenu);
 }

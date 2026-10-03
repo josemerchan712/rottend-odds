@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "sim", "shared"]
+  "include": ["src", "tests", "sim", "shared", "scripts"]
 }

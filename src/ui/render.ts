@@ -42,7 +42,7 @@ export interface Ui {
   helperInfo: HTMLElement;
   shop: Record<UpgradeId, ShopRow>;
   saveStatus: HTMLElement;
-  reset: HTMLButtonElement;
+  toMenu: HTMLButtonElement;
 }
 
 /** Monta la interfaz provisional y devuelve las referencias que se repintan. */
@@ -52,6 +52,7 @@ export function mountUi(root: HTMLElement): Ui {
       <h1>Mesa 1 · Ruleta</h1>
       <div class="balance">Fichas <strong data-ref="balance">0</strong></div>
       <div class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></div>
+      <button data-ref="toMenu" class="small push-right">Menú</button>
     </header>
 
     <div class="layout">
@@ -120,10 +121,7 @@ export function mountUi(root: HTMLElement): Ui {
             </tbody>
           </table>
         </section>
-        <div class="row spread muted">
-          <span data-ref="saveStatus"></span>
-          <button data-ref="reset" class="danger small">Borrar partida</button>
-        </div>
+        <p class="muted" data-ref="saveStatus"></p>
       </div>
     </div>
   `;
@@ -164,7 +162,7 @@ export function mountUi(root: HTMLElement): Ui {
     helperInfo: ref('helperInfo'),
     shop,
     saveStatus: ref('saveStatus'),
-    reset: ref('reset'),
+    toMenu: ref('toMenu'),
   };
 }
 

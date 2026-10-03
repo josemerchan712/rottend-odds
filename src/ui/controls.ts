@@ -17,7 +17,7 @@ export function bindControls(
   getState: () => GameState,
   rng: Rng,
   refresh: () => void,
-  onReset: () => void,
+  onMenu: () => void,
 ): void {
   const on = (el: HTMLElement, action: (state: GameState) => unknown) =>
     el.addEventListener('click', () => {
@@ -32,9 +32,5 @@ export function bindControls(
   ui.profileButtons.forEach((b, i) => on(b, (s) => selectHelperProfile(s, i)));
   on(ui.payDebt, payDebt);
   for (const id of UPGRADE_IDS) on(ui.shop[id].buy, (s) => buyUpgrade(s, id));
-  ui.reset.addEventListener('click', () => {
-    if (!confirm('¿Borrar la partida?')) return;
-    onReset();
-    refresh();
-  });
+  ui.toMenu.addEventListener('click', onMenu);
 }

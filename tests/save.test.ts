@@ -1,16 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deserialize, loadGame, SAVE_VERSION, saveGame, serialize, type KeyValueStorage } from '../src/game/save';
 import { createInitialState } from '../src/game/state';
-
-function memoryStorage(): KeyValueStorage & { data: Map<string, string> } {
-  const data = new Map<string, string>();
-  return {
-    data,
-    getItem: (k) => data.get(k) ?? null,
-    setItem: (k, v) => void data.set(k, v),
-    removeItem: (k) => void data.delete(k),
-  };
-}
+import { memoryStorage } from './helpers';
 
 describe('guardado', () => {
   it('ida y vuelta conserva el estado y la versión', () => {

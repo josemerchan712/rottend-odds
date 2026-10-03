@@ -155,7 +155,19 @@ Pipeline de procesado (script de Claude Code):
 
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
 
-## 9. Pantalla de la mesa 1
+## 9. Pantallas
+
+### 9.1 Pantalla de inicio
+
+- Tres opciones: **Continuar**, **Nueva partida** y **Ajustes**.
+- **Continuar** solo aparece si hay una partida guardada, y muestra el tiempo de juego y el estado de la mesa (deuda reunida o saldada).
+- **Nueva partida** pide confirmación si ya existe un guardado, porque lo sobrescribe.
+- **Un solo hueco de guardado.**
+- **Ajustes**: interruptor del filtro CRT, volumen y borrar partida. Los ajustes se guardan aparte de la partida: borrarla no los borra. El botón de borrar partida solo está aquí, no en la pantalla de juego.
+- Desde el juego hay un botón para **volver al menú**, que guarda antes.
+- El clic en Continuar o Nueva partida es el gesto del usuario que activa el audio (requisito de los navegadores).
+
+### 9.2 Pantalla de la mesa 1
 
 - **Fondo**: cuarto del casino (fijo).
 - **Centro**: ruleta con apuesta y resultado.
@@ -179,6 +191,7 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 
 1. **Esqueleto**: proyecto, bucle de juego, guardado, formateo de números.
 2. **Lógica de la mesa 1** sin arte: ruleta, suerte, penalización por apuesta, tienda de mejoras.
+   - **Mini-hito 2b. Pantalla de inicio**: Continuar, Nueva partida y Ajustes (CRT, volumen, borrar partida), un solo hueco de guardado, ajustes guardados aparte y botón de volver al menú desde el juego (ver 9.1).
 3. **Simulación** y ajuste de números hasta que la mesa 1 dure ~8 min.
 4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza.
 5. **Ayudante de apuestas** con perfiles.

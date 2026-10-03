@@ -20,6 +20,8 @@ export interface Strategy {
   buys(id: UpgradeId, state: GameState): boolean;
   /** Fichas que no gasta en la tienda para poder seguir apostando. */
   reserve(state: GameState): number;
+  /** Mejoras que compra antes que nada en cuanto puede pagarlas, sin respetar la reserva. */
+  priority?: readonly UpgradeId[];
 }
 
 /** Ritmo del jugador activo simulado. */
@@ -85,6 +87,8 @@ export interface RunResult {
   jackpotsCapped: number;
   /** Momento de cada compra. */
   purchases: { id: UpgradeId; level: number; time: number }[];
+  /** Apuestas del ayudante por fase: cuántas, suma de cambios de saldo y de fichas apostadas. */
+  helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number; drawdowns: number }>;
 }
 
 export function runOne(strategy: Strategy, seed: number, player: PlayerModel = DEFAULT_PLAYER): RunResult {
@@ -104,19 +108,51 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     jackpots: 0,
     jackpotsCapped: 0,
     purchases: [],
+    helper: {
+      inicio: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
+      media: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
+      alta: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
+      final: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
+    },
   };
 
   let actionTimer = 0;
   let betTimer = player.betInterval;
   let spinsSeen = 0;
+  /** Racha de pérdidas del ayudante: saldo al empezarla y fichas perdidas en ella. */
+  let helperStreakStart: number | null = null;
+  let helperStreakLoss = 0;
+  let helperStreakCounted = false;
 
   /** Contabiliza las tiradas nuevas (las más recientes van primero en recentSpins). */
   const recordSpins = (count: number) => {
+    const phase = phaseOf(state.upgrades.luck);
     for (let i = count - 1; i >= 0; i--) {
       const spin = state.recentSpins[i];
       if (!spin) continue;
       if (spin.bettor === 'jugador') result.bets.player++;
-      else result.bets.helper++;
+      else {
+        result.bets.helper++;
+        result.helper[phase].bets++;
+        result.helper[phase].delta += spin.delta;
+        result.helper[phase].staked += spin.bet;
+        if (spin.delta < 0) {
+          // Solo cuenta lo que pierde el ayudante, no las compras ni las apuestas del jugador.
+          if (helperStreakStart === null) {
+            const after = state.balance - state.recentSpins.slice(0, i).reduce((acc, sp) => acc + sp.delta, 0);
+            helperStreakStart = after - spin.delta;
+          }
+          helperStreakLoss -= spin.delta;
+          if (!helperStreakCounted && helperStreakLoss >= helperStreakStart * 0.5) {
+            result.helper[phase].drawdowns++;
+            helperStreakCounted = true;
+          }
+        } else {
+          helperStreakStart = null;
+          helperStreakLoss = 0;
+          helperStreakCounted = false;
+        }
+      }
       if (spin.outcome === 'jackpot') {
         result.earned.jackpot += spin.delta;
         result.jackpots++;
@@ -124,7 +160,11 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
       } else if (spin.delta > 0) result.earned.roulette += spin.delta;
       else result.lost -= spin.delta;
     }
-    if (count > 0 && state.balance < CONFIG.bet.minBet) result.bankruptcies[phaseOf(state.upgrades.luck)]++;
+    if (count > 0 && state.balance < CONFIG.bet.minBet) {
+      result.bankruptcies[phase]++;
+      // La última tirada es la que dejó el saldo a 0.
+      if (state.recentSpins[0]?.bettor === 'ayudante') result.helper[phase].bankruptcies++;
+    }
   };
 
   while (state.playTime < player.timeLimit) {
@@ -136,10 +176,11 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
 
     if (state.balance >= CONFIG.debt.amount) break;
 
-    // 2. Compras: siempre la más barata que pueda pagar.
+    // 2. Compras: primero las prioritarias; después siempre la más barata que pueda pagar.
     for (;;) {
-      let best: UpgradeId | null = null;
-      for (const id of UPGRADE_IDS) {
+      let best: UpgradeId | null =
+        strategy.priority?.find((id) => strategy.buys(id, state) && canBuy(state, id)) ?? null;
+      for (const id of best ? [] : UPGRADE_IDS) {
         if (!strategy.buys(id, state) || !canBuy(state, id)) continue;
         if (state.balance - nextCost(state, id)! < strategy.reserve(state)) continue;
         if (SIDE_UPGRADES.includes(id) && nextCost(state, id)! > state.balance * SIDE_BUDGET) continue;

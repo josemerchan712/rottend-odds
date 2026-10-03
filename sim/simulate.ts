@@ -4,13 +4,14 @@
  *   npm run simulate                         todas las estrategias, 200 partidas cada una
  *   npm run simulate -- --runs 500
  *   npm run simulate -- --only c,d
- *   npm run simulate -- --override sim/propuesta.json   prueba números sin tocar config.ts
+ *   npm run simulate -- --override cambios.json   prueba números sin tocar config.ts
  */
 import { readFileSync } from 'node:fs';
 import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../src/game/config';
+import { effectiveWinChance } from '../src/game/luck';
 import { formatNumber, formatTime } from '../src/util/format';
 import { DEFAULT_PLAYER, PHASES, runOne, type RunResult, type Strategy } from './engine';
-import { STRATEGIES } from './strategies';
+import { HELPER_STUDY, STRATEGIES } from './strategies';
 
 const args = process.argv.slice(2);
 const arg = (name: string) => {
@@ -139,6 +140,68 @@ table(
     }),
   ]),
 );
+
+section('Ayudante con perfil fijo (el jugador juega como (c) y compra el Crupier en cuanto puede)');
+const helperResults = HELPER_STUDY.map((s) => ({ s, r: Array.from({ length: runs }, (_, i) => runOne(s, i + 1)) }));
+table(
+  ['Perfil', 'Tiempo p50', 'Crupier (p50)', ...PHASES.map((p) => `VE/apuesta ${p}`)],
+  helperResults.map(({ s, r }) => {
+    const crupier = r.map((x) => x.purchases.find((p) => p.id === 'crupier')?.time ?? limit);
+    return [
+      s.label,
+      t(q(r.map((x) => x.time), 0.5)),
+      t(q(crupier, 0.5)),
+      ...PHASES.map((p) => {
+        const bets = sum(r.map((x) => x.helper[p].bets));
+        if (!bets) return '-';
+        const delta = sum(r.map((x) => x.helper[p].delta));
+        const staked = sum(r.map((x) => x.helper[p].staked));
+        const sign = delta >= 0 ? '+' : '';
+        return `${sign}${formatNumber(delta / bets)} (${sign}${((delta / staked) * 100).toFixed(1)}%)`;
+      }),
+    ];
+  }),
+);
+console.log('  VE/apuesta: cambio medio de saldo por apuesta del ayudante en esa fase (entre paréntesis, % de lo apostado).');
+table(
+  ['Perfil', ...PHASES.map((p) => `quiebra ${p}`), ...PHASES.map((p) => `caída ${p}`), ...PHASES.map((p) => `apuestas ${p}`)],
+  helperResults.map(({ s, r }) => [
+    s.label,
+    ...PHASES.map((p) => {
+      const inPhase = r.filter((x) => x.reachedPhase[p] && x.helper[p].bets > 0);
+      return inPhase.length ? pct(inPhase.filter((x) => x.helper[p].bankruptcies > 0).length / inPhase.length) : '-';
+    }),
+    ...PHASES.map((p) => {
+      const inPhase = r.filter((x) => x.reachedPhase[p] && x.helper[p].bets > 0);
+      return inPhase.length ? pct(inPhase.filter((x) => x.helper[p].drawdowns > 0).length / inPhase.length) : '-';
+    }),
+    ...PHASES.map((p) => (sum(r.map((x) => x.helper[p].bets)) / runs).toFixed(0)),
+  ]),
+);
+console.log('  quiebra: % de partidas en que una apuesta del AYUDANTE deja el saldo a 0 en esa fase.');
+console.log('  caída: % de partidas en que una racha de pérdidas del ayudante se lleva al menos la mitad del saldo.');
+console.log('  apuestas: media por partida.');
+
+section('Ayudante: valor teórico de cada perfil según la suerte (sin suerte propia ni Cero Dorado)');
+const luckLevels = [0, 3, 6, 9, 12, 15, 18, 20];
+table(
+  ['Perfil', ...luckLevels.map((l) => `suerte ${l}`)],
+  CONFIG.helper.profiles.flatMap((profile) => {
+    const cells = luckLevels.map((l) => {
+      const p = effectiveWinChance(l, profile.fraction);
+      const x = profile.maxBalanceFraction;
+      const growth = p * Math.log1p(x) + (1 - p) * Math.log1p(-x);
+      return { ev: `${((2 * p - 1) * 100).toFixed(0)}%`, growth: `${(growth * 100).toFixed(2)}%` };
+    });
+    return [
+      [`${profile.name}: VE por ficha`, ...cells.map((c) => c.ev)],
+      [`${profile.name}: crecimiento/apuesta`, ...cells.map((c) => c.growth)],
+    ];
+  }),
+);
+console.log('  VE por ficha: 2p - 1 con la penalización de apostar su fracción del techo.');
+console.log('  crecimiento/apuesta: cambio logarítmico esperado del saldo cuando apuesta su máximo del saldo');
+console.log('  (prudente 3%, normal 10%, agresivo 30%). Negativo = a la larga hunde el saldo aunque el VE sea positivo.');
 
 section('Coste total de todas las mejoras');
 const totalCost = UPGRADE_IDS.reduce((acc, id) => {

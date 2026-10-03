@@ -29,16 +29,26 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
   `p(n) = base + (tope - base) * (n / niveles)^1.6`. En la ruleta: `p(n) = 0,486 + 0,484 * (n/20)^1,6`.
 - Los primeros niveles apenas mueven la probabilidad (~60% hacia el nivel 8-9); los últimos dan los saltos grandes. Así el azar importa durante casi toda la mesa: con poca suerte, apostar fuerte pierde dinero.
 - La recompensa por apuesta **crece poco**; lo que acelera es ganar casi siempre y apostar más veces (velocidad del ayudante) y más fuerte (valor de apuesta).
-- **Jackpot por mesa**: probabilidad base 0,1%. La suerte aporta hasta +0,7% siguiendo su misma curva y la mejora de Jackpot otro +0,7%, con **tope total de 1,5%**. Raro pero alcanzable. El pago tiene un tope del 25% de la deuda.
+- En las fórmulas, **L** es el progreso de esa curva: `L = (n / niveles)^1.6`, de 0 (sin suerte) a 1 (suerte máxima). La suerte mueve con L la probabilidad, la penalización por riesgo (3.1), el jackpot y las apuestas especiales (4.1).
+- **Jackpot por mesa**: probabilidad base 0,1%. La suerte aporta hasta +0,7% (`0,7% * L`) y la mejora de Jackpot otro +0,7%, con **tope total de 1,5%**. Raro pero alcanzable. Paga **x50** la apuesta con un **tope de 500.000** (5% de la deuda): con apuestas grandes el tope salta en ~40% de los jackpots, y así el jackpot aporta ~5% de las fichas de una partida en vez de dominar la economía (con x500 llegaba al 75-80%).
 
 ### 3.1 Selector de apuesta y penalización por riesgo
 
 - El jugador elige la apuesta con botones rápidos: **1%, 10%, 50%, TODO** **del techo de apuesta** (el máximo que se mejora comprando). Si el saldo es menor, la apuesta se limita al saldo.
-- **Penalización por apostar fuerte**: la probabilidad efectiva baja según la fracción del techo apostada.
-  `p_efectiva = p_suerte - 0.20 * fraccion^1.5` (fraccion = apuesta / techo, entre 0 y 1).
-- Consecuencia buscada: con poca suerte, apostar el techo tiene valor esperado negativo, y la fracción óptima sube con la suerte (aprox. `(2p - 1)^(2/3)`: 0 por debajo del 50%, ~34% con p = 0,6 y ~96% con p = 0,97).
+- **Penalización por apostar fuerte**: la probabilidad efectiva baja según la fracción del techo apostada, y la penalización se suaviza con la suerte:
+  `p_efectiva = p_suerte - factor * fraccion^1.5`, con `factor = 0,20 - 0,16 * L` (fraccion = apuesta / techo, entre 0 y 1).
+  El factor vale 0,20 sin suerte, ~0,15 con suerte 10 y 0,04 con suerte máxima. Con suerte máxima, apostar el techo da 97% - 4% = **93% de acierto**: al final casi nunca pierdes.
+- Consecuencia buscada: con poca suerte, apostar el techo tiene valor esperado negativo (hasta suerte ~9), y la fracción óptima sube con la suerte (0 por debajo del 50%, el techo entero con suerte máxima).
 - Perder una apuesta de TODO tiene un castigo extra pequeño: el ayudante se bloquea 5 segundos.
-- El ayudante usa un **perfil fijo** que se mejora (fracción del techo): prudente (1-10%), normal (10-25%), agresivo (50%+).
+- El ayudante usa un **perfil fijo** que se mejora. Cada perfil apuesta una fracción del techo, pero **nunca más de una fracción del saldo**; si eso no llega a la apuesta mínima, espera. Así el ayudante nunca puede dejar el saldo a 0.
+
+| Perfil | Fracción del techo | Máximo del saldo | Cuándo compensa |
+|---|---|---|---|
+| Prudente | 5% | 3% | Siempre seguro; crece desde suerte ~3 |
+| Normal | 20% | 10% | Desde suerte ~6 |
+| Agresivo | 50% | 30% | Solo con suerte alta (~12+); antes hunde el saldo a la larga |
+
+  Simulación (200 partidas por perfil): ningún perfil deja el saldo a 0 en ninguna fase, ni provoca caídas fuertes en las fases inicial y media. Con agresivo, el 38% de las partidas sufre en la fase alta una racha que se lleva la mitad del saldo, pero aun así termina la mesa antes (8:42 frente a 9:19 con prudente).
 
 ## 4. Mesa 1: Ruleta (la que se construye primero)
 
@@ -51,12 +61,20 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 
 | Apuesta | Pago | Prob. base | Disponible |
 |---|---|---|---|
-| Color (negro o blanco) | 1:1 | 48,6% (18/37) | Desde el inicio |
-| Docena (1-12, 13-24, 25-36) | 2:1 | 32,4% (12/37) | Mejora "Apuesta a docena" |
-| Número (1-36) | 35:1 | 2,7% (1/37) | Mejora "Apuesta a número" |
+| Color (negro o blanco) | 1:1 | 48,6% → 97% | Desde el inicio |
+| Docena (1-12, 13-24, 25-36) | 2:1 | 29,2% → 90,5% | Mejora "Apuesta a docena" |
+| Número (1-36) | 35:1 | 2,2% → 9,7% | Mejora "Apuesta a número" |
 
-- La suerte y la penalización se calculan sobre el color y se aplican **en proporción a las casillas**: `p_docena = p_color_efectiva * 12/18`, `p_número = p_color_efectiva * 1/18`. Con los pagos de una ruleta real, los tres tipos tienen siempre **el mismo valor esperado**; solo cambia la varianza. El color es la apuesta segura; docena y número sirven para buscar un golpe (por ejemplo, alcanzar una compra) a cambio de más riesgo.
-- Jackpot **Cero Dorado**: casilla extra que paga **x500** la apuesta (con cualquier tipo de apuesta), con tope de pago del 25% de la deuda. Probabilidad del 0,1% al 1,5% (ver sección 3).
+  (Probabilidades sin suerte → con suerte máxima, apostando poco.)
+
+- La suerte y la penalización se calculan sobre el color, y la docena y el número las amplifican con un multiplicador que crece con la suerte:
+  `p_tipo = p_color_efectiva * casillas/18 * m`, con `m_docena = 0,90 + 0,50 * L` y `m_número = 0,80 + 1,00 * L`.
+  Con los pagos de ruleta real, el valor esperado por ficha de cualquier tipo es `2 * p_color * m - 1`:
+  - **Con poca suerte (hasta suerte 7) el color es la mejor apuesta**: docena y número tienen m < 1 (sin suerte, valor esperado -2,8% el color, -12,5% la docena, -22% el número).
+  - Desde suerte 8 docena y número rinden más, y con suerte máxima mucho más (+83% y +165% de valor esperado respecto al color), a cambio de mucha más varianza.
+  - Por qué tanto: un jugador que apuesta con cabeza está limitado por su saldo, y su crecimiento por apuesta va como `VE² / varianza`. La docena tiene ~2 veces la varianza del color y solo compensa con ~+40% de valor esperado; el número, con mucho más. Con +10%/+20% nadie las usaría.
+  - Simulación: la estrategia que mezcla color, docena y número termina la mesa un ~8% antes que la que solo juega a color (7:26 frente a 8:07).
+- Jackpot **Cero Dorado**: casilla extra que paga **x50** la apuesta (con cualquier tipo de apuesta), con tope de pago de 500.000. Probabilidad del 0,1% al 1,5% (ver sección 3).
 
 ### 4.2 Trabajo manual: recoger basura
 
@@ -77,25 +95,37 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 - Mejoras del trabajo: **Pinzas** (recoger 2 objetos por clic), **Bolsa grande** (+valor por objeto), **Ayudante de limpieza** (otro sprite que recoge solo).
 - Atajo de teclado "recoger el más cercano" como accesibilidad.
 
-### 4.3 Mejoras (valores iniciales, a ajustar con simulación)
+### 4.3 Mejoras (valores calibrados con simulación)
 
-Fórmula de coste: `coste(n) = base * crecimiento^n`.
+Fórmula de coste: `coste(n) = base * crecimiento^n` (redondeado).
 
-| Mejora | Efecto por nivel | Coste base | Crecimiento | Niveles máx. |
+| Mejora | Efecto por nivel | Coste base | Crecimiento | Niveles máx. | Coste total |
+|---|---|---|---|---|---|
+| Suerte | Sube la prob. (curva convexa hasta 97%) | 3 | 1,55 | 20 | ~35K |
+| Apuesta máxima | x2,5 el techo de apuesta (de 10 a ~95K) | 10 | 2,0 | 11 | ~20K |
+| Crupier (ayudante) | Desbloquea el ayudante | 500 | - | 1 | 500 |
+| Velocidad del ayudante | -12% al tiempo entre apuestas (de 4 s a ~0,6 s) | 300 | 1,6 | 15 | ~575K |
+| Perfil del ayudante | Desbloquea normal y agresivo (prudente viene con el Crupier) | 1.000 | 4 | 2 | 5K |
+| Suerte del ayudante | +0,5% de prob. solo para el ayudante | 800 | 1,8 | 10 | ~356K |
+| Jackpot | +0,07% de prob. de Cero Dorado | 2.000 | 1,8 | 10 | ~890K |
+| Apuesta a docena | Desbloquea la docena (2:1) | 200 | - | 1 | 200 |
+| Apuesta a número | Desbloquea el número (35:1) | 1.500 | - | 1 | 1,5K |
+
+Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la curva convexa, entre los niveles 5 y 10 la ruleta apenas da dinero: el progreso depende del trabajo y de un saldo que crece despacio, y unos costes más altos alargan mucho la mesa (con la suerte en base 10, la mesa pasa de 8 a 12 minutos).
+
+**Objetivo y resultado** (`npm run simulate`, 200 partidas por estrategia; el jugador simulado apuesta como mucho una vez por segundo):
+
+| Estrategia | Media | p10 | p90 | Último tramo (media / p90) |
 |---|---|---|---|---|
-| Suerte | Sube la prob. (curva convexa hasta 97%) | 50 | 2,1 | 20 |
-| Apuesta máxima | x1,8 el techo de apuesta (empieza en 10) | 100 | 2,3 | 12 |
-| Crupier (ayudante) | Desbloquea el ayudante | 500 | - | 1 |
-| Velocidad del ayudante | -12% al tiempo entre apuestas (de 4 s a ~0,5 s) | 300 | 2,0 | 15 |
-| Perfil del ayudante | Desbloquea normal y agresivo (prudente viene con el Crupier) | 1.000 | 4 | 2 |
-| Suerte del ayudante | +0,5% de prob. solo para el ayudante | 800 | 2,2 | 10 |
-| Jackpot | +0,035% de prob. de Cero Dorado | 2.000 | 2,5 | 20 |
-| Apuesta a docena | Desbloquea la docena (2:1) | 3.000 | - | 1 |
-| Apuesta a número | Desbloquea el número (35:1) | 25.000 | - | 1 |
+| Color con apuesta mínima | 23:41 | 20:13 | 27:06 | 8:30 / 9:42 |
+| Siempre el techo | 10:29 | 5:02 | 16:40 | 0:40 / 0:49 |
+| Fracción óptima, solo color | 8:07 | 5:45 | 10:36 | 0:54 / 1:06 |
+| Fracción óptima con docena y número | 7:26 | 5:29 | 9:41 | 0:40 / 0:52 |
 
-Objetivo: llegar a 10M en **~8 minutos** de juego activo, con el último tramo (desde suerte máxima hasta 10M) de 1-2 minutos y el arranque (primera apuesta y primera mejora de suerte) en menos de ~30 s. Calibrar con `npm run simulate` (ver sección 10).
-
-**Estado:** estos valores aún son los iniciales. La simulación muestra que con ellos ninguna estrategia llega a 10M en una hora (las mejoras suman ~121.000M). Hay una propuesta de ajuste en `sim/propuesta.json`, pendiente de aprobar.
+- Mesa de ~8 minutos para quien juega bien; las estrategias triviales son claramente peores (y "siempre el techo" es una lotería).
+- Último tramo (desde suerte 20 hasta 10M) por debajo de 1 minuto.
+- Primera mejora de suerte en el segundo 0-1 (cuesta 3 fichas); primera apuesta con valor positivo hacia los 11 s (p90 25 s).
+- Pendiente: las mejoras del trabajo (hito 4) acelerarán las fases inicial y media; habrá que recalibrar.
 
 ### 4.4 Deuda
 

@@ -4,28 +4,32 @@ import { buyUpgrade, canBuy, nextCost, upgradeCost } from '../src/game/upgrades'
 import { stateWith } from './helpers';
 
 describe('tienda de mejoras', () => {
-  it('coste(n) = base * crecimiento^n', () => {
-    expect(upgradeCost('luck', 0)).toBe(50);
-    expect(upgradeCost('luck', 1)).toBe(105);
-    expect(upgradeCost('luck', 2)).toBe(Math.round(50 * 2.1 ** 2));
-    expect(upgradeCost('maxBet', 3)).toBe(Math.round(100 * 2.3 ** 3));
+  it('coste(n) = base * crecimiento^n, redondeado', () => {
+    for (const id of UPGRADE_IDS) {
+      const { baseCost, growth } = CONFIG.upgrades[id];
+      for (const n of [0, 1, 2, 5]) expect(upgradeCost(id, n)).toBe(Math.round(baseCost * growth ** n));
+    }
+    expect(upgradeCost('luck', 0)).toBe(3);
+    expect(upgradeCost('luck', 10)).toBe(Math.round(3 * 1.55 ** 10));
   });
 
   it('comprar descuenta el coste correcto y sube el nivel', () => {
     const state = stateWith({ balance: 1000 });
-    expect(buyUpgrade(state, 'luck')).toBe(true);
-    expect(state.balance).toBe(950);
-    expect(state.upgrades.luck).toBe(1);
-    expect(buyUpgrade(state, 'luck')).toBe(true);
-    expect(state.balance).toBe(950 - 105);
-    expect(state.upgrades.luck).toBe(2);
+    const first = upgradeCost('maxBet', 0);
+    const second = upgradeCost('maxBet', 1);
+    expect(buyUpgrade(state, 'maxBet')).toBe(true);
+    expect(state.balance).toBe(1000 - first);
+    expect(state.upgrades.maxBet).toBe(1);
+    expect(buyUpgrade(state, 'maxBet')).toBe(true);
+    expect(state.balance).toBe(1000 - first - second);
+    expect(state.upgrades.maxBet).toBe(2);
   });
 
   it('no se puede comprar sin fichas suficientes', () => {
-    const state = stateWith({ balance: 49 });
+    const state = stateWith({ balance: upgradeCost('luck', 0) - 1 });
     expect(canBuy(state, 'luck')).toBe(false);
     expect(buyUpgrade(state, 'luck')).toBe(false);
-    expect(state.balance).toBe(49);
+    expect(state.balance).toBe(upgradeCost('luck', 0) - 1);
     expect(state.upgrades.luck).toBe(0);
   });
 

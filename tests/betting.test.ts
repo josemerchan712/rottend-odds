@@ -6,10 +6,11 @@ import { spin } from '../src/game/roulette';
 import { LOSE, NEGRO, stateWith } from './helpers';
 
 describe('selector de apuesta', () => {
-  it('el techo empieza en 10 y crece x1,8 por nivel', () => {
+  it('el techo empieza en 10 y crece x2,5 por nivel hasta ~95K', () => {
     expect(maxBet(0)).toBe(10);
-    expect(maxBet(1)).toBe(18);
-    expect(maxBet(2)).toBe(32);
+    expect(maxBet(1)).toBe(25);
+    expect(maxBet(2)).toBe(62);
+    expect(maxBet(10)).toBe(Math.floor(10 * 2.5 ** 10));
   });
 
   it('nunca apuesta más que el saldo ni más que la apuesta máxima', () => {
@@ -28,8 +29,8 @@ describe('selector de apuesta', () => {
 
   it('los botones 1%, 10%, 50% y TODO son fracciones del techo', () => {
     const state = stateWith({ balance: 1e9 });
-    state.upgrades.maxBet = 12;
-    const ceiling = maxBet(12);
+    state.upgrades.maxBet = 11;
+    const ceiling = maxBet(11);
     const bets = [0, 1, 2, 3].map((i) => (selectBetFraction(state, i), playerBetAmount(state)));
     expect(bets).toEqual([0.01, 0.1, 0.5, 1].map((f) => Math.floor(ceiling * f)));
   });

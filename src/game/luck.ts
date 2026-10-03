@@ -14,10 +14,16 @@ export function luckChance(level: number): number {
   return Math.min(luck.base + (luck.cap - luck.base) * luckProgress(level), luck.cap);
 }
 
-/** Cuánto resta apostar `fraction` (0-1) del techo de apuesta. */
-export function riskPenalty(fraction: number): number {
+/** Factor de la penalización por riesgo: baja con la suerte siguiendo su misma curva. */
+export function penaltyFactor(luckLevel: number): number {
+  const L = luckProgress(luckLevel);
+  return risk.penaltyFactorAtMinLuck + (risk.penaltyFactorAtMaxLuck - risk.penaltyFactorAtMinLuck) * L;
+}
+
+/** Cuánto resta apostar `fraction` (0-1) del techo de apuesta con ese nivel de suerte. */
+export function riskPenalty(fraction: number, luckLevel: number): number {
   const f = Math.min(Math.max(fraction, 0), 1);
-  return risk.penaltyFactor * f ** risk.penaltyExponent;
+  return penaltyFactor(luckLevel) * f ** risk.penaltyExponent;
 }
 
 /**
@@ -26,12 +32,19 @@ export function riskPenalty(fraction: number): number {
  */
 export function effectiveWinChance(luckLevel: number, fraction: number, bonus = 0): number {
   const p = Math.min(luckChance(luckLevel) + bonus, luck.cap);
-  return Math.max(p - riskPenalty(fraction), 0);
+  return Math.max(p - riskPenalty(fraction, luckLevel), 0);
 }
 
-/** Probabilidad efectiva para cualquier tipo de apuesta: la del color escalada por sus casillas. */
+/** Multiplicador de suerte del tipo de apuesta: < 1 con poca suerte, > 1 con mucha (docena, número). */
+export function betLuckMultiplier(type: BetType, luckLevel: number): number {
+  const { luckMin, luckMax } = CONFIG.betTypes[type];
+  return luckMin + (luckMax - luckMin) * luckProgress(luckLevel);
+}
+
+/** Probabilidad efectiva para cualquier tipo de apuesta: la del color escalada por casillas y suerte. */
 export function betWinChance(type: BetType, luckLevel: number, fraction: number, bonus = 0): number {
-  return effectiveWinChance(luckLevel, fraction, bonus) * CONFIG.betTypes[type].chanceRatio;
+  const def = CONFIG.betTypes[type];
+  return effectiveWinChance(luckLevel, fraction, bonus) * def.chanceRatio * betLuckMultiplier(type, luckLevel);
 }
 
 /** Probabilidad del Cero Dorado: base + suerte (misma curva) + mejora, con tope. */

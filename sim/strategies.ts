@@ -1,12 +1,17 @@
 import { betAmount, currentMaxBet, isBetTypeUnlocked } from '../src/game/betting';
-import { CONFIG, UPGRADE_IDS, type BetType, type UpgradeId } from '../src/game/config';
+import { CONFIG, type BetType, type UpgradeId } from '../src/game/config';
 import { helperLuckBonus } from '../src/game/helper';
 import { betWinChance } from '../src/game/luck';
 import type { BetChoice, GameState } from '../src/game/state';
-import { isUnlocked, nextCost } from '../src/game/upgrades';
 import type { Strategy } from './engine';
 
 const NEGRO: BetChoice = { type: 'color', color: 'negro' };
+const BET_TYPES = Object.keys(CONFIG.betTypes) as BetType[];
+const CHOICES: Record<BetType, BetChoice> = {
+  color: NEGRO,
+  dozen: { type: 'dozen', dozen: 2 },
+  number: { type: 'number', number: 17 },
+};
 const ALL_FRACTIONS = CONFIG.bet.quickFractions.map((_, i) => i);
 const TODO = CONFIG.bet.quickFractions.length - 1;
 
@@ -26,62 +31,64 @@ const smartBuys = (specialBets: boolean) => (id: UpgradeId, state: GameState) =>
   return id !== 'maxBet' || ceilingIsBinding(state);
 };
 
-/**
- * Valor esperado de la parte de ruleta (sin contar el Cero Dorado) de apostar con un botón.
- * Las estrategias "listas" deciden con esto: el jackpot es demasiado raro para planificar con él.
- */
-function rouletteEv(state: GameState, type: BetType, fraction: number, bonus = 0): number {
-  const ceiling = currentMaxBet(state);
-  const bet = betAmount(state.balance, fraction, ceiling);
-  if (bet <= 0) return -Infinity;
-  const p = betWinChance(type, state.upgrades.luck, bet / ceiling, bonus);
-  return bet * (p * CONFIG.betTypes[type].payout - (1 - p));
-}
+
 
 /**
- * ¿Respeta la apuesta el criterio de Kelly? Con pago 1:1 la fracción del saldo que maximiza
- * el crecimiento es 2p - 1; apostar más lleva a la ruina aunque cada apuesta tenga valor positivo.
+ * Crecimiento logarítmico esperado del saldo con una apuesta: p·ln(1 + k·b/B) + (1-p)·ln(1 - b/B).
+ * Maximizarlo es la forma de llegar antes a una meta (criterio de Kelly): castiga la varianza
+ * y nunca apuesta todo el saldo.
  */
-function withinKelly(state: GameState, type: BetType, fraction: number, bonus = 0): boolean {
+function logGrowth(state: GameState, type: BetType, fraction: number): number {
   const ceiling = currentMaxBet(state);
   const bet = betAmount(state.balance, fraction, ceiling);
-  if (bet <= 0) return false;
-  const p = betWinChance(type, state.upgrades.luck, bet / ceiling, bonus);
-  const payout = CONFIG.betTypes[type].payout;
-  const kelly = (p * (payout + 1) - 1) / payout;
-  return bet <= state.balance * kelly;
+  if (bet <= 0 || bet >= state.balance) return -Infinity;
+  const p = betWinChance(type, state.upgrades.luck, bet / ceiling);
+  const x = bet / state.balance;
+  return p * Math.log1p(CONFIG.betTypes[type].payout * x) + (1 - p) * Math.log1p(-x);
 }
 
-/**
- * Botón con mayor valor esperado entre los que respetan Kelly; null si ninguno tiene valor
- * positivo (entonces el jugador trabaja en vez de apostar).
- */
-function bestFraction(state: GameState, type: BetType = 'color'): number | null {
-  let best: number | null = null;
-  let bestEv = 0;
+/** Botón de color con mayor crecimiento; null si ninguno hace crecer el saldo (entonces trabaja). */
+function bestFraction(state: GameState): number | null {
+  return bestButton(state, 'color')?.index ?? null;
+}
+
+function bestButton(state: GameState, type: BetType): { index: number; growth: number } | null {
+  let best: { index: number; growth: number } | null = null;
   for (const i of ALL_FRACTIONS) {
-    const f = CONFIG.bet.quickFractions[i];
-    if (!withinKelly(state, type, f)) continue;
-    const ev = rouletteEv(state, type, f);
-    if (ev > bestEv) {
-      best = i;
-      bestEv = ev;
-    }
+    const growth = logGrowth(state, type, CONFIG.bet.quickFractions[i]);
+    if (growth > (best?.growth ?? 0)) best = { index: i, growth };
   }
   return best;
 }
 
-/** Perfil del ayudante con mayor valor esperado que respete Kelly (si ninguno, el más prudente). */
+/** Mejor combinación de tipo de apuesta y botón entre los desbloqueados. */
+function bestBet(state: GameState): { choice: BetChoice; fractionIndex: number } | null {
+  let best: { type: BetType; index: number; growth: number } | null = null;
+  for (const type of BET_TYPES) {
+    if (!isBetTypeUnlocked(state, type)) continue;
+    const button = bestButton(state, type);
+    if (button && button.growth > (best?.growth ?? 0)) best = { type, ...button };
+  }
+  if (!best) return null;
+  return { choice: CHOICES[best.type], fractionIndex: best.index };
+}
+
+/** Perfil del ayudante con mayor crecimiento logarítmico (si ninguno es positivo, el más prudente). */
 function bestHelperProfile(state: GameState): number {
   const bonus = helperLuckBonus(state.upgrades.helperLuck);
+  const ceiling = currentMaxBet(state);
   let best = 0;
-  let bestEv = -Infinity;
-  CONFIG.helper.profiles.forEach((p, i) => {
-    if (i > state.upgrades.helperProfile || !withinKelly(state, 'color', p.fraction, bonus)) return;
-    const ev = rouletteEv(state, 'color', p.fraction, bonus);
-    if (ev > bestEv) {
+  let bestGrowth = 0;
+  CONFIG.helper.profiles.forEach((profile, i) => {
+    if (i > state.upgrades.helperProfile) return;
+    const bet = Math.min(Math.floor(ceiling * profile.fraction), Math.floor(state.balance * profile.maxBalanceFraction));
+    if (bet < CONFIG.bet.minBet) return;
+    const p = betWinChance('color', state.upgrades.luck, bet / ceiling, bonus);
+    const x = bet / state.balance;
+    const growth = p * Math.log1p(x) + (1 - p) * Math.log1p(-x);
+    if (growth > bestGrowth) {
       best = i;
-      bestEv = ev;
+      bestGrowth = growth;
     }
   });
   return best;
@@ -91,17 +98,6 @@ function bestHelperProfile(state: GameState): number {
 function smartReserve(state: GameState): number {
   const i = bestFraction(state);
   return i === null ? 0 : Math.floor(currentMaxBet(state) * CONFIG.bet.quickFractions[i]);
-}
-
-/** Coste de la mejora más barata que aún le queda por comprar. */
-function nextTarget(state: GameState, buys: (id: UpgradeId) => boolean): number | null {
-  let min: number | null = null;
-  for (const id of UPGRADE_IDS) {
-    if (!buys(id) || !isUnlocked(state, id)) continue;
-    const cost = nextCost(state, id);
-    if (cost !== null && (min === null || cost < min)) min = cost;
-  }
-  return min;
 }
 
 export const STRATEGIES: Strategy[] = [
@@ -134,22 +130,28 @@ export const STRATEGIES: Strategy[] = [
   },
   {
     id: 'd',
-    label: '(d) Óptima + docena/número para alcanzar compras',
-    chooseBet: (s) => {
-      const i = bestFraction(s);
-      if (i === null) return null;
-      const target = nextTarget(s, () => true);
-      // Lejos de la siguiente compra, busca el golpe con número; cerca, docena; con margen, color.
-      if (target !== null && isBetTypeUnlocked(s, 'number') && s.balance < target * 0.3) {
-        return { choice: { type: 'number', number: 17 }, fractionIndex: i };
-      }
-      if (target !== null && isBetTypeUnlocked(s, 'dozen') && s.balance < target) {
-        return { choice: { type: 'dozen', dozen: 2 }, fractionIndex: i };
-      }
-      return { choice: NEGRO, fractionIndex: i };
-    },
+    label: '(d) Óptima con color, docena o número',
+    chooseBet: bestBet,
     helperProfile: bestHelperProfile,
     buys: smartBuys(true),
     reserve: smartReserve,
   },
 ];
+
+/**
+ * Estudio del ayudante: el jugador juega como (c), pero compra el Crupier (y el perfil que haga
+ * falta) en cuanto puede y deja al ayudante con un perfil fijo.
+ */
+export const HELPER_STUDY: Strategy[] = CONFIG.helper.profiles.map((profile, index) => ({
+  id: `h${index}`,
+  label: `Ayudante ${profile.name.toLowerCase()} (${Math.round(profile.fraction * 100)}% del techo)`,
+  chooseBet: (s: GameState) => {
+    const i = bestFraction(s);
+    return i === null ? null : { choice: NEGRO, fractionIndex: i };
+  },
+  helperProfile: () => index,
+  buys: (id: UpgradeId, s: GameState) =>
+    id === 'helperProfile' ? s.upgrades.helperProfile < index : smartBuys(false)(id, s),
+  reserve: smartReserve,
+  priority: ['crupier', 'helperProfile'] as const,
+}));

@@ -109,7 +109,10 @@ export function mountUi(root: HTMLElement): Ui {
           <div data-ref="helperPanel">
             <div class="row">
               ${CONFIG.helper.profiles
-                .map((p, i) => `<button class="chip" data-profile="${i}">${p.name} ${formatPercent(p.fraction, 0)}</button>`)
+                .map(
+                  (p, i) =>
+                    `<button class="chip" data-profile="${i}" title="Apuesta el ${formatPercent(p.fraction, 0)} del techo, como mucho el ${formatPercent(p.maxBalanceFraction, 0)} de tu saldo">${p.name} ${formatPercent(p.fraction, 0)} · máx. ${formatPercent(p.maxBalanceFraction, 0)} saldo</button>`,
+                )
                 .join('')}
             </div>
             <p data-ref="helperInfo"></p>
@@ -213,7 +216,7 @@ export function render(ui: Ui, state: GameState): void {
       : 'Sin fichas para apostar. Recoge basura.',
   );
   const base = luckChance(upgrades.luck);
-  const penalty = riskPenalty(fraction);
+  const penalty = riskPenalty(fraction, upgrades.luck);
   const chanceFor = (type: BetType) => {
     const p = formatPercent(betWinChance(type, upgrades.luck, fraction));
     const ev = expectedValue(type, bet, ceiling, upgrades.luck, upgrades.jackpot);

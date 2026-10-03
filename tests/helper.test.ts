@@ -64,15 +64,45 @@ describe('ayudante', () => {
   it('apuesta cada 4 s y la velocidad baja el intervalo un 12% por nivel', () => {
     expect(helperInterval(0)).toBe(4);
     expect(helperInterval(15)).toBeCloseTo(4 * 0.88 ** 15, 10);
-    const state = withHelper(1000);
+    const state = withHelper(1e6);
     expect(updateHelper(state, 12.01, seededRng(5))).toHaveLength(3);
   });
 
   it('usa la fracción de su perfil sobre el techo de apuesta', () => {
-    const state = withHelper(100_000);
-    state.upgrades.maxBet = 12;
+    const state = withHelper(1e9);
+    state.upgrades.maxBet = 11;
     const [r] = updateHelper(state, 4, LOSE);
-    expect(r.bet).toBe(Math.floor(maxBet(12) * CONFIG.helper.profiles[0].fraction));
+    expect(r.bet).toBe(Math.floor(maxBet(11) * CONFIG.helper.profiles[0].fraction));
+  });
+
+  it('nunca apuesta más de su fracción máxima del saldo', () => {
+    CONFIG.helper.profiles.forEach((profile, index) => {
+      const state = withHelper(100_000);
+      state.upgrades.maxBet = 11;
+      state.upgrades.helperProfile = 2;
+      state.helper.profile = index;
+      const [r] = updateHelper(state, 4, LOSE);
+      expect(r.bet).toBe(
+        Math.min(Math.floor(maxBet(11) * profile.fraction), Math.floor(100_000 * profile.maxBalanceFraction)),
+      );
+      expect(r.bet).toBeLessThanOrEqual(100_000 * profile.maxBalanceFraction);
+    });
+  });
+
+  it('ningún perfil puede dejar el saldo a 0, aunque pierda siempre', () => {
+    CONFIG.helper.profiles.forEach((_, index) => {
+      const state = withHelper(1000);
+      state.upgrades.helperProfile = 2;
+      state.helper.profile = index;
+      updateHelper(state, 4000, LOSE); // 1.000 apuestas perdidas seguidas
+      expect(state.balance).toBeGreaterThan(0);
+    });
+  });
+
+  it('si su límite no llega a la apuesta mínima, espera sin apostar', () => {
+    const state = withHelper(20); // 3% de 20 = 0,6 fichas < 1
+    expect(updateHelper(state, 40, LOSE)).toHaveLength(0);
+    expect(state.balance).toBe(20);
   });
 
   it('solo deja elegir perfiles desbloqueados', () => {

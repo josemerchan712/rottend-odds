@@ -5,6 +5,8 @@ import {
   jackpotChance,
   jackpotPayout,
   luckChance,
+  luckProgress,
+  penaltyFactor,
   riskPenalty,
 } from '../src/game/luck';
 import { seededRng } from '../src/game/rng';
@@ -44,10 +46,21 @@ describe('curva de suerte', () => {
 });
 
 describe('penalización por apostar fuerte', () => {
-  it('sigue p - 0,20 * fraccion^1,5', () => {
-    expect(riskPenalty(0)).toBe(0);
-    expect(riskPenalty(1)).toBeCloseTo(0.2, 10);
+  it('sigue p - factor * fraccion^1,5, con factor 0,20 sin suerte', () => {
+    expect(riskPenalty(0, 0)).toBe(0);
+    expect(riskPenalty(1, 0)).toBeCloseTo(0.2, 10);
     expect(effectiveWinChance(0, 0.5)).toBeCloseTo(0.486 - 0.2 * 0.5 ** 1.5, 10);
+  });
+
+  it('el factor baja con la suerte, de 0,20 a 0,04, siguiendo la curva de suerte', () => {
+    expect(penaltyFactor(0)).toBeCloseTo(0.2, 10);
+    expect(penaltyFactor(MAX_LUCK)).toBeCloseTo(0.04, 10);
+    for (let n = 1; n <= MAX_LUCK; n++) expect(penaltyFactor(n)).toBeLessThan(penaltyFactor(n - 1));
+    expect(penaltyFactor(10)).toBeCloseTo(0.2 - 0.16 * luckProgress(10), 10);
+  });
+
+  it('con suerte máxima, apostar el techo da al menos un 93% de acierto', () => {
+    expect(effectiveWinChance(MAX_LUCK, 1)).toBeGreaterThanOrEqual(0.93 - 1e-9);
   });
 
   it('baja la probabilidad al subir la fracción apostada', () => {
@@ -82,19 +95,20 @@ describe('penalización por apostar fuerte', () => {
 });
 
 describe('Cero Dorado', () => {
-  const cap = CONFIG.debt.amount * 0.25;
+  const cap = 500_000;
 
-  it('paga x500 hasta el tope del 25% de la deuda', () => {
-    expect(jackpotPayout(100)).toEqual({ gain: 50_000, capped: false });
-    expect(jackpotPayout(5000)).toEqual({ gain: cap, capped: false });
-    expect(jackpotPayout(5001)).toEqual({ gain: cap, capped: true });
+  it('paga x50 hasta el tope de 500K (5% de la deuda)', () => {
+    expect(CONFIG.debt.amount * CONFIG.jackpot.payoutCapDebtFraction).toBe(cap);
+    expect(jackpotPayout(100)).toEqual({ gain: 5000, capped: false });
+    expect(jackpotPayout(10_000)).toEqual({ gain: cap, capped: false });
+    expect(jackpotPayout(10_001)).toEqual({ gain: cap, capped: true });
     expect(jackpotPayout(1e9)).toEqual({ gain: cap, capped: true });
   });
 
   it('spin aplica el tope al saldo y lo anota', () => {
     const state = stateWith({ balance: 100_000 });
-    state.upgrades.maxBet = 12; // techo ~11.500
-    const result = spin(state, { bettor: 'jugador', choice: { type: 'color', color: 'blanco' }, bet: 10_000 }, JACKPOT)!;
+    state.upgrades.maxBet = 11;
+    const result = spin(state, { bettor: 'jugador', choice: { type: 'color', color: 'blanco' }, bet: 20_000 }, JACKPOT)!;
     expect(result.outcome).toBe('jackpot');
     expect(result.delta).toBe(cap);
     expect(state.balance).toBe(100_000 + cap);

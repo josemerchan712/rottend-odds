@@ -23,8 +23,14 @@ export function helperProfile(state: GameState) {
   return CONFIG.helper.profiles[Math.min(Math.max(state.helper.profile, 0), unlocked)];
 }
 
+/** Apuesta del ayudante: su fracción del techo, limitada a su fracción máxima del saldo. 0 = espera. */
 export function helperBetAmount(state: GameState): number {
-  return betAmount(state.balance, helperProfile(state).fraction, currentMaxBet(state));
+  const profile = helperProfile(state);
+  const bet = Math.min(
+    betAmount(state.balance, profile.fraction, currentMaxBet(state)),
+    Math.floor(state.balance * profile.maxBalanceFraction),
+  );
+  return bet >= CONFIG.bet.minBet ? bet : 0;
 }
 
 export function selectHelperProfile(state: GameState, index: number): boolean {

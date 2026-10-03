@@ -1,8 +1,12 @@
+import shared from '../../shared/config.json';
 import { CONFIG, UPGRADE_IDS } from './config';
 import { createInitialState, type GameState } from './state';
 
-/** Súbelo cada vez que cambie la forma de GameState y añade su migración. */
-export const SAVE_VERSION = 3;
+/**
+ * Súbelo cada vez que cambie la forma de GameState y añade su migración.
+ * Vive en shared/config.json porque el servidor también lo comprueba.
+ */
+export const SAVE_VERSION: number = shared.saveVersion;
 
 /** Lo mínimo de localStorage que necesitamos; así los tests pasan un objeto falso. */
 export interface KeyValueStorage {

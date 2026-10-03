@@ -1,6 +1,10 @@
+import shared from '../../shared/config.json';
+
 /**
  * Todos los números del diseño en un solo sitio.
- * La lógica lee de aquí; para ajustar el equilibrio solo se toca este archivo.
+ * La lógica lee de aquí; para ajustar el equilibrio solo se toca este archivo...
+ * salvo los números que también usa el servidor para validar (deuda, versión del guardado y
+ * costes de las mejoras), que viven en shared/config.json y se leen desde allí.
  */
 export const CONFIG = {
   tech: {
@@ -125,20 +129,20 @@ export const CONFIG = {
   },
 
   debt: {
-    amount: 10_000_000,
+    amount: shared.debt.amount,
   },
 
   /** coste(n) = base * crecimiento^n, con n = nivel actual. */
   upgrades: {
-    luck: { name: 'Suerte', baseCost: 3, growth: 1.55, maxLevel: 20 },
-    maxBet: { name: 'Apuesta máxima', baseCost: 10, growth: 2, maxLevel: 11 },
-    crupier: { name: 'Crupier (ayudante)', baseCost: 500, growth: 1, maxLevel: 1 },
-    helperSpeed: { name: 'Velocidad del ayudante', baseCost: 300, growth: 1.6, maxLevel: 15 },
-    helperProfile: { name: 'Perfil del ayudante', baseCost: 1000, growth: 4, maxLevel: 2 },
-    helperLuck: { name: 'Suerte del ayudante', baseCost: 800, growth: 1.8, maxLevel: 10 },
-    jackpot: { name: 'Jackpot', baseCost: 2000, growth: 1.8, maxLevel: 10 },
-    dozenBet: { name: 'Apuesta a docena', baseCost: 200, growth: 1, maxLevel: 1 },
-    numberBet: { name: 'Apuesta a número', baseCost: 1500, growth: 1, maxLevel: 1 },
+    luck: { name: 'Suerte', ...shared.upgrades.luck },
+    maxBet: { name: 'Apuesta máxima', ...shared.upgrades.maxBet },
+    crupier: { name: 'Crupier (ayudante)', ...shared.upgrades.crupier },
+    helperSpeed: { name: 'Velocidad del ayudante', ...shared.upgrades.helperSpeed },
+    helperProfile: { name: 'Perfil del ayudante', ...shared.upgrades.helperProfile },
+    helperLuck: { name: 'Suerte del ayudante', ...shared.upgrades.helperLuck },
+    jackpot: { name: 'Jackpot', ...shared.upgrades.jackpot },
+    dozenBet: { name: 'Apuesta a docena', ...shared.upgrades.dozenBet },
+    numberBet: { name: 'Apuesta a número', ...shared.upgrades.numberBet },
   },
 } as const;
 

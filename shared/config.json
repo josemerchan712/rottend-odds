@@ -1,0 +1,16 @@
+{
+  "saveVersion": 3,
+  "debt": { "amount": 10000000 },
+  "upgrades": {
+    "luck": { "baseCost": 3, "growth": 1.55, "maxLevel": 20 },
+    "maxBet": { "baseCost": 10, "growth": 2, "maxLevel": 11 },
+    "crupier": { "baseCost": 500, "growth": 1, "maxLevel": 1 },
+    "helperSpeed": { "baseCost": 300, "growth": 1.6, "maxLevel": 15 },
+    "helperProfile": { "baseCost": 1000, "growth": 4, "maxLevel": 2 },
+    "helperLuck": { "baseCost": 800, "growth": 1.8, "maxLevel": 10 },
+    "jackpot": { "baseCost": 2000, "growth": 1.8, "maxLevel": 10 },
+    "dozenBet": { "baseCost": 200, "growth": 1, "maxLevel": 1 },
+    "numberBet": { "baseCost": 1500, "growth": 1, "maxLevel": 1 }
+  },
+  "helperProfiles": 3
+}

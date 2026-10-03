@@ -260,18 +260,20 @@ El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quie
 
 ## 11. Plan por hitos para Claude Code
 
-1. **Esqueleto**: proyecto, bucle de juego, guardado, formateo de números.
-2. **Lógica de la mesa 1** sin arte: ruleta, suerte, penalización por apuesta, tienda de mejoras.
-   - **Mini-hito 2b. Pantalla de inicio**: Continuar, Nueva partida y Ajustes (CRT, volumen, borrar partida), un solo hueco de guardado, ajustes guardados aparte y botón de volver al menú desde el juego (ver 9.1).
-3. **Simulación** y ajuste de números hasta que la mesa 1 dure ~8 min.
-   - **Hito 3b. Backend opcional** (ver 10.1): cuentas, guardado en la nube con conflictos, ranking de la mesa 1, validación de plausibilidad, configuración compartida con el frontend, Docker Compose para desarrollo y README para el portfolio. Cada vez que cambie la economía (por ejemplo, el hito 4) hay que regenerar `shared/plausibility.json`.
-4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo y guardado v4.
-5. **Ayudante de apuestas** con perfiles.
-6. **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases.
-7. **Efectos**: CRT, temblor, glitch, luces parpadeantes.
-8. **Deuda y paso a la mesa 2**: pago, pestañas, conversión de monedas.
-9. Mesas 3 a 5, una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
-10. Sonido, textos de cobro, pulido y equilibrio final.
+Estado: ✅ hecho · 🔲 pendiente.
+
+1. ✅ **Esqueleto**: proyecto, bucle de juego, guardado, formateo de números.
+2. ✅ **Lógica de la mesa 1** sin arte: ruleta, suerte, penalización por apuesta, tienda de mejoras.
+   - ✅ **Mini-hito 2b. Pantalla de inicio**: Continuar, Nueva partida y Ajustes (CRT, volumen, borrar partida), un solo hueco de guardado, ajustes guardados aparte y botón de volver al menú desde el juego (ver 9.1).
+3. ✅ **Simulación** y ajuste de números hasta que la mesa 1 dure ~8 min.
+   - ✅ **Hito 3b. Backend opcional** (ver 10.1): cuentas, guardado en la nube con conflictos, ranking de la mesa 1, validación de plausibilidad, configuración compartida con el frontend, Docker Compose para desarrollo y README para el portfolio. Cada vez que cambie la economía (por ejemplo, el hito 4) hay que regenerar `shared/plausibility.json`.
+4. ✅ **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo (costes calibrados) y guardado v4.
+5. ✅ **Ayudante de apuestas** con perfiles. Se implementó dentro del hito 2: Crupier, velocidad, perfiles prudente/normal/agresivo con límite por saldo, suerte propia y bloqueo de 5 s; calibrado en el hito 3.
+6. 🔲 **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases.
+7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes.
+8. 🔲 **Deuda y paso a la mesa 2**: pago, pestañas, conversión de monedas.
+9. 🔲 Mesas 3 a 5, una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
+10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.
 
 ## 12. Decisiones abiertas
 

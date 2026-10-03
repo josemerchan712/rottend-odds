@@ -1,1 +1,3 @@
 shared/*.json text eol=lf
+server/mvnw text eol=lf
+*.cmd text eol=crlf

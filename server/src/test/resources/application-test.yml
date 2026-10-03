@@ -1,0 +1,11 @@
+# Solo para tests: base de datos en memoria y un secreto de prueba que no sirve en ningún otro sitio.
+spring:
+  datasource:
+    url: jdbc:h2:mem:casino;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+app:
+  jwt:
+    secret: test-secret-only-for-automated-tests-0123456789
+  rate-limit:
+    auth-per-minute: 5

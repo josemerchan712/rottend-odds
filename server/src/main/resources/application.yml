@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: casino-server
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/casino}
+    username: ${DB_USER:casino}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+app:
+  jwt:
+    # Obligatorio y de al menos 32 caracteres: el servidor no arranca sin él.
+    secret: ${JWT_SECRET:}
+    ttl: 24h
+    issuer: casino-incremental
+  cors:
+    origins: ${CORS_ORIGINS:http://localhost:5173}
+  rate-limit:
+    # Intentos por IP y minuto en /api/auth/login y /api/auth/register.
+    auth-per-minute: ${AUTH_RATE_LIMIT:10}
+  save:
+    max-bytes: 65536
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

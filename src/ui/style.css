@@ -106,3 +106,21 @@ button.bet.white { background: #d9d2bf; color: #111; }
 .ranking { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .ranking th, .ranking td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); }
 .ranking th { color: var(--muted); font-weight: normal; }
+
+.scene-wrap { display: flex; justify-content: center; margin-bottom: 12px; overflow-x: auto; }
+.scene {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #100e0b;
+  border: 1px solid var(--line);
+  touch-action: manipulation;
+}
+kbd {
+  font: inherit;
+  font-size: 12px;
+  padding: 0 4px;
+  border: 1px solid #3a352b;
+  border-bottom-width: 2px;
+  color: var(--gold);
+}

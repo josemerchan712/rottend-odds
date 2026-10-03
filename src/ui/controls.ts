@@ -5,7 +5,6 @@ import { selectHelperProfile } from '../game/helper';
 import type { Rng } from '../game/rng';
 import type { GameState } from '../game/state';
 import { buyUpgrade } from '../game/upgrades';
-import { collectTrash } from '../game/work';
 import type { Ui } from './render';
 
 /**
@@ -35,7 +34,6 @@ export function bindControls(
     ui.numberInput.value = String(n);
     return playerBet(s, { type: 'number', number: n }, rng);
   });
-  on(ui.work, (s) => collectTrash(s, rng));
   ui.profileButtons.forEach((b, i) => on(b, (s) => selectHelperProfile(s, i)));
   on(ui.payDebt, (s) => {
     if (payDebt(s)) onDebtPaid();

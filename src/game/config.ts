@@ -118,6 +118,26 @@ export const CONFIG = {
     maxItems: shared.work.maxItems,
     /** Segundos para que reaparezca uno si hay hueco. */
     respawnInterval: shared.work.respawnSeconds,
+    /** Cada nivel de "Bolsa grande" suma esta fracción al valor de cada objeto. */
+    bagValuePerLevel: shared.work.bagValuePerLevel,
+    /** Zona del suelo de la escena (640x360) donde aparece la basura (posición de la base del objeto). */
+    floor: { x: 150, y: 270, width: 450, height: 70 },
+    /** Pies del jugador en la escena: desde aquí se busca "la basura más cercana". */
+    player: { x: 64, y: 344 },
+    /** Radio de la zona de clic alrededor de cada objeto: generoso a propósito. */
+    clickRadius: 26,
+    /** Distancia mínima entre objetos al aparecer (para que no se tapen). */
+    minItemDistance: 34,
+    /** Objetos extra que recogen las pinzas en cada clic, por nivel. */
+    tweezersExtraPerLevel: 1,
+    cleaner: {
+      /** Segundos entre recogidas con el nivel 1. */
+      baseInterval: 4,
+      /** Cada nivel extra quita esta fracción al intervalo. */
+      reductionPerLevel: 0.2,
+      /** Dónde aparece el ayudante de limpieza. */
+      start: { x: 600, y: 344 },
+    },
     /** Objetos con su valor y peso relativo de aparición. */
     items: [
       { id: 'colilla', name: 'Colilla', value: 1, weight: 45 },
@@ -145,6 +165,9 @@ export const CONFIG = {
     jackpot: { name: 'Jackpot', ...shared.upgrades.jackpot },
     dozenBet: { name: 'Apuesta a docena', ...shared.upgrades.dozenBet },
     numberBet: { name: 'Apuesta a número', ...shared.upgrades.numberBet },
+    tweezers: { name: 'Pinzas', ...shared.upgrades.tweezers },
+    bigBag: { name: 'Bolsa grande', ...shared.upgrades.bigBag },
+    cleaner: { name: 'Ayudante de limpieza', ...shared.upgrades.cleaner },
   },
 } as const;
 

@@ -22,6 +22,9 @@ import {
   showSyncStatus,
 } from './ui/online';
 import { mountUi, render, setText } from './ui/render';
+import { Scene } from './ui/scene';
+import { loadSprites } from './ui/sprites';
+import { collectItem, collectNearest, itemAt } from './game/work';
 
 const { saveKey, settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
 
@@ -50,6 +53,8 @@ const authUi = mountAuth(screens.auth);
 const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
 
+const scene = new Scene(gameUi.sceneCanvas, loadSprites());
+
 const api = createApi();
 let session: Session | null = loadSession(localStorage, sessionKey, Date.now());
 
@@ -63,8 +68,35 @@ function show(next: Screen): void {
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
   if (next === 'menu') renderMenu(menuUi, continueInfo(localStorage, saveKey), currentSession()?.displayName ?? null);
   if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
-  if (next === 'game' && state) render(gameUi, state);
+  if (next === 'game' && state) {
+    fitScene();
+    render(gameUi, state);
+  }
 }
+
+function fitScene(): void {
+  scene.fit(gameUi.sceneWrap.clientWidth || window.innerWidth - 32, window.innerHeight * 0.7);
+}
+window.addEventListener('resize', fitScene);
+
+// Escena: clic en la basura (zona generosa), resaltado al pasar por encima y tecla E.
+gameUi.sceneCanvas.addEventListener('click', (event) => {
+  if (!state) return;
+  const point = scene.toScene(event.clientX, event.clientY);
+  const item = itemAt(state.work.items, point.x, point.y);
+  if (!item) return;
+  scene.playerCollected(collectItem(state, item.id));
+  render(gameUi, state);
+});
+gameUi.sceneCanvas.addEventListener('mousemove', (event) => scene.setHover(scene.toScene(event.clientX, event.clientY)));
+gameUi.sceneCanvas.addEventListener('mouseleave', () => scene.setHover(null));
+window.addEventListener('keydown', (event) => {
+  if (screen !== 'game' || !state || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+  if (event.key !== 'e' && event.key !== 'E') return;
+  scene.playerCollected(collectNearest(state));
+  render(gameUi, state);
+});
 
 function enterGame(loaded: GameState): void {
   unlockAudio();
@@ -307,13 +339,18 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') save();
 });
 
+let lastDt = 0;
 startLoop(
   {
     update: (dt) => {
-      if (screen === 'game' && state) update(state, dt, defaultRng);
+      if (screen === 'game' && state) scene.cleanerCollected(update(state, dt, defaultRng));
+      lastDt = dt;
     },
     render: () => {
-      if (screen === 'game' && state) render(gameUi, state);
+      if (screen === 'game' && state) {
+        render(gameUi, state);
+        scene.render(state, lastDt);
+      }
     },
   },
   maxFrameDt,

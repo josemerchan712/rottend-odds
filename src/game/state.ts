@@ -1,4 +1,4 @@
-import { UPGRADE_IDS, type UpgradeId } from './config';
+import { CONFIG, UPGRADE_IDS, type UpgradeId } from './config';
 
 export type BetColor = 'negro' | 'blanco';
 
@@ -8,6 +8,15 @@ export type BetChoice =
   | { type: 'dozen'; dozen: 1 | 2 | 3 }
   | { type: 'number'; number: number };
 export type Bettor = 'jugador' | 'ayudante';
+
+/** Un objeto de basura en el suelo de la escena (coordenadas de 640x360, base del objeto). */
+export interface TrashItem {
+  id: number;
+  /** id del objeto en CONFIG.work.items (colilla, vaso...). */
+  kind: string;
+  x: number;
+  y: number;
+}
 export type SpinOutcome = 'gana' | 'pierde' | 'jackpot';
 
 /** Resultado de una tirada, para mostrarlo y para la simulación. */
@@ -46,9 +55,13 @@ export interface GameState {
   };
   work: {
     /** Basura en el suelo ahora mismo. */
-    items: number;
+    items: TrashItem[];
     /** Segundos acumulados hacia la siguiente aparición. */
     spawnTimer: number;
+    /** Siguiente id de objeto; 0 = aún no se ha sembrado el suelo inicial. */
+    nextId: number;
+    /** Ayudante de limpieza: temporizador y dónde está. */
+    cleaner: { timer: number; x: number; y: number };
     /** Último objeto recogido (para la interfaz). */
     lastItem: string | null;
   };
@@ -71,7 +84,13 @@ export function createInitialState(): GameState {
     upgrades: Object.fromEntries(UPGRADE_IDS.map((id) => [id, 0])) as Record<UpgradeId, number>,
     betFractionIndex: 1,
     helper: { timer: 0, lockout: 0, profile: 0 },
-    work: { items: 6, spawnTimer: 0, lastItem: null },
+    work: {
+      items: [],
+      spawnTimer: 0,
+      nextId: 0,
+      cleaner: { timer: 0, x: CONFIG.work.cleaner.start.x, y: CONFIG.work.cleaner.start.y },
+      lastItem: null,
+    },
     recentSpins: [],
     debtPaid: false,
     stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0 },

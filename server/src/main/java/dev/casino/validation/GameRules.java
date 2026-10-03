@@ -24,7 +24,7 @@ public class GameRules {
 
     public record Upgrade(double baseCost, double growth, int maxLevel) {}
 
-    public record Work(int maxItems, double respawnSeconds, double maxItemValue) {}
+    public record Work(int maxItems, double respawnSeconds, double maxItemValue, double bagValuePerLevel) {}
 
     private final int saveVersion;
     private final double debtAmount;
@@ -46,7 +46,8 @@ public class GameRules {
                 e.getValue().path("maxLevel").asInt())));
         this.upgrades = Collections.unmodifiableMap(ups);
         JsonNode w = config.path("work");
-        this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(), w.path("maxItemValue").asDouble());
+        this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(),
+                w.path("maxItemValue").asDouble(), w.path("bagValuePerLevel").asDouble());
 
         this.plausibility = mapper.readValue(read("shared/plausibility.json"), PlausibilityTable.class);
         String hash = configHash(configText);
@@ -93,10 +94,14 @@ public class GameRules {
 
     /**
      * Lo máximo que puede dar la basura en ese tiempo: los objetos iniciales más uno cada
-     * respawnSeconds, todos del valor más alto. Es un límite físico, no estadístico.
+     * respawnSeconds, todos del valor más alto y con la bolsa grande al máximo. Las pinzas y el
+     * ayudante de limpieza no cambian este límite: solo recogen lo que aparece. Es un límite físico,
+     * no estadístico.
      */
     public double workCeiling(double playTime) {
-        return (work.maxItems() + Math.floor(playTime / work.respawnSeconds())) * work.maxItemValue();
+        Upgrade bag = upgrades.get("bigBag");
+        double bagMultiplier = 1 + work.bagValuePerLevel() * (bag == null ? 0 : bag.maxLevel());
+        return (work.maxItems() + Math.floor(playTime / work.respawnSeconds())) * work.maxItemValue() * bagMultiplier;
     }
 
     public int saveVersion() {

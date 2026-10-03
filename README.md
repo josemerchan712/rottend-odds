@@ -50,6 +50,8 @@ sim/         simulador de la mesa 1, informes y generador de la tabla de plausib
 shared/      números compartidos por juego y servidor
 server/      backend Spring Boot (Java 21, Maven Wrapper)
 tests/       tests del frontend (Vitest)
+scripts/     pipeline de assets (recorte del fondo, troceado, reescalado nearest neighbor)
+assets/      hojas originales (raw/) y sprites generados (sprites/)
 ```
 
 ## Cómo arrancarlo
@@ -72,7 +74,8 @@ Se abre en http://localhost:5173. Otros comandos:
 | `npm test` | Tests de la lógica, la sincronización y los JSON compartidos |
 | `npm run build` | Comprobación de tipos y build de producción en `dist/` |
 | `npm run simulate` | Simula miles de partidas de la mesa 1 con varias estrategias e imprime un informe |
-| `npm run plausibility` | Regenera `shared/plausibility.json` (~1 min) |
+| `npm run plausibility` | Regenera `shared/plausibility.json` (~3-4 min) |
+| `npm run assets` | Regenera los sprites de `assets/sprites/` desde las hojas de `assets/raw/` |
 
 El frontend busca el servidor en `http://localhost:8080`. Para cambiarlo, define `VITE_API_URL`.
 
@@ -167,7 +170,7 @@ eso la capa estadística no rechaza: marca.
 
 La tabla lleva un hash de `shared/config.json`. Si alguien cambia los números del juego y no la
 regenera, fallan los tests de los dos lados y el servidor no arranca. Para regenerarla:
-`npm run plausibility`, que tarda ~1 minuto.
+`npm run plausibility`, que tarda unos 3-4 minutos.
 
 ## Decisiones
 

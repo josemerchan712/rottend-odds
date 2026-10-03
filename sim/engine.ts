@@ -7,7 +7,7 @@ import { createInitialState, type BetChoice, type GameState } from '../src/game/
 import { payDebt } from '../src/game/debt';
 import { buyUpgrade, canBuy, nextCost, upgradeCost } from '../src/game/upgrades';
 import { update } from '../src/game/update';
-import { collectTrash } from '../src/game/work';
+import { collectItem, itemValue } from '../src/game/work';
 
 /** Cómo juega un jugador simulado. */
 export interface Strategy {
@@ -206,7 +206,7 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
       nextSample += player.sampleEvery;
     }
     // 1. El mundo avanza: basura y ayudante.
-    update(state, player.dt, rng);
+    for (const cleaned of update(state, player.dt, rng)) result.earned.work += cleaned.value;
     const helperSpins = state.stats.bets - spinsSeen;
     spinsSeen = state.stats.bets;
     recordSpins(Math.min(helperSpins, CONFIG.tech.recentSpins));
@@ -244,9 +244,10 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     const wanted = betTimer >= player.betInterval ? strategy.chooseBet(state) : null;
     const bet = wanted && state.balance >= CONFIG.bet.minBet ? wanted : null;
     const trashWorthIt = currentMaxBet(state) <= player.ignoreTrashAboveCeiling;
-    if ((trashWorthIt && state.work.items >= player.collectAtItems) || (!bet && state.work.items > 0)) {
-      const item = collectTrash(state, rng);
-      if (item) result.earned.work += item.value;
+    if ((trashWorthIt && state.work.items.length >= player.collectAtItems) || (!bet && state.work.items.length > 0)) {
+      // Ve el suelo: recoge primero lo que más vale.
+      const best = state.work.items.reduce((a, b) => (itemValue(state, b.kind) > itemValue(state, a.kind) ? b : a));
+      for (const item of collectItem(state, best.id)) result.earned.work += item.value;
     } else if (bet) {
       selectBetFraction(state, bet.fractionIndex);
       if (playerBet(state, bet.choice, rng)) {

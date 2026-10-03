@@ -6,6 +6,7 @@ import { betWinChance, effectiveWinChance, expectedValue, jackpotChance, luckCha
 import { slotColor } from '../game/roulette';
 import type { BetChoice, GameState, SpinResult } from '../game/state';
 import { canBuy, isMaxed, isUnlocked, nextCost } from '../game/upgrades';
+import { bagMultiplier, cleanerInterval } from '../game/work';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 
 const FRACTION_LABELS = ['1%', '10%', '50%', 'TODO'];
@@ -41,7 +42,8 @@ export interface Ui {
   betNumber: HTMLButtonElement;
   lastSpin: HTMLElement;
   spinLog: HTMLElement;
-  work: HTMLButtonElement;
+  sceneCanvas: HTMLCanvasElement;
+  sceneWrap: HTMLElement;
   workInfo: HTMLElement;
   helperLocked: HTMLElement;
   helperPanel: HTMLElement;
@@ -61,6 +63,10 @@ export function mountUi(root: HTMLElement): Ui {
       <div class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></div>
       <button data-ref="toMenu" class="small push-right">Menú</button>
     </header>
+
+    <div class="scene-wrap" data-ref="sceneWrap">
+      <canvas class="scene" data-ref="sceneCanvas" aria-label="Suelo del casino: haz clic en la basura para recogerla"></canvas>
+    </div>
 
     <div class="layout">
       <div class="col">
@@ -100,10 +106,8 @@ export function mountUi(root: HTMLElement): Ui {
 
         <section class="panel">
           <h2>Trabajo: recoger basura</h2>
-          <div class="row">
-            <button data-ref="work">Recoger basura</button>
-            <span class="muted" data-ref="workInfo"></span>
-          </div>
+          <p>Haz clic en la basura del suelo, o pulsa <kbd>E</kbd> para recoger la más cercana.</p>
+          <p class="muted" data-ref="workInfo"></p>
         </section>
 
         <section class="panel">
@@ -178,7 +182,8 @@ export function mountUi(root: HTMLElement): Ui {
     betNumber: ref('betNumber'),
     lastSpin: ref('lastSpin'),
     spinLog: ref('spinLog'),
-    work: ref('work'),
+    sceneCanvas: ref<HTMLCanvasElement>('sceneCanvas'),
+    sceneWrap: ref('sceneWrap'),
     workInfo: ref('workInfo'),
     helperLocked: ref('helperLocked'),
     helperPanel: ref('helperPanel'),
@@ -258,12 +263,20 @@ export function render(ui: Ui, state: GameState): void {
   }
 
   // Trabajo
-  setText(ui.work, `Recoger basura (${state.work.items}/${CONFIG.work.maxItems} en el suelo)`);
-  ui.work.disabled = state.work.items <= 0;
-  const respawn = state.work.items < CONFIG.work.maxItems
-    ? ` · otra en ${formatSeconds(CONFIG.work.respawnInterval - state.work.spawnTimer)}`
+  const respawn = state.work.items.length < CONFIG.work.maxItems
+    ? ` · otro en ${formatSeconds(CONFIG.work.respawnInterval - state.work.spawnTimer)}`
     : '';
-  setText(ui.workInfo, (state.work.lastItem ? `Último: ${state.work.lastItem}` : '') + respawn);
+  const extras = [
+    upgrades.tweezers > 0 ? 'pinzas' : '',
+    upgrades.bigBag > 0 ? `bolsa x${(bagMultiplier(state)).toFixed(1).replace('.', ',')}` : '',
+    upgrades.cleaner > 0 ? `limpieza cada ${formatSeconds(cleanerInterval(upgrades.cleaner))}` : '',
+  ].filter(Boolean);
+  setText(
+    ui.workInfo,
+    `${state.work.items.length}/${CONFIG.work.maxItems} en el suelo${respawn}` +
+      (state.work.lastItem ? ` · último: ${state.work.lastItem}` : '') +
+      (extras.length ? ` · ${extras.join(', ')}` : ''),
+  );
 
   // Ayudante
   const helperOn = hasHelper(state);
@@ -351,9 +364,21 @@ function describeUpgrade(state: GameState, id: UpgradeId): string | undefined {
       );
     case 'dozenBet':
       return maxed ? 'Docena desbloqueada' : `Paga 2:1 · prob. ${formatPercent(betWinChance('dozen', state.upgrades.luck, 0))} sin riesgo`;
+    case 'tweezers':
+      return maxed ? 'Recoges 2 objetos por clic' : 'Recoge 2 objetos por clic';
+    case 'bigBag':
+      return arrow(`Valor x${bagFactor(lvl)}`, `x${bagFactor(lvl + 1)}`);
+    case 'cleaner':
+      return lvl === 0
+        ? `Recoge solo cada ${formatSeconds(cleanerInterval(1))}`
+        : arrow(`Cada ${formatSeconds(cleanerInterval(lvl))}`, formatSeconds(cleanerInterval(lvl + 1)));
     case 'numberBet':
       return maxed ? 'Número desbloqueado' : `Paga 35:1 · prob. ${formatPercent(betWinChance('number', state.upgrades.luck, 0))} sin riesgo`;
   }
+}
+
+function bagFactor(level: number): string {
+  return (1 + CONFIG.work.bagValuePerLevel * level).toFixed(1).replace('.', ',');
 }
 
 /** Solo toca el DOM si el texto ha cambiado. */

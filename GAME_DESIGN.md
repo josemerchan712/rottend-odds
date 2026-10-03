@@ -92,8 +92,10 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 | Cartera | 120 | 1,5% |
 | Dedo con anillo | 500 | 0,5% |
 
-- Mejoras del trabajo: **Pinzas** (recoger 2 objetos por clic), **Bolsa grande** (+valor por objeto), **Ayudante de limpieza** (otro sprite que recoge solo).
-- Atajo de teclado "recoger el más cercano" como accesibilidad.
+- Mejoras del trabajo: **Pinzas** (recoger 2 objetos por clic), **Bolsa grande** (+50% de valor por objeto y nivel), **Ayudante de limpieza** (otro sprite que recoge solo el objeto más cercano a él; nivel 1 cada 4 s, −20% por nivel). Costes en 4.3.
+- Atajo de teclado "recoger el más cercano" como accesibilidad: tecla **E** (el más cercano al jugador).
+- Implementado (hito 4): la basura aparece en una zona del suelo de la escena (640x360), con una distancia mínima entre objetos para que no se tapen. El suelo empieza lleno. La zona de clic es un radio de 26 px alrededor de cada objeto, y al pasar el ratón se resalta. El jugador está fijo abajo a la izquierda y no camina: al recoger se agacha y levanta el objeto, y sale un "+N" flotante. La animación es solo visual: la basura se suma al hacer clic.
+- Efecto en la economía: la basura está limitada por su aparición (1 cada 2 s), así que para un jugador activo las pinzas y el ayudante de limpieza no dan más fichas (sí ahorran clics y sirven cuando no se atiende el suelo). Solo la bolsa grande sube los ingresos.
 
 ### 4.3 Mejoras (valores calibrados con simulación)
 
@@ -110,6 +112,11 @@ Fórmula de coste: `coste(n) = base * crecimiento^n` (redondeado).
 | Jackpot | +0,07% de prob. de Cero Dorado | 2.000 | 1,8 | 10 | ~890K |
 | Apuesta a docena | Desbloquea la docena (2:1) | 200 | - | 1 | 200 |
 | Apuesta a número | Desbloquea el número (35:1) | 1.500 | - | 1 | 1,5K |
+| Pinzas | Recoge 2 objetos por clic | 120 | - | 1 | 120 |
+| Bolsa grande | +50% de valor por objeto | 60 | 2,5 | 4 | ~2,4K |
+| Ayudante de limpieza | Recoge solo; nivel 1 cada 4 s, −20% por nivel | 250 | 2,2 | 5 | ~10,7K |
+
+Las tres mejoras del trabajo son del hito 4 y aún llevan los valores iniciales. Con ellos la mesa se alarga ~24 s (8:31 con la estrategia (c), antes 8:07). Hay una propuesta pendiente de aprobar para volver a ~8 minutos: pinzas 50, bolsa 35 · 2,25^n y limpieza 200 · 2^n.
 
 Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la curva convexa, entre los niveles 5 y 10 la ruleta apenas da dinero: el progreso depende del trabajo y de un saldo que crece despacio, y unos costes más altos alargan mucho la mesa (con la suerte en base 10, la mesa pasa de 8 a 12 minutos).
 
@@ -196,6 +203,14 @@ Pipeline de procesado (script de Claude Code):
 3. Reescalar con **nearest neighbor** al tamaño final.
 4. Exportar PNG con transparencia a `assets/`.
 
+Implementado para la basura y el jugador (`npm run assets`; código en `scripts/`, sprites en `assets/sprites/`):
+
+- Las hojas originales son JPEG, así que el fondo no es un magenta uniforme. El relleno desde los bordes usa una tolerancia de color (110) respecto a la mediana del borde.
+- Los huecos de fondo encerrados por el sprite (a los que no llega el relleno) se borran solo si el píxel es casi idéntico al fondo (distancia < 70). La sangre y el fieltro quedan a más de 200 de distancia, así que no se tocan.
+- El halo rosado del JPEG se limpia en los bordes por su tono, y las motas sueltas por tamaño.
+- Las hojas se trocean detectando bloques de columnas, y el alfa del resultado es binario.
+- Hoja del jugador: los frames 1-2 son otro personaje (cara verde, caminando) y los 3-4 el jugador (agachado con la pinza y levantando el objeto). Mientras falta el idle, el jugador usa el frame 3 en reposo y para agacharse (bajado 2 px), y el 4 para levantar. Los frames 1-2 los usa el ayudante de limpieza.
+
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
 
 ## 9. Pantallas
@@ -250,7 +265,7 @@ El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quie
    - **Mini-hito 2b. Pantalla de inicio**: Continuar, Nueva partida y Ajustes (CRT, volumen, borrar partida), un solo hueco de guardado, ajustes guardados aparte y botón de volver al menú desde el juego (ver 9.1).
 3. **Simulación** y ajuste de números hasta que la mesa 1 dure ~8 min.
    - **Hito 3b. Backend opcional** (ver 10.1): cuentas, guardado en la nube con conflictos, ranking de la mesa 1, validación de plausibilidad, configuración compartida con el frontend, Docker Compose para desarrollo y README para el portfolio. Cada vez que cambie la economía (por ejemplo, el hito 4) hay que regenerar `shared/plausibility.json`.
-4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza.
+4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo y guardado v4. Pendiente de aprobar el ajuste de costes de 4.3.
 5. **Ayudante de apuestas** con perfiles.
 6. **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases.
 7. **Efectos**: CRT, temblor, glitch, luces parpadeantes.

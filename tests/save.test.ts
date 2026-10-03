@@ -30,13 +30,28 @@ describe('guardado', () => {
     expect(deserialize(raw)?.state).toEqual(createInitialState());
     const raw2 = JSON.stringify({
       version: SAVE_VERSION,
-      state: { upgrades: { luck: 99, maxBet: -3 }, helper: { profile: 2 }, work: { items: 50 } },
+      state: {
+        upgrades: { luck: 99, maxBet: -3 },
+        helper: { profile: 2 },
+        work: { items: [...Array(9)].map((_, i) => ({ id: i, kind: 'vaso', x: 200, y: 300 })).concat([{ id: 99, kind: 'trampa', x: 1, y: 1 }]) },
+      },
     });
     const state = deserialize(raw2)!.state;
     expect(state.upgrades.luck).toBe(20);
     expect(state.upgrades.maxBet).toBe(0);
     expect(state.helper.profile).toBe(0); // perfil no desbloqueado
-    expect(state.work.items).toBe(6);
+    expect(state.work.items).toHaveLength(6); // como mucho 6, y sin objetos desconocidos
+    expect(state.work.nextId).toBe(6);
+  });
+
+  it('migra un guardado de la versión 3 (basura como contador) a objetos en el suelo', () => {
+    const v3 = { version: 3, savedAt: 1, state: { ...createInitialState(), balance: 40, work: { items: 6, spawnTimer: 1, lastItem: 'Vaso' } } };
+    const file = deserialize(JSON.stringify(v3))!;
+    expect(file.version).toBe(SAVE_VERSION);
+    expect(file.state.balance).toBe(40);
+    expect(file.state.work.items).toEqual([]);
+    expect(file.state.work.nextId).toBe(0); // se vuelve a sembrar el suelo al jugar
+    expect(file.state.work.lastItem).toBe('Vaso');
   });
 
   it('migra un guardado de la versión 1', () => {

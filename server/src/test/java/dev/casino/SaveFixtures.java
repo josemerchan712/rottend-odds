@@ -12,7 +12,7 @@ public final class SaveFixtures {
     public static Map<String, Object> upgrades() {
         Map<String, Object> ups = new LinkedHashMap<>();
         for (String id : new String[] {"luck", "maxBet", "crupier", "helperSpeed", "helperProfile", "helperLuck",
-                "jackpot", "dozenBet", "numberBet"}) {
+                "jackpot", "dozenBet", "numberBet", "tweezers", "bigBag", "cleaner"}) {
             ups.put(id, 0);
         }
         return ups;
@@ -30,12 +30,13 @@ public final class SaveFixtures {
         state.put("upgrades", upgrades);
         state.put("betFractionIndex", 1);
         state.put("helper", Map.of("timer", 0, "lockout", 0, "profile", 0));
-        state.put("work", Map.of("items", 6, "spawnTimer", 0));
+        state.put("work", Map.of("items", java.util.List.of(), "spawnTimer", 0, "nextId", 0,
+                "cleaner", Map.of("timer", 0, "x", 600, "y", 344)));
         state.put("recentSpins", java.util.List.of());
         state.put("debtPaid", debtPaid);
         state.put("stats", Map.of("bets", 0, "wins", 0, "jackpots", 0, "jackpotsCapped", 0, "workEarned", 0));
         Map<String, Object> file = new HashMap<>();
-        file.put("version", 3);
+        file.put("version", 4);
         file.put("savedAt", 1_700_000_000_000L);
         file.put("state", state);
         return file;

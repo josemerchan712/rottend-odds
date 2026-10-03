@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(3));
+                .andExpect(jsonPath("$.saveVersion").value(4));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())

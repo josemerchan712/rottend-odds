@@ -28,9 +28,10 @@ class GameRulesTest {
 
     @Test
     void leeLosNumerosDelJuego() {
-        assertThat(rules.saveVersion()).isEqualTo(3);
+        assertThat(rules.saveVersion()).isEqualTo(4);
         assertThat(rules.debtAmount()).isEqualTo(10_000_000);
-        assertThat(rules.upgrades()).containsKeys("luck", "maxBet", "crupier", "dozenBet", "numberBet");
+        assertThat(rules.upgrades()).containsKeys("luck", "maxBet", "crupier", "dozenBet", "numberBet",
+                "tweezers", "bigBag", "cleaner");
         assertThat(rules.upgrades().get("luck").maxLevel()).isEqualTo(20);
         assertThat(rules.helperProfiles()).isEqualTo(3);
     }
@@ -58,8 +59,9 @@ class GameRulesTest {
         double end = table.maxEarnedAt(table.horizonSeconds());
         assertThat(table.maxEarnedAt(table.horizonSeconds() + 100))
                 .isEqualTo(end + 100 * table.maxEarnedPerSecondAfterHorizon());
-        // Límite físico de la basura: 6 objetos iniciales + 1 cada 2 s, a 500 como mucho.
-        assertThat(rules.workCeiling(0)).isEqualTo(3000);
-        assertThat(rules.workCeiling(10)).isEqualTo(5500);
+        // Límite físico de la basura: 6 objetos iniciales + 1 cada 2 s, a 500 como mucho, con la
+        // bolsa grande al máximo (x3 con 4 niveles de +50%).
+        assertThat(rules.workCeiling(0)).isEqualTo(6 * 500 * 3);
+        assertThat(rules.workCeiling(10)).isEqualTo(11 * 500 * 3);
     }
 }

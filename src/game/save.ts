@@ -30,6 +30,8 @@ const migrations: Record<number, (state: Json) => Json> = {
   1: (state) => ({ balance: state.balance, playTime: state.playTime }),
   // v3 cambia la forma de las tiradas (choice en vez de color) y añade mejoras nuevas.
   2: (state) => ({ ...state, recentSpins: [] }),
+  // v4: la basura pasa de contador a objetos con posición; el suelo se vuelve a sembrar.
+  3: (state) => ({ ...state, work: { lastItem: (state.work as Json | undefined)?.lastItem ?? null } }),
 };
 
 export function serialize(state: GameState, now: number): string {
@@ -122,8 +124,24 @@ function sanitize(state: GameState): GameState {
   state.helper.timer = nonNegative(state.helper.timer);
   state.helper.lockout = Math.min(nonNegative(state.helper.lockout), CONFIG.helper.allInLossLockout);
   state.helper.profile = Math.min(clampIndex(state.helper.profile, CONFIG.helper.profiles.length), state.upgrades.helperProfile);
-  state.work.items = Math.min(Math.floor(nonNegative(state.work.items)), CONFIG.work.maxItems);
+  const kinds = new Set(CONFIG.work.items.map((i) => i.id));
+  state.work.items = state.work.items
+    .filter(
+      (i) =>
+        isRecord(i) &&
+        Number.isInteger(i.id) &&
+        kinds.has(i.kind as string) &&
+        Number.isFinite(i.x) &&
+        Number.isFinite(i.y),
+    )
+    .slice(0, CONFIG.work.maxItems);
   state.work.spawnTimer = nonNegative(state.work.spawnTimer);
+  state.work.nextId = Math.max(Math.floor(nonNegative(state.work.nextId)), ...state.work.items.map((i) => i.id + 1));
+  state.work.cleaner.timer = nonNegative(state.work.cleaner.timer);
+  if (!Number.isFinite(state.work.cleaner.x) || !Number.isFinite(state.work.cleaner.y)) {
+    state.work.cleaner.x = CONFIG.work.cleaner.start.x;
+    state.work.cleaner.y = CONFIG.work.cleaner.start.y;
+  }
   state.recentSpins = state.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as GameState['recentSpins'];
   return state;
 }

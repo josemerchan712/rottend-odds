@@ -230,12 +230,26 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 - Crear un **script de simulación** que juegue la mesa con una estrategia simple y devuelva cuánto tarda en llegar a 10M, para ajustar los costes sin jugar a mano.
 - Despliegue estático (Cloudflare o similar).
 
+### 10.1 Backend opcional (cuentas, nube y ranking)
+
+El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quien inicie sesión:
+
+- **Stack:** Java 21, Spring Boot 3, Spring Security con JWT, Spring Data JPA, Flyway y PostgreSQL. H2 para tests y springdoc-openapi para la documentación.
+- **Cuentas:** email y contraseña (BCrypt, 10+ caracteres), JWT de 24 h y límite de intentos por IP. Un nombre público para el ranking.
+- **Guardado en la nube:** un hueco por usuario, con revisiones; si hay conflicto, el jugador elige qué partida conservar.
+- **Ranking de la mesa 1:** quién saldó antes la deuda, por tiempo de juego.
+- **Validación sin re-simular:** capa 1 (imposible → se rechaza) y capa 2 (estadísticamente implausible → se acepta como "no verificado" y no cuenta para el ranking). Detalles en el README.
+- **Números compartidos:** `shared/config.json` es la fuente única de los números que necesita el servidor (deuda, versión del guardado, costes de mejoras, trabajo). `shared/plausibility.json` lo genera el simulador (`npm run plausibility`) y lleva un hash de `config.json`; hay que regenerarlo cada vez que cambie la economía.
+- **En el menú de inicio:** "Iniciar sesión", "Sincronizar partida" y "Ranking". Si el servidor no responde, el juego sigue igual.
+- **Limitación asumida:** el tiempo de juego lo reporta el cliente, así que el ranking no es a prueba de trampas.
+
 ## 11. Plan por hitos para Claude Code
 
 1. **Esqueleto**: proyecto, bucle de juego, guardado, formateo de números.
 2. **Lógica de la mesa 1** sin arte: ruleta, suerte, penalización por apuesta, tienda de mejoras.
    - **Mini-hito 2b. Pantalla de inicio**: Continuar, Nueva partida y Ajustes (CRT, volumen, borrar partida), un solo hueco de guardado, ajustes guardados aparte y botón de volver al menú desde el juego (ver 9.1).
 3. **Simulación** y ajuste de números hasta que la mesa 1 dure ~8 min.
+   - **Hito 3b. Backend opcional** (ver 10.1): cuentas, guardado en la nube con conflictos, ranking de la mesa 1, validación de plausibilidad, configuración compartida con el frontend, Docker Compose para desarrollo y README para el portfolio. Cada vez que cambie la economía (por ejemplo, el hito 4) hay que regenerar `shared/plausibility.json`.
 4. **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza.
 5. **Ayudante de apuestas** con perfiles.
 6. **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases.

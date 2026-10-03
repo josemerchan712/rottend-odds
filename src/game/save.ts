@@ -2,7 +2,7 @@ import { CONFIG, UPGRADE_IDS } from './config';
 import { createInitialState, type GameState } from './state';
 
 /** Súbelo cada vez que cambie la forma de GameState y añade su migración. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** Lo mínimo de localStorage que necesitamos; así los tests pasan un objeto falso. */
 export interface KeyValueStorage {
@@ -24,6 +24,8 @@ type Json = Record<string, unknown>;
 const migrations: Record<number, (state: Json) => Json> = {
   // v1 solo tenía saldo y tiempo; el resto lo rellenan los valores por defecto.
   1: (state) => ({ balance: state.balance, playTime: state.playTime }),
+  // v3 cambia la forma de las tiradas (choice en vez de color) y añade mejoras nuevas.
+  2: (state) => ({ ...state, recentSpins: [] }),
 };
 
 export function serialize(state: GameState, now: number): string {

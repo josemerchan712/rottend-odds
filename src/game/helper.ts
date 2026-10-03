@@ -1,4 +1,4 @@
-import { betAmount, maxBet } from './betting';
+import { betAmount, currentMaxBet } from './betting';
 import { CONFIG } from './config';
 import type { Rng } from './rng';
 import { spin } from './roulette';
@@ -24,7 +24,7 @@ export function helperProfile(state: GameState) {
 }
 
 export function helperBetAmount(state: GameState): number {
-  return betAmount(state.balance, helperProfile(state).fraction, maxBet(state.upgrades.maxBet));
+  return betAmount(state.balance, helperProfile(state).fraction, currentMaxBet(state));
 }
 
 export function selectHelperProfile(state: GameState, index: number): boolean {
@@ -62,9 +62,9 @@ export function updateHelper(state: GameState, dt: number, rng: Rng): SpinResult
       break;
     }
     state.helper.timer -= interval;
-    const color = rng() < 0.5 ? 'negro' : 'blanco';
+    const color = rng() < 0.5 ? ('negro' as const) : ('blanco' as const);
     const luckBonus = helperLuckBonus(state.upgrades.helperLuck);
-    const result = spin(state, { bettor: 'ayudante', color, bet, luckBonus }, rng);
+    const result = spin(state, { bettor: 'ayudante', choice: { type: 'color', color }, bet, luckBonus }, rng);
     if (result) results.push(result);
   }
   return results;

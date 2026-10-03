@@ -26,8 +26,14 @@ export function bindControls(
     });
 
   ui.fractionButtons.forEach((b, i) => on(b, (s) => selectBetFraction(s, i)));
-  on(ui.betBlack, (s) => playerBet(s, 'negro', rng));
-  on(ui.betWhite, (s) => playerBet(s, 'blanco', rng));
+  on(ui.betBlack, (s) => playerBet(s, { type: 'color', color: 'negro' }, rng));
+  on(ui.betWhite, (s) => playerBet(s, { type: 'color', color: 'blanco' }, rng));
+  ui.dozenButtons.forEach((b, i) => on(b, (s) => playerBet(s, { type: 'dozen', dozen: (i + 1) as 1 | 2 | 3 }, rng)));
+  on(ui.betNumber, (s) => {
+    const n = Math.min(Math.max(Math.round(Number(ui.numberInput.value)) || 1, 1), 36);
+    ui.numberInput.value = String(n);
+    return playerBet(s, { type: 'number', number: n }, rng);
+  });
   on(ui.work, (s) => collectTrash(s, rng));
   ui.profileButtons.forEach((b, i) => on(b, (s) => selectHelperProfile(s, i)));
   on(ui.payDebt, payDebt);

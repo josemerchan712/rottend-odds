@@ -1,10 +1,10 @@
-import { maxBet, playerBetAmount, selectedFraction } from '../game/betting';
-import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../game/config';
+import { isBetTypeUnlocked, maxBet, playerBetAmount } from '../game/betting';
+import { CONFIG, UPGRADE_IDS, type BetType, type UpgradeId } from '../game/config';
 import { canPayDebt, debtProgress } from '../game/debt';
 import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus, helperProfile } from '../game/helper';
-import { effectiveWinChance, jackpotChance, luckChance, riskPenalty } from '../game/luck';
+import { betWinChance, effectiveWinChance, expectedValue, jackpotChance, luckChance, riskPenalty } from '../game/luck';
 import { slotColor } from '../game/roulette';
-import type { GameState, SpinResult } from '../game/state';
+import type { BetChoice, GameState, SpinResult } from '../game/state';
 import { canBuy, isMaxed, isUnlocked, nextCost } from '../game/upgrades';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 
@@ -32,6 +32,11 @@ export interface Ui {
   jackpotInfo: HTMLElement;
   betBlack: HTMLButtonElement;
   betWhite: HTMLButtonElement;
+  dozenRow: HTMLElement;
+  dozenButtons: HTMLButtonElement[];
+  numberRow: HTMLElement;
+  numberInput: HTMLInputElement;
+  betNumber: HTMLButtonElement;
   lastSpin: HTMLElement;
   spinLog: HTMLElement;
   work: HTMLButtonElement;
@@ -78,6 +83,13 @@ export function mountUi(root: HTMLElement): Ui {
           <div class="row">
             <button data-ref="betBlack" class="bet black">Apostar a NEGRO</button>
             <button data-ref="betWhite" class="bet white">Apostar a BLANCO</button>
+          </div>
+          <div class="row" data-ref="dozenRow">
+            ${[1, 2, 3].map((d) => `<button data-dozen="${d}">${d}ª docena (${d * 12 - 11}-${d * 12})</button>`).join('')}
+          </div>
+          <div class="row" data-ref="numberRow">
+            <label>Número <input type="number" min="1" max="36" value="17" data-ref="numberInput" /></label>
+            <button data-ref="betNumber">Apostar al número</button>
           </div>
           <div class="last-spin" data-ref="lastSpin">Aún no has apostado.</div>
           <ol class="spin-log" data-ref="spinLog"></ol>
@@ -152,6 +164,11 @@ export function mountUi(root: HTMLElement): Ui {
     jackpotInfo: ref('jackpotInfo'),
     betBlack: ref('betBlack'),
     betWhite: ref('betWhite'),
+    dozenRow: ref('dozenRow'),
+    dozenButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-dozen]')],
+    numberRow: ref('numberRow'),
+    numberInput: ref<HTMLInputElement>('numberInput'),
+    betNumber: ref('betNumber'),
     lastSpin: ref('lastSpin'),
     spinLog: ref('spinLog'),
     work: ref('work'),
@@ -185,29 +202,38 @@ export function render(ui: Ui, state: GameState): void {
   setText(ui.debtNote, state.debtPaid ? 'Deuda saldada. La mesa 2 llegará en un hito posterior.' : '');
 
   // Apuesta del jugador
-  const fraction = selectedFraction(state);
   ui.fractionButtons.forEach((b, i) => b.classList.toggle('active', i === state.betFractionIndex));
   const bet = playerBetAmount(state);
   const ceiling = maxBet(upgrades.maxBet);
-  const realFraction = state.balance > 0 ? bet / state.balance : fraction;
-  const capped = bet > 0 && bet < Math.floor(state.balance * fraction);
+  const fraction = bet / ceiling;
   setText(
     ui.betInfo,
     bet > 0
-      ? `Apuesta: ${formatNumber(bet)} ${bet === 1 ? 'ficha' : 'fichas'} (${formatPercent(realFraction)} del saldo)${capped ? ` · limitada por el techo de ${formatNumber(ceiling)}` : ''}`
+      ? `Apuesta: ${formatNumber(bet)} ${bet === 1 ? 'ficha' : 'fichas'} (${formatPercent(fraction)} del techo de ${formatNumber(ceiling)})`
       : 'Sin fichas para apostar. Recoge basura.',
   );
   const base = luckChance(upgrades.luck);
-  const penalty = riskPenalty(realFraction);
+  const penalty = riskPenalty(fraction);
+  const chanceFor = (type: BetType) => {
+    const p = formatPercent(betWinChance(type, upgrades.luck, fraction));
+    const ev = expectedValue(type, bet, ceiling, upgrades.luck, upgrades.jackpot);
+    const evText = ev >= 0 ? `+${formatNumber(ev)}` : `−${formatNumber(-ev)}`;
+    return `${CONFIG.betTypes[type].name} ${p} (VE ${evText})`;
+  };
+  const types = (['color', 'dozen', 'number'] as const).filter((t) => isBetTypeUnlocked(state, t));
   setText(
     ui.chanceInfo,
-    `Prob. de ganar: ${formatPercent(effectiveWinChance(upgrades.luck, realFraction))}  (suerte ${formatPercent(base)} − riesgo ${formatPercent(penalty, 2)})`,
+    `Prob. de ganar: ${types.map(chanceFor).join(' · ')}  —  suerte ${formatPercent(base)} − riesgo ${formatPercent(penalty, 2)}`,
   );
   setText(
     ui.jackpotInfo,
     `Cero Dorado: ${formatPercent(jackpotChance(upgrades.luck, upgrades.jackpot), 2)} · paga x${CONFIG.jackpot.payoutMultiplier} (máx. ${formatNumber(CONFIG.debt.amount * CONFIG.jackpot.payoutCapDebtFraction)})`,
   );
   ui.betBlack.disabled = ui.betWhite.disabled = bet <= 0;
+  ui.dozenRow.hidden = !isBetTypeUnlocked(state, 'dozen');
+  ui.dozenButtons.forEach((b) => (b.disabled = bet <= 0));
+  ui.numberRow.hidden = !isBetTypeUnlocked(state, 'number');
+  ui.betNumber.disabled = bet <= 0;
 
   // Tiradas
   const last = state.recentSpins[0];
@@ -244,7 +270,7 @@ export function render(ui: Ui, state: GameState): void {
     });
     const interval = helperInterval(upgrades.helperSpeed);
     const hBet = helperBetAmount(state);
-    const hFraction = state.balance > 0 ? hBet / state.balance : profile.fraction;
+    const hFraction = hBet / ceiling;
     const hChance = effectiveWinChance(upgrades.luck, hFraction, helperLuckBonus(upgrades.helperLuck));
     const status =
       state.helper.lockout > 0
@@ -265,7 +291,7 @@ export function render(ui: Ui, state: GameState): void {
     const unlocked = isUnlocked(state, id);
     row.row.classList.toggle('locked', !unlocked);
     setText(row.level, `${upgrades[id]}/${def.maxLevel}`);
-    setText(row.effect, unlocked ? describeUpgrade(state, id) : 'Requiere el Crupier');
+    setText(row.effect, unlocked ? (describeUpgrade(state, id) ?? '') : 'Requiere el Crupier');
     const cost = nextCost(state, id);
     setText(row.buy, isMaxed(state, id) ? 'MÁX' : formatNumber(cost ?? 0));
     row.buy.disabled = !canBuy(state, id);
@@ -278,10 +304,21 @@ function describeSpin(s: SpinResult): string {
   const slot = color === 'dorado' ? 'CERO DORADO' : color === 'verde' ? '0 verde' : `${color} ${s.slot}`;
   const delta = s.delta >= 0 ? `+${formatNumber(s.delta)}` : `−${formatNumber(-s.delta)}`;
   const capped = s.jackpotCapped ? ' (tope)' : '';
-  return `${who}: ${formatNumber(s.bet)} a ${s.color} → sale ${slot} · ${delta}${capped} · (${formatPercent(s.winChance)})`;
+  return `${who}: ${formatNumber(s.bet)} a ${describeChoice(s.choice)} → sale ${slot} · ${delta}${capped} · (${formatPercent(s.winChance)})`;
 }
 
-function describeUpgrade(state: GameState, id: UpgradeId): string {
+function describeChoice(choice: BetChoice): string {
+  switch (choice.type) {
+    case 'color':
+      return choice.color;
+    case 'dozen':
+      return `${choice.dozen}ª docena`;
+    case 'number':
+      return `número ${choice.number}`;
+  }
+}
+
+function describeUpgrade(state: GameState, id: UpgradeId): string | undefined {
   const lvl = state.upgrades[id];
   const maxed = isMaxed(state, id);
   const arrow = (now: string, next: string) => (maxed ? now : `${now} → ${next}`);
@@ -305,6 +342,10 @@ function describeUpgrade(state: GameState, id: UpgradeId): string {
         `Cero Dorado ${formatPercent(jackpotChance(state.upgrades.luck, lvl), 2)}`,
         formatPercent(jackpotChance(state.upgrades.luck, lvl + 1), 2),
       );
+    case 'dozenBet':
+      return maxed ? 'Docena desbloqueada' : `Paga 2:1 · prob. ${formatPercent(betWinChance('dozen', state.upgrades.luck, 0))} sin riesgo`;
+    case 'numberBet':
+      return maxed ? 'Número desbloqueado' : `Paga 35:1 · prob. ${formatPercent(betWinChance('number', state.upgrades.luck, 0))} sin riesgo`;
   }
 }
 

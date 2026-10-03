@@ -1,11 +1,12 @@
+import { currentMaxBet, isBetTypeUnlocked } from './betting';
 import { CONFIG } from './config';
-import { effectiveWinChance, jackpotChance, jackpotPayout } from './luck';
+import { betWinChance, jackpotChance, jackpotPayout } from './luck';
 import type { Rng } from './rng';
-import type { BetColor, Bettor, GameState, SpinResult } from './state';
+import type { BetChoice, BetColor, Bettor, GameState, SpinResult } from './state';
 
 export interface SpinRequest {
   bettor: Bettor;
-  color: BetColor;
+  choice: BetChoice;
   bet: number;
   /** Bonus de probabilidad propio de quien apuesta (suerte del ayudante). */
   luckBonus?: number;
@@ -13,28 +14,31 @@ export interface SpinRequest {
 
 /**
  * Resuelve una tirada y la aplica al estado.
- * Primero se sortea el Cero Dorado (paga sea cual sea el color); si no sale,
- * se gana con la probabilidad efectiva. La fracción para la penalización es apuesta / saldo.
- * Devuelve null si la apuesta no es válida.
+ * Primero se sortea el Cero Dorado (paga sea cual sea la apuesta); si no sale,
+ * se gana con la probabilidad efectiva del tipo de apuesta. La fracción para la
+ * penalización es apuesta / techo. Devuelve null si la apuesta no es válida.
  */
 export function spin(state: GameState, req: SpinRequest, rng: Rng): SpinResult | null {
   const bet = Math.floor(req.bet);
-  if (bet < CONFIG.bet.minBet || bet > state.balance) return null;
+  const ceiling = currentMaxBet(state);
+  if (bet < CONFIG.bet.minBet || bet > state.balance || bet > ceiling) return null;
+  if (!isBetTypeUnlocked(state, req.choice.type)) return null;
 
-  const fraction = bet / state.balance;
-  const winChance = effectiveWinChance(state.upgrades.luck, fraction, req.luckBonus ?? 0);
+  const winChance = betWinChance(req.choice.type, state.upgrades.luck, bet / ceiling, req.luckBonus ?? 0);
   const jpChance = jackpotChance(state.upgrades.luck, state.upgrades.jackpot);
-  const base = { bettor: req.bettor, color: req.color, bet, winChance };
+  const base = { bettor: req.bettor, choice: req.choice, bet, winChance };
+  const winners = winningSlots(req.choice);
 
   let result: SpinResult;
   if (rng() < jpChance) {
     const { gain, capped } = jackpotPayout(bet);
     result = { ...base, outcome: 'jackpot', slot: -1, delta: gain, jackpotCapped: capped };
   } else if (rng() < winChance) {
-    const slot = randomSlotOfColor(req.color, rng);
-    result = { ...base, outcome: 'gana', slot, delta: bet * CONFIG.roulette.payout, jackpotCapped: false };
+    const delta = bet * CONFIG.betTypes[req.choice.type].payout;
+    result = { ...base, outcome: 'gana', slot: pick(winners, rng), delta, jackpotCapped: false };
   } else {
-    result = { ...base, outcome: 'pierde', slot: losingSlot(req.color, rng), delta: -bet, jackpotCapped: false };
+    const slot = pick(losingSlots(winners), rng);
+    result = { ...base, outcome: 'pierde', slot, delta: -bet, jackpotCapped: false };
   }
 
   state.balance = Math.max(state.balance + result.delta, 0);
@@ -55,16 +59,24 @@ export function slotColor(slot: number): BetColor | 'verde' | 'dorado' {
   return slot % 2 === 1 ? 'negro' : 'blanco';
 }
 
-/** Casilla al azar del color pedido (impares negro, pares blanco). */
-function randomSlotOfColor(color: BetColor, rng: Rng): number {
-  const perColor = (CONFIG.roulette.slots - 1) / 2;
-  const k = Math.floor(rng() * perColor);
-  return color === 'negro' ? 2 * k + 1 : 2 * k + 2;
+/** Casillas (1-36) que hacen ganar la apuesta. */
+export function winningSlots(choice: BetChoice): number[] {
+  const all = Array.from({ length: CONFIG.roulette.slots - 1 }, (_, i) => i + 1);
+  switch (choice.type) {
+    case 'color':
+      return all.filter((s) => slotColor(s) === choice.color);
+    case 'dozen':
+      return all.filter((s) => Math.ceil(s / 12) === choice.dozen);
+    case 'number':
+      return [choice.number];
+  }
 }
 
-/** Al perder sale el cero verde o una casilla del otro color, en proporción a cuántas hay. */
-function losingSlot(color: BetColor, rng: Rng): number {
-  const perColor = (CONFIG.roulette.slots - 1) / 2;
-  if (rng() < 1 / (perColor + 1)) return 0;
-  return randomSlotOfColor(color === 'negro' ? 'blanco' : 'negro', rng);
+/** Casillas que hacen perder, incluido el cero verde. */
+function losingSlots(winners: number[]): number[] {
+  return Array.from({ length: CONFIG.roulette.slots }, (_, i) => i).filter((s) => !winners.includes(s));
+}
+
+function pick(slots: number[], rng: Rng): number {
+  return slots[Math.floor(rng() * slots.length)];
 }

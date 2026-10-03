@@ -27,3 +27,6 @@ export function memoryStorage(): KeyValueStorage & { data: Map<string, string> }
     removeItem: (k) => void data.delete(k),
   };
 }
+
+export const NEGRO = { type: 'color', color: 'negro' } as const;
+export const BLANCO = { type: 'color', color: 'blanco' } as const;

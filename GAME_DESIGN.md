@@ -25,18 +25,20 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 ## 3. Sistema de suerte (común a todas las mesas)
 
 - La suerte es un nivel que aumenta la probabilidad de ganar de la mesa.
-- Empieza por debajo del 50% (ventaja de la casa) y sube con rendimientos decrecientes hasta un **tope de 97%** (nunca 100%, para que perder siga siendo un momento dramático).
-- Los primeros niveles dan saltos grandes; los últimos cuestan muchísimo.
+- Empieza por debajo del 50% (ventaja de la casa) y sube con una **curva convexa** hasta un **tope de 97%** (nunca 100%, para que perder siga siendo un momento dramático):
+  `p(n) = base + (tope - base) * (n / niveles)^1.6`. En la ruleta: `p(n) = 0,486 + 0,484 * (n/20)^1,6`.
+- Los primeros niveles apenas mueven la probabilidad (~60% hacia el nivel 8-9); los últimos dan los saltos grandes. Así el azar importa durante casi toda la mesa: con poca suerte, apostar fuerte pierde dinero.
 - La recompensa por apuesta **crece poco**; lo que acelera es ganar casi siempre y apostar más veces (velocidad del ayudante) y más fuerte (valor de apuesta).
-- **Jackpot por mesa**: probabilidad base ~0,1%, sube con la suerte hasta ~1,5%. Raro pero alcanzable.
+- **Jackpot por mesa**: probabilidad base 0,1%. La suerte aporta hasta +0,7% siguiendo su misma curva y la mejora de Jackpot otro +0,7%, con **tope total de 1,5%**. Raro pero alcanzable. El pago tiene un tope del 25% de la deuda.
 
 ### 3.1 Selector de apuesta y penalización por riesgo
 
-- El jugador elige la apuesta con botones rápidos: **1%, 10%, 50%, TODO** (del saldo), limitado por un máximo que se mejora comprando.
-- **Penalización por apostar fuerte**: la probabilidad efectiva baja según la fracción del saldo apostada.
-  `p_efectiva = p_suerte - 0.08 * fraccion^1.5` (fraccion entre 0 y 1; valores a ajustar con simulación).
+- El jugador elige la apuesta con botones rápidos: **1%, 10%, 50%, TODO** **del techo de apuesta** (el máximo que se mejora comprando). Si el saldo es menor, la apuesta se limita al saldo.
+- **Penalización por apostar fuerte**: la probabilidad efectiva baja según la fracción del techo apostada.
+  `p_efectiva = p_suerte - 0.20 * fraccion^1.5` (fraccion = apuesta / techo, entre 0 y 1).
+- Consecuencia buscada: con poca suerte, apostar el techo tiene valor esperado negativo, y la fracción óptima sube con la suerte (aprox. `(2p - 1)^(2/3)`: 0 por debajo del 50%, ~34% con p = 0,6 y ~96% con p = 0,97).
 - Perder una apuesta de TODO tiene un castigo extra pequeño: el ayudante se bloquea 5 segundos.
-- El ayudante usa un **perfil fijo** que se mejora: prudente (1-10%), normal (10-25%), agresivo (50%+).
+- El ayudante usa un **perfil fijo** que se mejora (fracción del techo): prudente (1-10%), normal (10-25%), agresivo (50%+).
 
 ## 4. Mesa 1: Ruleta (la que se construye primero)
 
@@ -45,9 +47,16 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 ### 4.1 Ruleta
 
 - 37 casillas: 18 negro, 18 blanco, 1 cero verde (la casa gana).
-- Apuesta a negro o blanco, pago 1:1.
-- Probabilidad base: **48,6%**.
-- Jackpot **Cero Dorado**: casilla extra que paga **x500** la apuesta, 0,1% base hasta 1,5% con suerte.
+- Tres tipos de apuesta:
+
+| Apuesta | Pago | Prob. base | Disponible |
+|---|---|---|---|
+| Color (negro o blanco) | 1:1 | 48,6% (18/37) | Desde el inicio |
+| Docena (1-12, 13-24, 25-36) | 2:1 | 32,4% (12/37) | Mejora "Apuesta a docena" |
+| Número (1-36) | 35:1 | 2,7% (1/37) | Mejora "Apuesta a número" |
+
+- La suerte y la penalización se calculan sobre el color y se aplican **en proporción a las casillas**: `p_docena = p_color_efectiva * 12/18`, `p_número = p_color_efectiva * 1/18`. Con los pagos de una ruleta real, los tres tipos tienen siempre **el mismo valor esperado**; solo cambia la varianza. El color es la apuesta segura; docena y número sirven para buscar un golpe (por ejemplo, alcanzar una compra) a cambio de más riesgo.
+- Jackpot **Cero Dorado**: casilla extra que paga **x500** la apuesta (con cualquier tipo de apuesta), con tope de pago del 25% de la deuda. Probabilidad del 0,1% al 1,5% (ver sección 3).
 
 ### 4.2 Trabajo manual: recoger basura
 
@@ -74,15 +83,19 @@ Fórmula de coste: `coste(n) = base * crecimiento^n`.
 
 | Mejora | Efecto por nivel | Coste base | Crecimiento | Niveles máx. |
 |---|---|---|---|---|
-| Suerte | Sube la prob. (curva decreciente hasta 97%) | 50 | 2,1 | 20 |
-| Apuesta máxima | x1,8 el techo de apuesta | 100 | 2,3 | 12 |
+| Suerte | Sube la prob. (curva convexa hasta 97%) | 50 | 2,1 | 20 |
+| Apuesta máxima | x1,8 el techo de apuesta (empieza en 10) | 100 | 2,3 | 12 |
 | Crupier (ayudante) | Desbloquea el ayudante | 500 | - | 1 |
 | Velocidad del ayudante | -12% al tiempo entre apuestas (de 4 s a ~0,5 s) | 300 | 2,0 | 15 |
-| Perfil del ayudante | Prudente, normal, agresivo | 1.000 | 4 | 3 |
-| Suerte del ayudante | +% de prob. solo para el ayudante | 800 | 2,2 | 10 |
-| Jackpot | +0,07% de prob. de Cero Dorado | 2.000 | 2,5 | 20 |
+| Perfil del ayudante | Desbloquea normal y agresivo (prudente viene con el Crupier) | 1.000 | 4 | 2 |
+| Suerte del ayudante | +0,5% de prob. solo para el ayudante | 800 | 2,2 | 10 |
+| Jackpot | +0,035% de prob. de Cero Dorado | 2.000 | 2,5 | 20 |
+| Apuesta a docena | Desbloquea la docena (2:1) | 3.000 | - | 1 |
+| Apuesta a número | Desbloquea el número (35:1) | 25.000 | - | 1 |
 
-Objetivo: llegar a 10M en **~8 minutos** de juego activo. Calibrar con una simulación (ver sección 10).
+Objetivo: llegar a 10M en **~8 minutos** de juego activo, con el último tramo (desde suerte máxima hasta 10M) de 1-2 minutos y el arranque (primera apuesta y primera mejora de suerte) en menos de ~30 s. Calibrar con `npm run simulate` (ver sección 10).
+
+**Estado:** estos valores aún son los iniciales. La simulación muestra que con ellos ninguna estrategia llega a 10M en una hora (las mejoras suman ~121.000M). Hay una propuesta de ajuste en `sim/propuesta.json`, pendiente de aprobar.
 
 ### 4.4 Deuda
 

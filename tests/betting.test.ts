@@ -3,7 +3,7 @@ import { playerBet, selectBetFraction } from '../src/game/actions';
 import { betAmount, maxBet, playerBetAmount } from '../src/game/betting';
 import { seededRng } from '../src/game/rng';
 import { spin } from '../src/game/roulette';
-import { LOSE, stateWith } from './helpers';
+import { LOSE, NEGRO, stateWith } from './helpers';
 
 describe('selector de apuesta', () => {
   it('el techo empieza en 10 y crece x1,8 por nivel', () => {
@@ -26,15 +26,18 @@ describe('selector de apuesta', () => {
     }
   });
 
-  it('usa los botones 1%, 10%, 50% y TODO', () => {
-    const state = stateWith({ balance: 1000 });
-    state.upgrades.maxBet = 12; // techo ~11.500, no limita
+  it('los botones 1%, 10%, 50% y TODO son fracciones del techo', () => {
+    const state = stateWith({ balance: 1e9 });
+    state.upgrades.maxBet = 12;
+    const ceiling = maxBet(12);
     const bets = [0, 1, 2, 3].map((i) => (selectBetFraction(state, i), playerBetAmount(state)));
-    expect(bets).toEqual([10, 100, 500, 1000]);
+    expect(bets).toEqual([0.01, 0.1, 0.5, 1].map((f) => Math.floor(ceiling * f)));
   });
 
-  it('el techo limita el TODO', () => {
-    const state = stateWith({ balance: 1000, betFractionIndex: 3 });
+  it('si el saldo es menor que la apuesta pedida, se limita al saldo', () => {
+    const state = stateWith({ balance: 7, betFractionIndex: 3 });
+    expect(playerBetAmount(state)).toBe(7);
+    state.balance = 1000;
     expect(playerBetAmount(state)).toBe(10);
   });
 
@@ -42,18 +45,21 @@ describe('selector de apuesta', () => {
     expect(betAmount(5, 0.01, 10)).toBe(1);
     expect(betAmount(0, 1, 10)).toBe(0);
     const state = stateWith({ balance: 0 });
-    expect(playerBet(state, 'negro', LOSE)).toBeNull();
+    expect(playerBet(state, NEGRO, LOSE)).toBeNull();
   });
 
-  it('spin rechaza apuestas mayores que el saldo', () => {
+  it('spin rechaza apuestas mayores que el saldo o que el techo', () => {
     const state = stateWith({ balance: 5 });
-    expect(spin(state, { bettor: 'jugador', color: 'negro', bet: 6 }, LOSE)).toBeNull();
+    expect(spin(state, { bettor: 'jugador', choice: NEGRO, bet: 6 }, LOSE)).toBeNull();
     expect(state.balance).toBe(5);
+    state.balance = 1000;
+    expect(spin(state, { bettor: 'jugador', choice: NEGRO, bet: 11 }, LOSE)).toBeNull();
+    expect(state.balance).toBe(1000);
   });
 
   it('el saldo nunca baja de 0', () => {
     const state = stateWith({ balance: 10, betFractionIndex: 3 });
-    playerBet(state, 'negro', LOSE);
+    playerBet(state, NEGRO, LOSE);
     expect(state.balance).toBe(0);
   });
 });

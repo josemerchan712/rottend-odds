@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { playerBet, selectBetFraction } from '../src/game/actions';
+import { maxBet } from '../src/game/betting';
 import { CONFIG } from '../src/game/config';
 import { helperInterval, selectHelperProfile, updateHelper } from '../src/game/helper';
 import { seededRng } from '../src/game/rng';
 import { spin } from '../src/game/roulette';
-import { LOSE, WIN, stateWith } from './helpers';
+import { LOSE, NEGRO, WIN, stateWith } from './helpers';
 
 function withHelper(balance: number, fractionIndex = 3) {
   const state = stateWith({ balance, betFractionIndex: fractionIndex });
@@ -15,34 +16,34 @@ function withHelper(balance: number, fractionIndex = 3) {
 describe('bloqueo del ayudante', () => {
   it('salta cuando el jugador pierde una apuesta de TODO', () => {
     const state = withHelper(5);
-    playerBet(state, 'negro', LOSE);
+    playerBet(state, NEGRO, LOSE);
     expect(state.helper.lockout).toBe(5);
   });
 
   it('también salta si el TODO estaba recortado por la apuesta máxima', () => {
     const state = withHelper(1000);
-    const result = playerBet(state, 'negro', LOSE)!;
+    const result = playerBet(state, NEGRO, LOSE)!;
     expect(result.bet).toBe(10);
     expect(state.helper.lockout).toBe(5);
   });
 
   it('no salta si el jugador gana un TODO', () => {
     const state = withHelper(5);
-    playerBet(state, 'negro', WIN);
+    playerBet(state, NEGRO, WIN);
     expect(state.helper.lockout).toBe(0);
   });
 
   it('no salta si el jugador pierde con 1%, 10% o 50%', () => {
     for (const index of [0, 1, 2]) {
       const state = withHelper(100, index);
-      playerBet(state, 'negro', LOSE);
+      playerBet(state, NEGRO, LOSE);
       expect(state.helper.lockout).toBe(0);
     }
   });
 
   it('no salta cuando pierde el ayudante, aunque apueste todo', () => {
     const state = withHelper(1);
-    spin(state, { bettor: 'ayudante', color: 'negro', bet: 1 }, LOSE);
+    spin(state, { bettor: 'ayudante', choice: { type: 'color', color: 'negro' }, bet: 1 }, LOSE);
     updateHelper(state, 10, LOSE);
     expect(state.helper.lockout).toBe(0);
   });
@@ -50,7 +51,7 @@ describe('bloqueo del ayudante', () => {
   it('mientras dura el bloqueo el ayudante no apuesta', () => {
     const state = withHelper(1000);
     selectBetFraction(state, 3);
-    playerBet(state, 'negro', LOSE);
+    playerBet(state, NEGRO, LOSE);
     const bets = state.stats.bets;
     expect(updateHelper(state, 4.9, seededRng(3))).toHaveLength(0);
     expect(state.stats.bets).toBe(bets);
@@ -67,11 +68,11 @@ describe('ayudante', () => {
     expect(updateHelper(state, 12.01, seededRng(5))).toHaveLength(3);
   });
 
-  it('usa la fracción de su perfil, limitada por la apuesta máxima', () => {
+  it('usa la fracción de su perfil sobre el techo de apuesta', () => {
     const state = withHelper(100_000);
     state.upgrades.maxBet = 12;
     const [r] = updateHelper(state, 4, LOSE);
-    expect(r.bet).toBe(100_000 * CONFIG.helper.profiles[0].fraction);
+    expect(r.bet).toBe(Math.floor(maxBet(12) * CONFIG.helper.profiles[0].fraction));
   });
 
   it('solo deja elegir perfiles desbloqueados', () => {

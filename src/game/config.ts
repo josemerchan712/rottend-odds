@@ -17,10 +17,19 @@ export const CONFIG = {
   },
 
   roulette: {
-    /** 18 negro, 18 blanco, 1 cero verde. Solo afecta a qué casilla se enseña. */
+    /** 0 verde y 1-36 (impares negro, pares blanco). */
     slots: 37,
-    /** Pago de una apuesta ganada a color (1:1). */
-    payout: 1,
+  },
+
+  /**
+   * Tipos de apuesta. La suerte y la penalización se calculan sobre el color y se escalan
+   * por `chanceRatio` (proporción de casillas respecto al color): con pagos de ruleta real,
+   * los tres tipos tienen el mismo valor esperado y solo cambia la varianza.
+   */
+  betTypes: {
+    color: { name: 'Color', payout: 1, chanceRatio: 1 },
+    dozen: { name: 'Docena', payout: 2, chanceRatio: 12 / 18 },
+    number: { name: 'Número', payout: 35, chanceRatio: 1 / 18 },
   },
 
   luck: {
@@ -29,15 +38,15 @@ export const CONFIG = {
     /** Tope absoluto: nunca se gana siempre. */
     cap: 0.97,
     /**
-     * Razón de la curva decreciente: cada nivel aporta `ratio` veces lo que aportó el anterior.
-     * p(n) = base + (cap - base) * (1 - ratio^n) / (1 - ratio^maxLevel)
+     * Curva convexa: los primeros niveles apenas suben, los últimos mucho.
+     * p(n) = base + (cap - base) * (n / maxLevel)^exponente
      */
-    curveRatio: 0.8,
+    curveExponent: 1.6,
   },
 
   risk: {
     /** p_efectiva = p - factor * fraccion^exponente */
-    penaltyFactor: 0.08,
+    penaltyFactor: 0.2,
     penaltyExponent: 1.5,
   },
 
@@ -57,7 +66,7 @@ export const CONFIG = {
   },
 
   bet: {
-    /** Botones rápidos del selector (fracción del saldo). 1 = TODO. */
+    /** Botones rápidos del selector (fracción del techo de apuesta). 1 = TODO. */
     quickFractions: [0.01, 0.1, 0.5, 1] as readonly number[],
     /** Apuesta mínima: con menos de esto no se puede apostar. */
     minBet: 1,
@@ -72,7 +81,7 @@ export const CONFIG = {
     baseInterval: 4,
     /** Cada nivel de velocidad quita este porcentaje al intervalo. */
     speedReductionPerLevel: 0.12,
-    /** Perfiles en orden de desbloqueo; el primero viene con el Crupier. */
+    /** Perfiles en orden de desbloqueo; el primero viene con el Crupier. Fracción del techo. */
     profiles: [
       { id: 'prudente', name: 'Prudente', fraction: 0.05 },
       { id: 'normal', name: 'Normal', fraction: 0.2 },
@@ -114,9 +123,12 @@ export const CONFIG = {
     helperProfile: { name: 'Perfil del ayudante', baseCost: 1000, growth: 4, maxLevel: 2 },
     helperLuck: { name: 'Suerte del ayudante', baseCost: 800, growth: 2.2, maxLevel: 10 },
     jackpot: { name: 'Jackpot', baseCost: 2000, growth: 2.5, maxLevel: 20 },
+    dozenBet: { name: 'Apuesta a docena', baseCost: 3000, growth: 1, maxLevel: 1 },
+    numberBet: { name: 'Apuesta a número', baseCost: 25_000, growth: 1, maxLevel: 1 },
   },
 } as const;
 
 export type Config = typeof CONFIG;
 export type UpgradeId = keyof typeof CONFIG.upgrades;
+export type BetType = keyof typeof CONFIG.betTypes;
 export const UPGRADE_IDS = Object.keys(CONFIG.upgrades) as UpgradeId[];

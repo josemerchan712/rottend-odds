@@ -27,22 +27,27 @@ describe('curva de suerte', () => {
     }
   });
 
-  it('crece siempre pero con rendimientos decrecientes', () => {
-    let prevGain = Infinity;
+  it('es convexa: cada nivel sube más que el anterior', () => {
+    let prevGain = 0;
     for (let level = 1; level <= MAX_LUCK; level++) {
       const gain = luckChance(level) - luckChance(level - 1);
-      expect(gain).toBeGreaterThan(0);
-      expect(gain).toBeLessThan(prevGain);
+      expect(gain).toBeGreaterThan(prevGain);
       prevGain = gain;
     }
+  });
+
+  it('sigue p(n) = 0,486 + 0,484 * (n/20)^1,6 y ronda el 60% en los niveles 8-9', () => {
+    for (const n of [1, 5, 10, 15]) expect(luckChance(n)).toBeCloseTo(0.486 + 0.484 * (n / 20) ** 1.6, 10);
+    expect(luckChance(8)).toBeGreaterThan(0.59);
+    expect(luckChance(9)).toBeLessThan(0.63);
   });
 });
 
 describe('penalización por apostar fuerte', () => {
-  it('sigue p - 0,08 * fraccion^1,5', () => {
+  it('sigue p - 0,20 * fraccion^1,5', () => {
     expect(riskPenalty(0)).toBe(0);
-    expect(riskPenalty(1)).toBeCloseTo(0.08, 10);
-    expect(effectiveWinChance(0, 0.5)).toBeCloseTo(0.486 - 0.08 * 0.5 ** 1.5, 10);
+    expect(riskPenalty(1)).toBeCloseTo(0.2, 10);
+    expect(effectiveWinChance(0, 0.5)).toBeCloseTo(0.486 - 0.2 * 0.5 ** 1.5, 10);
   });
 
   it('baja la probabilidad al subir la fracción apostada', () => {
@@ -62,12 +67,12 @@ describe('penalización por apostar fuerte', () => {
     const rng = seededRng(42);
     const state = stateWith({ balance: 1e12 });
     state.upgrades.luck = 5;
-    const expected = effectiveWinChance(5, 0);
+    const expected = effectiveWinChance(5, 1 / 10); // 1 ficha sobre un techo de 10
     let wins = 0;
     const n = 50_000;
     for (let i = 0; i < n; i++) {
       state.balance = 1e12;
-      const r = spin(state, { bettor: 'jugador', color: 'negro', bet: 1 }, rng)!;
+      const r = spin(state, { bettor: 'jugador', choice: { type: 'color', color: 'negro' }, bet: 1 }, rng)!;
       if (r.outcome !== 'pierde') wins++;
     }
     // La victoria incluye el jackpot, que sale antes del sorteo normal.
@@ -88,7 +93,8 @@ describe('Cero Dorado', () => {
 
   it('spin aplica el tope al saldo y lo anota', () => {
     const state = stateWith({ balance: 100_000 });
-    const result = spin(state, { bettor: 'jugador', color: 'blanco', bet: 50_000 }, JACKPOT)!;
+    state.upgrades.maxBet = 12; // techo ~11.500
+    const result = spin(state, { bettor: 'jugador', choice: { type: 'color', color: 'blanco' }, bet: 10_000 }, JACKPOT)!;
     expect(result.outcome).toBe('jackpot');
     expect(result.delta).toBe(cap);
     expect(state.balance).toBe(100_000 + cap);
@@ -113,7 +119,7 @@ describe('Cero Dorado', () => {
     const n = 100_000;
     for (let i = 0; i < n; i++) {
       state.balance = 1e9;
-      spin(state, { bettor: 'jugador', color: 'negro', bet: 1 }, rng);
+      spin(state, { bettor: 'jugador', choice: { type: 'color', color: 'negro' }, bet: 1 }, rng);
     }
     expect(state.stats.jackpots / n).toBeGreaterThan(0.013);
     expect(state.stats.jackpots / n).toBeLessThan(0.017);

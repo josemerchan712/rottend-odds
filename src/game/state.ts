@@ -1,13 +1,19 @@
 import { UPGRADE_IDS, type UpgradeId } from './config';
 
 export type BetColor = 'negro' | 'blanco';
+
+/** A qué se apuesta. La docena y el número concretos solo cambian la casilla que se enseña. */
+export type BetChoice =
+  | { type: 'color'; color: BetColor }
+  | { type: 'dozen'; dozen: 1 | 2 | 3 }
+  | { type: 'number'; number: number };
 export type Bettor = 'jugador' | 'ayudante';
 export type SpinOutcome = 'gana' | 'pierde' | 'jackpot';
 
 /** Resultado de una tirada, para mostrarlo y para la simulación. */
 export interface SpinResult {
   bettor: Bettor;
-  color: BetColor;
+  choice: BetChoice;
   bet: number;
   /** Probabilidad efectiva de ganar con la que se jugó. */
   winChance: number;

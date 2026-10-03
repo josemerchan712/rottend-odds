@@ -75,7 +75,7 @@ Se abre en http://localhost:5173. Otros comandos:
 | `npm run build` | Comprobación de tipos y build de producción en `dist/` |
 | `npm run simulate` | Simula miles de partidas de la mesa 1 con varias estrategias e imprime un informe |
 | `npm run plausibility` | Regenera `shared/plausibility.json` (~3-4 min) |
-| `npm run assets` | Regenera los sprites de `assets/sprites/` desde las hojas de `assets/raw/` |
+| `npm run assets` | Regenera los sprites y el fondo de la mesa 1 en `assets/sprites/` desde las hojas de `assets/raw/` |
 
 El frontend busca el servidor en `http://localhost:8080`. Para cambiarlo, define `VITE_API_URL`.
 

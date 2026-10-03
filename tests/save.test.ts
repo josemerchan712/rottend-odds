@@ -1,0 +1,51 @@
+import { describe, expect, it } from 'vitest';
+import { deserialize, loadGame, SAVE_VERSION, saveGame, serialize, type KeyValueStorage } from '../src/game/save';
+import { createInitialState } from '../src/game/state';
+
+function memoryStorage(): KeyValueStorage & { data: Map<string, string> } {
+  const data = new Map<string, string>();
+  return {
+    data,
+    getItem: (k) => data.get(k) ?? null,
+    setItem: (k, v) => void data.set(k, v),
+    removeItem: (k) => void data.delete(k),
+  };
+}
+
+describe('guardado', () => {
+  it('ida y vuelta conserva el estado y la versión', () => {
+    const state = { ...createInitialState(), balance: 4321, playTime: 99.5 };
+    const file = deserialize(serialize(state, 1000));
+    expect(file).toEqual({ version: SAVE_VERSION, savedAt: 1000, state });
+  });
+
+  it('saveGame/loadGame usan el almacenamiento', () => {
+    const storage = memoryStorage();
+    const state = { ...createInitialState(), balance: 50 };
+    expect(saveGame(storage, 'k', state, 5)).toBe(true);
+    expect(loadGame(storage, 'k')?.state.balance).toBe(50);
+    expect(loadGame(storage, 'otra')).toBeNull();
+  });
+
+  it('rechaza JSON roto, versiones futuras y formas inválidas', () => {
+    expect(deserialize('{no es json')).toBeNull();
+    expect(deserialize(JSON.stringify({ version: SAVE_VERSION + 1, state: {} }))).toBeNull();
+    expect(deserialize(JSON.stringify({ state: {} }))).toBeNull();
+    expect(deserialize('[]')).toBeNull();
+  });
+
+  it('rellena campos que faltan y corrige valores imposibles', () => {
+    const raw = JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: { balance: -5, playTime: 'x' } });
+    expect(deserialize(raw)?.state).toEqual(createInitialState());
+  });
+
+  it('no revienta si el almacenamiento lanza', () => {
+    const broken: KeyValueStorage = {
+      getItem: () => { throw new Error('bloqueado'); },
+      setItem: () => { throw new Error('lleno'); },
+      removeItem: () => {},
+    };
+    expect(saveGame(broken, 'k', createInitialState(), 0)).toBe(false);
+    expect(loadGame(broken, 'k')).toBeNull();
+  });
+});

@@ -37,6 +37,22 @@ describe('guardado', () => {
   it('rellena campos que faltan y corrige valores imposibles', () => {
     const raw = JSON.stringify({ version: SAVE_VERSION, savedAt: 1, state: { balance: -5, playTime: 'x' } });
     expect(deserialize(raw)?.state).toEqual(createInitialState());
+    const raw2 = JSON.stringify({
+      version: SAVE_VERSION,
+      state: { upgrades: { luck: 99, maxBet: -3 }, helper: { profile: 2 }, work: { items: 50 } },
+    });
+    const state = deserialize(raw2)!.state;
+    expect(state.upgrades.luck).toBe(20);
+    expect(state.upgrades.maxBet).toBe(0);
+    expect(state.helper.profile).toBe(0); // perfil no desbloqueado
+    expect(state.work.items).toBe(6);
+  });
+
+  it('migra un guardado de la versión 1', () => {
+    const raw = JSON.stringify({ version: 1, savedAt: 3, state: { balance: 77, playTime: 12 } });
+    const file = deserialize(raw)!;
+    expect(file.version).toBe(SAVE_VERSION);
+    expect(file.state).toEqual({ ...createInitialState(), balance: 77, playTime: 12 });
   });
 
   it('no revienta si el almacenamiento lanza', () => {

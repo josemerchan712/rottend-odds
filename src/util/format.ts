@@ -31,3 +31,8 @@ export function formatTime(seconds: number): string {
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/** 3.456 → "3,46 s" */
+export function formatSeconds(seconds: number, decimals = 1): string {
+  return seconds.toFixed(decimals).replace('.', ',') + ' s';
+}

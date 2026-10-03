@@ -1,9 +1,11 @@
 import './ui/style.css';
 import { CONFIG } from './game/config';
+import { defaultRng } from './game/rng';
 import { clearSave, loadGame, saveGame } from './game/save';
 import { createInitialState, type GameState } from './game/state';
 import { update } from './game/update';
 import { startLoop } from './loop';
+import { bindControls } from './ui/controls';
 import { mountUi, render, setText } from './ui/render';
 
 const { saveKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
@@ -16,11 +18,7 @@ function save(): void {
   setText(ui.saveStatus, ok ? `Guardado ${new Date().toLocaleTimeString()}` : 'No se pudo guardar');
 }
 
-ui.debugAdd.addEventListener('click', () => {
-  state.balance += 1234;
-});
-ui.reset.addEventListener('click', () => {
-  if (!confirm('¿Borrar la partida?')) return;
+bindControls(ui, () => state, defaultRng, () => render(ui, state), () => {
   clearSave(localStorage, saveKey);
   state = createInitialState();
 });
@@ -34,7 +32,7 @@ document.addEventListener('visibilitychange', () => {
 
 startLoop(
   {
-    update: (dt) => update(state, dt),
+    update: (dt) => update(state, dt, defaultRng),
     render: () => render(ui, state),
   },
   maxFrameDt,

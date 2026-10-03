@@ -1,39 +1,313 @@
-import type { GameState } from '../game/state';
-import { formatNumber, formatTime } from '../util/format';
+import { maxBet, playerBetAmount, selectedFraction } from '../game/betting';
+import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../game/config';
+import { canPayDebt, debtProgress } from '../game/debt';
+import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus, helperProfile } from '../game/helper';
+import { effectiveWinChance, jackpotChance, luckChance, riskPenalty } from '../game/luck';
+import { slotColor } from '../game/roulette';
+import type { GameState, SpinResult } from '../game/state';
+import { canBuy, isMaxed, isUnlocked, nextCost } from '../game/upgrades';
+import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 
-export interface UiElements {
+const FRACTION_LABELS = ['1%', '10%', '50%', 'TODO'];
+const DEBT_TEXT = CONFIG.debt.amount.toLocaleString('es-ES');
+
+export interface ShopRow {
+  row: HTMLElement;
+  level: HTMLElement;
+  effect: HTMLElement;
+  buy: HTMLButtonElement;
+}
+
+export interface Ui {
   balance: HTMLElement;
   playTime: HTMLElement;
+  stats: HTMLElement;
+  debtText: HTMLElement;
+  debtFill: HTMLElement;
+  payDebt: HTMLButtonElement;
+  debtNote: HTMLElement;
+  fractionButtons: HTMLButtonElement[];
+  betInfo: HTMLElement;
+  chanceInfo: HTMLElement;
+  jackpotInfo: HTMLElement;
+  betBlack: HTMLButtonElement;
+  betWhite: HTMLButtonElement;
+  lastSpin: HTMLElement;
+  spinLog: HTMLElement;
+  work: HTMLButtonElement;
+  workInfo: HTMLElement;
+  helperLocked: HTMLElement;
+  helperPanel: HTMLElement;
+  profileButtons: HTMLButtonElement[];
+  helperInfo: HTMLElement;
+  shop: Record<UpgradeId, ShopRow>;
   saveStatus: HTMLElement;
+  reset: HTMLButtonElement;
 }
 
 /** Monta la interfaz provisional y devuelve las referencias que se repintan. */
-export function mountUi(root: HTMLElement): UiElements & { debugAdd: HTMLButtonElement; reset: HTMLButtonElement } {
+export function mountUi(root: HTMLElement): Ui {
   root.innerHTML = `
-    <main class="panel">
+    <header class="top">
       <h1>Mesa 1 · Ruleta</h1>
-      <p class="stat">Fichas: <strong data-ref="balance">0</strong></p>
-      <p class="stat">Tiempo de juego: <span data-ref="playTime">0:00</span></p>
-      <div class="row">
-        <button data-ref="debugAdd">+1.234 fichas (prueba)</button>
-        <button data-ref="reset" class="danger">Borrar partida</button>
+      <div class="balance">Fichas <strong data-ref="balance">0</strong></div>
+      <div class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></div>
+    </header>
+
+    <div class="layout">
+      <div class="col">
+        <section class="panel">
+          <h2>Deuda con el Encargado</h2>
+          <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
+          <div class="row spread">
+            <span data-ref="debtText"></span>
+            <button data-ref="payDebt" class="gold">Pagar deuda</button>
+          </div>
+          <p class="note" data-ref="debtNote"></p>
+        </section>
+
+        <section class="panel">
+          <h2>Ruleta</h2>
+          <div class="row" data-ref="fractions">
+            ${FRACTION_LABELS.map((l, i) => `<button class="chip" data-fraction="${i}">${l}</button>`).join('')}
+          </div>
+          <p data-ref="betInfo"></p>
+          <p data-ref="chanceInfo"></p>
+          <p class="muted" data-ref="jackpotInfo"></p>
+          <div class="row">
+            <button data-ref="betBlack" class="bet black">Apostar a NEGRO</button>
+            <button data-ref="betWhite" class="bet white">Apostar a BLANCO</button>
+          </div>
+          <div class="last-spin" data-ref="lastSpin">Aún no has apostado.</div>
+          <ol class="spin-log" data-ref="spinLog"></ol>
+        </section>
+
+        <section class="panel">
+          <h2>Trabajo: recoger basura</h2>
+          <div class="row">
+            <button data-ref="work">Recoger basura</button>
+            <span class="muted" data-ref="workInfo"></span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Ayudante</h2>
+          <p class="muted" data-ref="helperLocked">Compra el Crupier en la tienda para que apueste por ti.</p>
+          <div data-ref="helperPanel">
+            <div class="row">
+              ${CONFIG.helper.profiles
+                .map((p, i) => `<button class="chip" data-profile="${i}">${p.name} ${formatPercent(p.fraction, 0)}</button>`)
+                .join('')}
+            </div>
+            <p data-ref="helperInfo"></p>
+          </div>
+        </section>
       </div>
-      <p class="muted" data-ref="saveStatus"></p>
-    </main>
+
+      <div class="col">
+        <section class="panel">
+          <h2>Tienda</h2>
+          <table class="shop">
+            <tbody>
+              ${UPGRADE_IDS.map(
+                (id) => `
+                <tr data-upgrade="${id}">
+                  <td><div class="name">${CONFIG.upgrades[id].name}</div><div class="effect muted"></div></td>
+                  <td class="level"></td>
+                  <td><button class="buy"></button></td>
+                </tr>`,
+              ).join('')}
+            </tbody>
+          </table>
+        </section>
+        <div class="row spread muted">
+          <span data-ref="saveStatus"></span>
+          <button data-ref="reset" class="danger small">Borrar partida</button>
+        </div>
+      </div>
+    </div>
   `;
-  const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
+
+  const ref = <T extends HTMLElement = HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
+  const shop = {} as Record<UpgradeId, ShopRow>;
+  for (const id of UPGRADE_IDS) {
+    const row = root.querySelector<HTMLElement>(`[data-upgrade="${id}"]`)!;
+    shop[id] = {
+      row,
+      level: row.querySelector('.level')!,
+      effect: row.querySelector('.effect')!,
+      buy: row.querySelector('.buy')!,
+    };
+  }
+
   return {
     balance: ref('balance'),
     playTime: ref('playTime'),
+    stats: ref('stats'),
+    debtText: ref('debtText'),
+    debtFill: ref('debtFill'),
+    payDebt: ref('payDebt'),
+    debtNote: ref('debtNote'),
+    fractionButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-fraction]')],
+    betInfo: ref('betInfo'),
+    chanceInfo: ref('chanceInfo'),
+    jackpotInfo: ref('jackpotInfo'),
+    betBlack: ref('betBlack'),
+    betWhite: ref('betWhite'),
+    lastSpin: ref('lastSpin'),
+    spinLog: ref('spinLog'),
+    work: ref('work'),
+    workInfo: ref('workInfo'),
+    helperLocked: ref('helperLocked'),
+    helperPanel: ref('helperPanel'),
+    profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile]')],
+    helperInfo: ref('helperInfo'),
+    shop,
     saveStatus: ref('saveStatus'),
-    debugAdd: ref<HTMLButtonElement>('debugAdd'),
-    reset: ref<HTMLButtonElement>('reset'),
+    reset: ref('reset'),
   };
 }
 
-export function render(ui: UiElements, state: GameState): void {
+export function render(ui: Ui, state: GameState): void {
+  const { upgrades } = state;
+
   setText(ui.balance, formatNumber(state.balance));
   setText(ui.playTime, formatTime(state.playTime));
+  const winRate = state.stats.bets ? state.stats.wins / state.stats.bets : 0;
+  setText(
+    ui.stats,
+    `${state.stats.bets} apuestas · ${formatPercent(winRate)} ganadas · ${state.stats.jackpots} Cero Dorado`,
+  );
+
+  // Deuda
+  ui.debtFill.style.width = `${debtProgress(state) * 100}%`;
+  setText(ui.debtText, state.debtPaid ? 'Saldada' : `${formatNumber(state.balance)} / ${DEBT_TEXT}`);
+  ui.payDebt.disabled = !canPayDebt(state);
+  ui.payDebt.hidden = state.debtPaid;
+  setText(ui.debtNote, state.debtPaid ? 'Deuda saldada. La mesa 2 llegará en un hito posterior.' : '');
+
+  // Apuesta del jugador
+  const fraction = selectedFraction(state);
+  ui.fractionButtons.forEach((b, i) => b.classList.toggle('active', i === state.betFractionIndex));
+  const bet = playerBetAmount(state);
+  const ceiling = maxBet(upgrades.maxBet);
+  const realFraction = state.balance > 0 ? bet / state.balance : fraction;
+  const capped = bet > 0 && bet < Math.floor(state.balance * fraction);
+  setText(
+    ui.betInfo,
+    bet > 0
+      ? `Apuesta: ${formatNumber(bet)} ${bet === 1 ? 'ficha' : 'fichas'} (${formatPercent(realFraction)} del saldo)${capped ? ` · limitada por el techo de ${formatNumber(ceiling)}` : ''}`
+      : 'Sin fichas para apostar. Recoge basura.',
+  );
+  const base = luckChance(upgrades.luck);
+  const penalty = riskPenalty(realFraction);
+  setText(
+    ui.chanceInfo,
+    `Prob. de ganar: ${formatPercent(effectiveWinChance(upgrades.luck, realFraction))}  (suerte ${formatPercent(base)} − riesgo ${formatPercent(penalty, 2)})`,
+  );
+  setText(
+    ui.jackpotInfo,
+    `Cero Dorado: ${formatPercent(jackpotChance(upgrades.luck, upgrades.jackpot), 2)} · paga x${CONFIG.jackpot.payoutMultiplier} (máx. ${formatNumber(CONFIG.debt.amount * CONFIG.jackpot.payoutCapDebtFraction)})`,
+  );
+  ui.betBlack.disabled = ui.betWhite.disabled = bet <= 0;
+
+  // Tiradas
+  const last = state.recentSpins[0];
+  if (last) {
+    setText(ui.lastSpin, describeSpin(last));
+    ui.lastSpin.dataset.outcome = last.outcome;
+  }
+  const log = state.recentSpins.slice(1).map(describeSpin).join('\n');
+  if (ui.spinLog.dataset.log !== log) {
+    ui.spinLog.dataset.log = log;
+    ui.spinLog.innerHTML = state.recentSpins
+      .slice(1)
+      .map((s) => `<li class="${s.outcome}">${describeSpin(s)}</li>`)
+      .join('');
+  }
+
+  // Trabajo
+  setText(ui.work, `Recoger basura (${state.work.items}/${CONFIG.work.maxItems} en el suelo)`);
+  ui.work.disabled = state.work.items <= 0;
+  const respawn = state.work.items < CONFIG.work.maxItems
+    ? ` · otra en ${formatSeconds(CONFIG.work.respawnInterval - state.work.spawnTimer)}`
+    : '';
+  setText(ui.workInfo, (state.work.lastItem ? `Último: ${state.work.lastItem}` : '') + respawn);
+
+  // Ayudante
+  const helperOn = hasHelper(state);
+  ui.helperLocked.hidden = helperOn;
+  ui.helperPanel.hidden = !helperOn;
+  if (helperOn) {
+    const profile = helperProfile(state);
+    ui.profileButtons.forEach((b, i) => {
+      b.disabled = i > upgrades.helperProfile;
+      b.classList.toggle('active', CONFIG.helper.profiles[i] === profile);
+    });
+    const interval = helperInterval(upgrades.helperSpeed);
+    const hBet = helperBetAmount(state);
+    const hFraction = state.balance > 0 ? hBet / state.balance : profile.fraction;
+    const hChance = effectiveWinChance(upgrades.luck, hFraction, helperLuckBonus(upgrades.helperLuck));
+    const status =
+      state.helper.lockout > 0
+        ? `BLOQUEADO ${formatSeconds(state.helper.lockout)} (perdiste un TODO)`
+        : hBet <= 0
+          ? 'Esperando fichas'
+          : `próxima en ${formatSeconds(Math.max(interval - state.helper.timer, 0))}`;
+    setText(
+      ui.helperInfo,
+      `Apuesta ${formatNumber(hBet)} cada ${formatSeconds(interval, 2)} · prob. ${formatPercent(hChance)} · ${status}`,
+    );
+  }
+
+  // Tienda
+  for (const id of UPGRADE_IDS) {
+    const row = ui.shop[id];
+    const def = CONFIG.upgrades[id];
+    const unlocked = isUnlocked(state, id);
+    row.row.classList.toggle('locked', !unlocked);
+    setText(row.level, `${upgrades[id]}/${def.maxLevel}`);
+    setText(row.effect, unlocked ? describeUpgrade(state, id) : 'Requiere el Crupier');
+    const cost = nextCost(state, id);
+    setText(row.buy, isMaxed(state, id) ? 'MÁX' : formatNumber(cost ?? 0));
+    row.buy.disabled = !canBuy(state, id);
+  }
+}
+
+function describeSpin(s: SpinResult): string {
+  const who = s.bettor === 'jugador' ? 'Tú' : 'Ayudante';
+  const color = slotColor(s.slot);
+  const slot = color === 'dorado' ? 'CERO DORADO' : color === 'verde' ? '0 verde' : `${color} ${s.slot}`;
+  const delta = s.delta >= 0 ? `+${formatNumber(s.delta)}` : `−${formatNumber(-s.delta)}`;
+  const capped = s.jackpotCapped ? ' (tope)' : '';
+  return `${who}: ${formatNumber(s.bet)} a ${s.color} → sale ${slot} · ${delta}${capped} · (${formatPercent(s.winChance)})`;
+}
+
+function describeUpgrade(state: GameState, id: UpgradeId): string {
+  const lvl = state.upgrades[id];
+  const maxed = isMaxed(state, id);
+  const arrow = (now: string, next: string) => (maxed ? now : `${now} → ${next}`);
+  switch (id) {
+    case 'luck':
+      return arrow(`Prob. ${formatPercent(luckChance(lvl))}`, formatPercent(luckChance(lvl + 1)));
+    case 'maxBet':
+      return arrow(`Techo ${formatNumber(maxBet(lvl))}`, formatNumber(maxBet(lvl + 1)));
+    case 'crupier':
+      return maxed ? 'Ayudante contratado' : 'Desbloquea el ayudante';
+    case 'helperSpeed':
+      return arrow(`Cada ${formatSeconds(helperInterval(lvl), 2)}`, formatSeconds(helperInterval(lvl + 1), 2));
+    case 'helperProfile': {
+      const next = CONFIG.helper.profiles[lvl + 1];
+      return maxed || !next ? 'Todos los perfiles' : `Desbloquea ${next.name} (${formatPercent(next.fraction, 0)})`;
+    }
+    case 'helperLuck':
+      return arrow(`+${formatPercent(helperLuckBonus(lvl))}`, `+${formatPercent(helperLuckBonus(lvl + 1))}`);
+    case 'jackpot':
+      return arrow(
+        `Cero Dorado ${formatPercent(jackpotChance(state.upgrades.luck, lvl), 2)}`,
+        formatPercent(jackpotChance(state.upgrades.luck, lvl + 1), 2),
+      );
+  }
 }
 
 /** Solo toca el DOM si el texto ha cambiado. */

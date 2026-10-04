@@ -5,9 +5,12 @@ import {
   canSpeak,
   chooseTrigger,
   createDialogueState,
+  isBigBet,
   isSilent,
   linesFor,
+  noteActivity,
   noteBet,
+  shouldGreetReturn,
   speak,
   type DialogueTrigger,
 } from '../src/game/dialogue';
@@ -26,7 +29,12 @@ describe('contenido del diálogo', () => {
     }
     for (const t of SINGLE) expect(DIALOGUE_ES[t].any!.length, t).toBeGreaterThanOrEqual(5);
     for (const byPhase of Object.values(DIALOGUE_ES)) {
-      for (const list of Object.values(byPhase)) for (const line of list!) expect(line.length, line).toBeLessThanOrEqual(90);
+      for (const list of Object.values(byPhase)) {
+        for (const entry of list!) {
+          const text = typeof entry === 'string' ? entry : entry.text;
+          expect(text.length, text).toBeLessThanOrEqual(90);
+        }
+      }
     }
   });
 
@@ -57,15 +65,15 @@ describe('reglas del diálogo', () => {
     const rng = seededRng(3);
     speak(d, DIALOGUE_ES, 'bigLoss', 'calm', 0, rng);
     const later = cooldownSeconds + 1;
-    for (let i = 0; i < minBetsBetweenLines - 1; i++) noteBet(d, later);
+    for (let i = 0; i < minBetsBetweenLines - 1; i++) noteBet(d);
     expect(canSpeak(d, 'bigLoss', later, false)).toBe(false);
-    noteBet(d, later);
+    noteBet(d);
     expect(canSpeak(d, 'bigLoss', later, false)).toBe(true);
   });
 
   it('nunca durante un cambio de sala', () => {
     const d = createDialogueState();
-    expect(speak(d, DIALOGUE_ES, 'enterBackroom', 'calm', 0, seededRng(4), true)).toBeNull();
+    expect(speak(d, DIALOGUE_ES, 'enterBackroom', 'calm', 0, seededRng(4), { inTransition: true })).toBeNull();
     expect(d.lastLineAt).toBeNull();
   });
 
@@ -92,7 +100,58 @@ describe('reglas del diálogo', () => {
     const d = createDialogueState(0);
     expect(isSilent(d, silenceSeconds - 1)).toBe(false);
     expect(isSilent(d, silenceSeconds)).toBe(true);
-    noteBet(d, silenceSeconds);
+    noteActivity(d, silenceSeconds);
     expect(isSilent(d, silenceSeconds + 10)).toBe(false);
+  });
+});
+
+describe('cambios aprobados del diálogo', () => {
+  const texts = (absence?: number) => linesFor(DIALOGUE_ES, 'sessionResume', 'uneasy', absence).map((l) => l.text);
+  const calmTexts = (absence?: number) => linesFor(DIALOGUE_ES, 'sessionResume', 'calm', absence).map((l) => l.text);
+
+  it('volver a la partida solo tras 5 minutos reales', () => {
+    expect(shouldGreetReturn(299)).toBe(false);
+    expect(shouldGreetReturn(300)).toBe(true);
+  });
+
+  it('condiciones de ausencia: corta (< 1 h) y larga (≥ 1 h)', () => {
+    const quick = 'Qué rapidez. Casi parece que te gusta este sitio.';
+    expect(calmTexts(600)).toContain(quick);
+    expect(calmTexts(3600)).not.toContain(quick);
+    for (const late of ['Llegas tarde. Lo he apuntado.', 'Has tardado. He contado cada segundo.', 'Has tardado. Yo no me he movido de aquí.']) {
+      expect(texts(3600)).toContain(late);
+      expect(texts(600)).not.toContain(late);
+    }
+    // Las que no tienen condición salen siempre.
+    expect(texts(600)).toContain('Vuelves. Los que no vuelven me preocupan más.');
+    expect(texts(7200)).toContain('Vuelves. Los que no vuelven me preocupan más.');
+  });
+
+  it('apuesta grande: ≥ 50 % del techo y ≥ 20 fichas', () => {
+    expect(isBigBet(20, 40)).toBe(true);
+    expect(isBigBet(19, 38)).toBe(false); // mitad del techo, pero menos de 20 fichas
+    expect(isBigBet(400, 1000)).toBe(false); // 20 fichas o más, pero menos de la mitad
+    expect(isBigBet(500, 1000)).toBe(true);
+  });
+
+  it('como mucho 2 líneas de silencio hasta la siguiente acción', () => {
+    const d = createDialogueState(0);
+    const rng = seededRng(9);
+    let t = silenceSeconds;
+    let said = 0;
+    for (let i = 0; i < 6; i++, t += silenceSeconds + 1) {
+      if (isSilent(d, t) && speak(d, DIALOGUE_ES, 'silence', 'calm', t, rng)) said++;
+    }
+    expect(said).toBe(2);
+    noteActivity(d, t);
+    expect(isSilent(d, t + silenceSeconds)).toBe(true);
+  });
+
+  it('textos cambiados', () => {
+    const all = JSON.stringify(DIALOGUE_ES);
+    expect(all).toContain('Gracias. De verdad. Cobrarte ha sido un placer.');
+    expect(all).toContain('Sin fichas. Así es como mejor se te ve.');
+    expect(all).toContain('Mírame bien. Así me pongo cuando alguien está a punto de pagar.');
+    expect(all).not.toContain('ser tu dueño');
   });
 });

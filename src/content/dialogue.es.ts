@@ -1,5 +1,8 @@
 import type { DialogueLines } from '../game/dialogue';
 
+// Revisado y aprobado. Las líneas con `absence` solo salen tras una ausencia corta (< 1 h) o
+// larga (≥ 1 h); "volver a la partida" solo se dispara tras al menos 5 minutos reales.
+
 /**
  * Líneas del Encargado (español). Separadas de la lógica por si algún día hay otro idioma.
  * Tono: educado, tranquilo y amenazante; sin gritos ni humor absurdo; frases cortas (≤ 90
@@ -23,14 +26,15 @@ export const DIALOGUE_ES: DialogueLines = {
       'Te estaba esperando. La mesa también.',
       'Me alegra verte. A tu deuda también le alegra.',
       'Siéntate. Nada ha cambiado mientras no estabas.',
-      'Qué rapidez. Casi parece que te gusta este sitio.',
+      { text: 'Qué rapidez. Casi parece que te gusta este sitio.', absence: 'short' },
     ],
     uneasy: [
-      'Llegas tarde. Lo he apuntado.',
-      'Creí que te habías olvidado de mí. No suele pasar.',
+      { text: 'Llegas tarde. Lo he apuntado.', absence: 'long' },
+      { text: 'Creí que te habías olvidado de mí. No suele pasar.', absence: 'long' },
       'Vuelves. Los que no vuelven me preocupan más.',
       'Tu silla seguía caliente. Me aseguré de ello.',
-      'Has tardado. Yo no me he movido de aquí.',
+      { text: 'Has tardado. Yo no me he movido de aquí.', absence: 'long' },
+      { text: 'Has tardado. He contado cada segundo.', absence: 'long' },
     ],
     deformed: [
       'Vuelves. Vuelves. Siempre vuelven.',
@@ -122,7 +126,7 @@ export const DIALOGUE_ES: DialogueLines = {
       'Nada en las manos. Nada en los bolsillos. Mucho en la cuenta.',
       'Sin nada. Ve a ganarte el pan.',
       'Vacío. Lo vacío es lo más fácil de llenar.',
-      'Sin fichas. Mírame cuando te quedas sin fichas.',
+      'Sin fichas. Así es como mejor se te ve.',
     ],
     deformed: [
       'Nada. Nada. Ya no te queda nada más que yo.',
@@ -167,7 +171,7 @@ export const DIALOGUE_ES: DialogueLines = {
       'Vuelves con poco. Siempre vuelves con poco.',
       '¿Eso es todo lo que traes? Ya veremos.',
       'La mesa no ha dejado de girar mientras no estabas.',
-      'Has tardado. He contado cada segundo.',
+      'Has vuelto. La mesa no te ha echado de menos. Yo sí.',
       'Siéntate. Tenemos cuentas pendientes. Muchas.',
     ],
     deformed: [
@@ -202,7 +206,7 @@ export const DIALOGUE_ES: DialogueLines = {
       'Tanto dinero junto. Me cuesta estarme quieto.',
       'Huele a final. Me encanta ese olor.',
       'Ya falta poco. Para los dos.',
-      'Mírame bien. Así me pongo cuando se acerca el día.',
+      'Mírame bien. Así me pongo cuando alguien está a punto de pagar.',
     ],
   },
   debtPaid: {
@@ -211,7 +215,7 @@ export const DIALOGUE_ES: DialogueLines = {
       'Diez millones. Exactos. Qué pena que se acabe.',
       'Estamos en paz. Por ahora. Abajo te esperan otros.',
       'Has cumplido. Pocos lo hacen. Menos aún salen.',
-      'Gracias. De verdad. Ha sido un placer ser tu dueño.',
+      'Gracias. De verdad. Cobrarte ha sido un placer.',
     ],
   },
   silence: {

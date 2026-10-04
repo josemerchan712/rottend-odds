@@ -166,8 +166,18 @@ export const CONFIG = {
     minBetsBetweenLines: 3,
     /** Líneas recientes que no se repiten. */
     recentMemory: 8,
-    /** Segundos sin hacer nada para el comentario de silencio largo. */
+    /** Segundos sin ninguna acción del jugador (clics, teclas) para el comentario de silencio largo. */
     silenceSeconds: 75,
+    /** Líneas de silencio como mucho hasta la siguiente acción del jugador. */
+    maxSilenceLines: 2,
+    /** Apuesta grande (para perder/ganar grande): al menos esta fracción del techo... */
+    bigBetCeilingFraction: 0.5,
+    /** ...y al menos estas fichas. */
+    bigBetMinChips: 20,
+    /** "Volver a la partida" solo si han pasado al menos estos segundos reales desde el último guardado. */
+    resumeMinAbsenceSeconds: 300,
+    /** Ausencia larga (para las líneas con condición): una hora o más. */
+    longAbsenceSeconds: 3600,
     /** Segundos que se ve cada línea antes de desvanecerse. */
     displaySeconds: 4,
   },

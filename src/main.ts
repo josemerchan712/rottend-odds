@@ -12,7 +12,7 @@ import { loadSettings, saveSettings } from './game/settings';
 import type { GameState } from './game/state';
 import { update } from './game/update';
 import { startLoop } from './loop';
-import { bindControls } from './ui/controls';
+import { bindControls, closeDrawers, toggleDrawer } from './ui/controls';
 import { mountMenu, mountSettings, renderMenu, renderSettings } from './ui/menu';
 import {
   mountAuth,
@@ -129,6 +129,18 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (screen !== 'game' || !state) return;
+  if (event.key === 'Escape') {
+    closeDrawers(gameUi);
+    return;
+  }
+  if (event.key === 'm' || event.key === 'M') {
+    toggleDrawer(gameUi, 'mesa');
+    return;
+  }
+  if (event.key === 'a' || event.key === 'A') {
+    toggleDrawer(gameUi, 'ayuda');
+    return;
+  }
   if (event.key === 'Tab') {
     event.preventDefault();
     toggleRoom(rooms);
@@ -230,9 +242,6 @@ settingsUi.back.addEventListener('click', () => show('menu'));
 
 // Juego
 gameUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
-gameUi.panelToggle.addEventListener('click', () => {
-  gameUi.panel.hidden = !gameUi.panel.hidden;
-});
 // Fuera del casino, las tiradas del ayudante se avisan en el HUD.
 let toastTimer = 0;
 scene.onAwayResult = (spin) => {
@@ -381,25 +390,33 @@ rankingUi.next.addEventListener('click', () => {
 });
 rankingUi.back.addEventListener('click', () => show('menu'));
 
-/** Al saldar la deuda con sesión iniciada, se registra el tiempo. Si falla, el juego sigue. */
+let noteTimer = 0;
+/** Nota breve bajo el HUD (deuda saldada, ranking). */
+function showNote(text: string): void {
+  gameUi.note.textContent = text;
+  gameUi.note.classList.add('show');
+  window.clearTimeout(noteTimer);
+  noteTimer = window.setTimeout(() => gameUi.note.classList.remove('show'), 5000);
+}
+
+/** Al saldar la deuda: aviso y, con sesión iniciada, registro del tiempo. Si falla, el juego sigue. */
 async function reportDebtPaid(): Promise<void> {
   const s = currentSession();
   if (!s || !state) {
-    setText(gameUi.debtOnline, 'Inicia sesión desde el menú para aparecer en el ranking la próxima vez.');
+    showNote('Deuda saldada. Inicia sesión desde el menú para salir en el ranking la próxima vez.');
     return;
   }
-  setText(gameUi.debtOnline, 'Registrando tu tiempo en el ranking…');
+  showNote('Deuda saldada. Registrando tu tiempo en el ranking…');
   const file = JSON.parse(serialize(state, Date.now()));
   const res = await api.debtPaid(s.token, file);
   if (!res.ok) {
-    setText(gameUi.debtOnline, `No se pudo registrar el tiempo: ${res.message}.`);
+    showNote(`Deuda saldada. No se pudo registrar el tiempo: ${res.message}.`);
     return;
   }
-  setText(
-    gameUi.debtOnline,
+  showNote(
     res.data.verified
       ? `Tiempo registrado. Puesto ${res.data.rank} del ranking${res.data.newBest ? '' : ' (tu mejor marca sigue siendo otra)'}.`
-      : `Tiempo registrado, pero no verificado: no aparecerá en el ranking. ${res.data.verificationNote ?? ''}`,
+      : 'Tiempo registrado, pero no verificado: no aparecerá en el ranking.',
   );
 }
 

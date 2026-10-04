@@ -1,13 +1,22 @@
 import { maxBet } from '../game/betting';
-import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../game/config';
+import { CONFIG, type UpgradeId } from '../game/config';
 import { canPayDebt, debtProgress } from '../game/debt';
 import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus, helperProfile } from '../game/helper';
-import { betWinChance, effectiveWinChance, jackpotChance, luckChance } from '../game/luck';
+import { effectiveWinChance, jackpotChance, luckChance } from '../game/luck';
 import type { GameState } from '../game/state';
 import { canBuy, isMaxed, isUnlocked, nextCost } from '../game/upgrades';
 import { bagMultiplier, cleanerInterval } from '../game/work';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 
+/** Mejoras de cada cajón lateral. */
+export const DRAWERS = {
+  mesa: { title: 'Mesa', upgrades: ['luck', 'maxBet', 'jackpot', 'dozenBet', 'numberBet'] as UpgradeId[] },
+  ayuda: {
+    title: 'Ayuda',
+    upgrades: ['crupier', 'helperSpeed', 'helperProfile', 'helperLuck', 'tweezers', 'bigBag', 'cleaner'] as UpgradeId[],
+  },
+} as const;
+export type DrawerId = keyof typeof DRAWERS;
 
 export interface ShopRow {
   row: HTMLElement;
@@ -16,32 +25,48 @@ export interface ShopRow {
   buy: HTMLButtonElement;
 }
 
+export interface Drawer {
+  root: HTMLElement;
+  tab: HTMLButtonElement;
+  dot: HTMLElement;
+}
+
 export interface Ui {
   balance: HTMLElement;
-  playTime: HTMLElement;
-  stats: HTMLElement;
   debtText: HTMLElement;
   debtFill: HTMLElement;
   payDebt: HTMLButtonElement;
-  debtNote: HTMLElement;
-  /** Mensaje del servidor al registrar la deuda saldada (lo escribe main.ts). */
-  debtOnline: HTMLElement;
   fullscreen: HTMLButtonElement;
+  toMenu: HTMLButtonElement;
   toast: HTMLElement;
+  note: HTMLElement;
   tooltip: HTMLElement;
-  panelToggle: HTMLButtonElement;
-  panel: HTMLElement;
-  workInfo: HTMLElement;
+  drawers: Record<DrawerId, Drawer>;
+  shop: Record<UpgradeId, ShopRow>;
+  stats: HTMLElement;
+  statsToggle: HTMLButtonElement;
+  statsBody: HTMLElement;
+  saveStatus: HTMLElement;
   helperLocked: HTMLElement;
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
-  shop: Record<UpgradeId, ShopRow>;
-  saveStatus: HTMLElement;
-  toMenu: HTMLButtonElement;
+  workInfo: HTMLElement;
 }
 
-/** Monta la interfaz provisional y devuelve las referencias que se repintan. */
+function shopRows(ids: readonly UpgradeId[]): string {
+  return ids
+    .map(
+      (id) => `
+      <div class="shop-row" data-upgrade="${id}">
+        <div class="shop-line"><span class="name">${CONFIG.upgrades[id].name}</span><span class="level"></span></div>
+        <div class="shop-line"><span class="effect"></span><button class="buy small"></button></div>
+      </div>`,
+    )
+    .join('');
+}
+
+/** Monta el HUD, los cajones y el tooltip de la pantalla de juego. */
 export function mountUi(root: HTMLElement): Ui {
   root.innerHTML = `
     <div class="hud">
@@ -58,129 +83,109 @@ export function mountUi(root: HTMLElement): Ui {
         <button data-ref="toMenu" class="small">Menú</button>
       </div>
     </div>
-
+    <div class="hud-note" data-ref="note" role="status"></div>
     <div class="tooltip pixel-frame" data-ref="tooltip" hidden></div>
-    <button class="temp-toggle small" data-ref="panelToggle">Controles</button>
-    <div class="temp-panel pixel-frame" data-ref="panel" hidden>
-        <section class="panel">
-          <p class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></p>
-          <p class="note" data-ref="debtNote"></p>
-          <p class="muted" data-ref="debtOnline" role="status"></p>
-        </section>
 
-        <section class="panel">
-          <h2>Trabajo: recoger basura</h2>
-          <p>Haz clic en la basura del suelo, o pulsa <kbd>E</kbd> para recoger la más cercana.</p>
-          <p class="muted" data-ref="workInfo"></p>
-        </section>
+    <aside class="drawer left" data-drawer="mesa" data-open="false">
+      <div class="drawer-body pixel-frame">
+        <h2>Mesa <span class="muted">(M)</span></h2>
+        ${shopRows(DRAWERS.mesa.upgrades)}
+        <button class="stats-toggle small" data-ref="statsToggle">Estadísticas ▸</button>
+        <div class="stats" data-ref="statsBody" hidden>
+          <div data-ref="stats"></div>
+          <div class="muted" data-ref="saveStatus"></div>
+        </div>
+      </div>
+      <button class="drawer-tab" title="Mesa (M)"><span>MESA</span><i class="dot" hidden></i></button>
+    </aside>
 
-        <section class="panel">
-          <h2>Ayudante</h2>
-          <p class="muted" data-ref="helperLocked">Compra el Crupier en la tienda para que apueste por ti.</p>
-          <div data-ref="helperPanel">
-            <div class="row">
-              ${CONFIG.helper.profiles
-                .map(
-                  (p, i) =>
-                    `<button class="chip" data-profile="${i}">${p.name}</button>`,
-                )
-                .join('')}
-            </div>
-            <p data-ref="helperInfo"></p>
+    <aside class="drawer right" data-drawer="ayuda" data-open="false">
+      <button class="drawer-tab" title="Ayuda (A)"><span>AYUDA</span><i class="dot" hidden></i></button>
+      <div class="drawer-body pixel-frame">
+        <h2>Ayuda <span class="muted">(A)</span></h2>
+        <p class="muted small-text" data-ref="helperLocked">Contrata al crupier para que apueste por ti.</p>
+        <div data-ref="helperPanel">
+          <div class="row profiles">
+            ${CONFIG.helper.profiles.map((p, i) => `<button class="chip small" data-profile="${i}">${p.name}</button>`).join('')}
           </div>
-        </section>
-        <section class="panel">
-          <h2>Tienda</h2>
-          <table class="shop">
-            <tbody>
-              ${UPGRADE_IDS.map(
-                (id) => `
-                <tr data-upgrade="${id}">
-                  <td><div class="name">${CONFIG.upgrades[id].name}</div><div class="effect muted"></div></td>
-                  <td class="level"></td>
-                  <td><button class="buy"></button></td>
-                </tr>`,
-              ).join('')}
-            </tbody>
-          </table>
-        </section>
-        <p class="muted" data-ref="saveStatus"></p>
-    </div>
+          <p class="small-text" data-ref="helperInfo"></p>
+        </div>
+        ${shopRows(DRAWERS.ayuda.upgrades.slice(0, 4))}
+        <h2 class="drawer-sub">Trastienda</h2>
+        <p class="small-text muted" data-ref="workInfo"></p>
+        ${shopRows(DRAWERS.ayuda.upgrades.slice(4))}
+      </div>
+    </aside>
   `;
 
   const ref = <T extends HTMLElement = HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
   const shop = {} as Record<UpgradeId, ShopRow>;
-  for (const id of UPGRADE_IDS) {
+  for (const id of [...DRAWERS.mesa.upgrades, ...DRAWERS.ayuda.upgrades]) {
     const row = root.querySelector<HTMLElement>(`[data-upgrade="${id}"]`)!;
-    shop[id] = {
-      row,
-      level: row.querySelector('.level')!,
-      effect: row.querySelector('.effect')!,
-      buy: row.querySelector('.buy')!,
-    };
+    shop[id] = { row, level: row.querySelector('.level')!, effect: row.querySelector('.effect')!, buy: row.querySelector('.buy')! };
   }
+  const drawer = (id: DrawerId): Drawer => {
+    const el = root.querySelector<HTMLElement>(`[data-drawer="${id}"]`)!;
+    return { root: el, tab: el.querySelector('.drawer-tab')!, dot: el.querySelector('.dot')! };
+  };
 
   return {
     balance: ref('balance'),
-    playTime: ref('playTime'),
-    stats: ref('stats'),
     debtText: ref('debtText'),
     debtFill: ref('debtFill'),
     payDebt: ref('payDebt'),
-    debtNote: ref('debtNote'),
-    debtOnline: ref('debtOnline'),
-    fullscreen: ref<HTMLButtonElement>('fullscreen'),
+    fullscreen: ref('fullscreen'),
+    toMenu: ref('toMenu'),
     toast: ref('toast'),
+    note: ref('note'),
     tooltip: ref('tooltip'),
-    panelToggle: ref<HTMLButtonElement>('panelToggle'),
-    panel: ref('panel'),
-    workInfo: ref('workInfo'),
+    drawers: { mesa: drawer('mesa'), ayuda: drawer('ayuda') },
+    shop,
+    stats: ref('stats'),
+    statsToggle: ref('statsToggle'),
+    statsBody: ref('statsBody'),
+    saveStatus: ref('saveStatus'),
     helperLocked: ref('helperLocked'),
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile]')],
     helperInfo: ref('helperInfo'),
-    shop,
-    saveStatus: ref('saveStatus'),
-    toMenu: ref('toMenu'),
+    workInfo: ref('workInfo'),
   };
 }
 
-/** Pinta el HUD y los paneles con el estado actual. */
+export function isDrawerOpen(ui: Ui, id: DrawerId): boolean {
+  return ui.drawers[id].root.dataset.open === 'true';
+}
+
+export function setDrawerOpen(ui: Ui, id: DrawerId, open: boolean): void {
+  ui.drawers[id].root.dataset.open = String(open);
+}
+
+/** Pinta el HUD y los cajones con el estado actual. */
 export function render(ui: Ui, state: GameState): void {
   const { upgrades } = state;
 
   setText(ui.balance, formatNumber(state.balance));
-  setText(ui.playTime, formatTime(state.playTime));
+  ui.debtFill.style.width = `${debtProgress(state) * 100}%`;
+  setText(ui.debtText, state.debtPaid ? 'SALDADA' : formatPercent(debtProgress(state), 0));
+  ui.payDebt.hidden = !canPayDebt(state);
+
+  // Estadísticas (dentro del cajón Mesa).
   const winRate = state.stats.bets ? state.stats.wins / state.stats.bets : 0;
   setText(
     ui.stats,
-    `${state.stats.bets} apuestas · ${formatPercent(winRate)} ganadas · ${state.stats.jackpots} Cero Dorado`,
+    `Tiempo ${formatTime(state.playTime)} · ${state.stats.bets} apuestas · ${formatPercent(winRate)} ganadas · ${state.stats.jackpots} Cero Dorado`,
   );
 
-  // Deuda
-  ui.debtFill.style.width = `${debtProgress(state) * 100}%`;
-  setText(ui.debtText, state.debtPaid ? 'SALDADA' : `${formatPercent(debtProgress(state), 0)}`);
-  ui.payDebt.disabled = !canPayDebt(state);
-  ui.payDebt.hidden = state.debtPaid;
-  setText(ui.debtNote, state.debtPaid ? 'Deuda saldada. La mesa 2 llegará en un hito posterior.' : '');
-
-  // Trabajo
-  const respawn = state.work.items.length < CONFIG.work.maxItems
-    ? ` · otro en ${formatSeconds(CONFIG.work.respawnInterval - state.work.spawnTimer)}`
-    : '';
+  // Trastienda.
   const extras = [
     upgrades.tweezers > 0 ? 'pinzas' : '',
-    upgrades.bigBag > 0 ? `bolsa x${(bagMultiplier(state)).toFixed(1).replace('.', ',')}` : '',
+    upgrades.bigBag > 0 ? `bolsa x${bagMultiplier(state).toFixed(1).replace('.', ',')}` : '',
     upgrades.cleaner > 0 ? `limpieza cada ${formatSeconds(cleanerInterval(upgrades.cleaner))}` : '',
   ].filter(Boolean);
-  setText(
-    ui.workInfo,
-    `${state.work.items.length}/${CONFIG.work.maxItems} en el suelo${respawn}` +
-      (state.work.lastItem ? ` · último: ${state.work.lastItem}` : '') +
-      (extras.length ? ` · ${extras.join(', ')}` : ''),
-  );
+  setText(ui.workInfo, `${state.work.items.length}/${CONFIG.work.maxItems} en el suelo${extras.length ? ` · ${extras.join(', ')}` : ''}`);
 
-  // Ayudante
+  // Ayudante de apuestas: solo nombres de perfil, sin fracciones.
   const helperOn = hasHelper(state);
   ui.helperLocked.hidden = helperOn;
   ui.helperPanel.hidden = !helperOn;
@@ -192,32 +197,34 @@ export function render(ui: Ui, state: GameState): void {
     });
     const interval = helperInterval(upgrades.helperSpeed);
     const hBet = helperBetAmount(state);
-    const hFraction = hBet / maxBet(upgrades.maxBet);
-    const hChance = effectiveWinChance(upgrades.luck, hFraction, helperLuckBonus(upgrades.helperLuck));
+    const hChance = effectiveWinChance(upgrades.luck, hBet / maxBet(upgrades.maxBet), helperLuckBonus(upgrades.helperLuck));
     const status =
-      state.helper.lockout > 0
-        ? `BLOQUEADO ${formatSeconds(state.helper.lockout)} (perdiste un TODO)`
-        : hBet <= 0
-          ? 'Esperando fichas'
-          : `próxima en ${formatSeconds(Math.max(interval - state.helper.timer, 0))}`;
-    setText(ui.helperInfo, `Apuesta cada ${formatSeconds(interval, 2)} · gana con un ${formatPercent(hChance)} · ${status}`);
+      state.helper.lockout > 0 ? `bloqueado ${formatSeconds(state.helper.lockout)}` : hBet <= 0 ? 'esperando fichas' : `gana con un ${formatPercent(hChance)}`;
+    setText(ui.helperInfo, `Apuesta cada ${formatSeconds(interval, 2)} · ${status}`);
   }
 
-  // Tienda
-  for (const id of UPGRADE_IDS) {
-    const row = ui.shop[id];
-    const def = CONFIG.upgrades[id];
-    const unlocked = isUnlocked(state, id);
-    row.row.classList.toggle('locked', !unlocked);
-    setText(row.level, `${upgrades[id]}/${def.maxLevel}`);
-    setText(row.effect, unlocked ? (describeUpgrade(state, id) ?? '') : 'Requiere el Crupier');
-    const cost = nextCost(state, id);
-    setText(row.buy, isMaxed(state, id) ? 'MÁX' : formatNumber(cost ?? 0));
-    row.buy.disabled = !canBuy(state, id);
+  // Mejoras y puntos de aviso de las pestañas.
+  for (const id of Object.keys(DRAWERS) as DrawerId[]) {
+    let anyBuyable = false;
+    for (const upgrade of DRAWERS[id].upgrades) {
+      const row = ui.shop[upgrade];
+      const def = CONFIG.upgrades[upgrade];
+      const unlocked = isUnlocked(state, upgrade);
+      const buyable = canBuy(state, upgrade);
+      anyBuyable ||= buyable;
+      row.row.classList.toggle('locked', !unlocked);
+      row.row.classList.toggle('unaffordable', !buyable && !isMaxed(state, upgrade));
+      setText(row.level, `${upgrades[upgrade]}/${def.maxLevel}`);
+      setText(row.effect, unlocked ? describeUpgrade(state, upgrade) : 'Requiere el crupier');
+      setText(row.buy, isMaxed(state, upgrade) ? 'MÁX' : formatNumber(nextCost(state, upgrade) ?? 0));
+      row.buy.disabled = !buyable;
+    }
+    ui.drawers[id].dot.hidden = !anyBuyable;
   }
 }
 
-function describeUpgrade(state: GameState, id: UpgradeId): string | undefined {
+/** Efecto actual → siguiente de una mejora. Sin porcentajes de saldo ni de techo. */
+function describeUpgrade(state: GameState, id: UpgradeId): string {
   const lvl = state.upgrades[id];
   const maxed = isMaxed(state, id);
   const arrow = (now: string, next: string) => (maxed ? now : `${now} → ${next}`);
@@ -227,32 +234,27 @@ function describeUpgrade(state: GameState, id: UpgradeId): string | undefined {
     case 'maxBet':
       return arrow(`Techo ${formatNumber(maxBet(lvl))}`, formatNumber(maxBet(lvl + 1)));
     case 'crupier':
-      return maxed ? 'Ayudante contratado' : 'Desbloquea el ayudante';
+      return maxed ? 'Contratado' : 'Apuesta por ti';
     case 'helperSpeed':
       return arrow(`Cada ${formatSeconds(helperInterval(lvl), 2)}`, formatSeconds(helperInterval(lvl + 1), 2));
     case 'helperProfile': {
       const next = CONFIG.helper.profiles[lvl + 1];
-      return maxed || !next ? 'Todos los perfiles' : `Desbloquea ${next.name} (${formatPercent(next.fraction, 0)})`;
+      return maxed || !next ? 'Todos los perfiles' : `Desbloquea ${next.name.toLowerCase()}`;
     }
     case 'helperLuck':
       return arrow(`+${formatPercent(helperLuckBonus(lvl))}`, `+${formatPercent(helperLuckBonus(lvl + 1))}`);
     case 'jackpot':
-      return arrow(
-        `Cero Dorado ${formatPercent(jackpotChance(state.upgrades.luck, lvl), 2)}`,
-        formatPercent(jackpotChance(state.upgrades.luck, lvl + 1), 2),
-      );
+      return arrow(`Cero Dorado ${formatPercent(jackpotChance(state.upgrades.luck, lvl), 2)}`, formatPercent(jackpotChance(state.upgrades.luck, lvl + 1), 2));
     case 'dozenBet':
-      return maxed ? 'Docena desbloqueada' : `Paga 2:1 · prob. ${formatPercent(betWinChance('dozen', state.upgrades.luck, 0))} sin riesgo`;
+      return maxed ? 'Docena desbloqueada' : 'Desbloquea la docena (2:1)';
+    case 'numberBet':
+      return maxed ? 'Número desbloqueado' : 'Desbloquea el número (35:1)';
     case 'tweezers':
-      return maxed ? 'Recoges 2 objetos por clic' : 'Recoge 2 objetos por clic';
+      return maxed ? '2 objetos por clic' : 'Recoge 2 por clic';
     case 'bigBag':
       return arrow(`Valor x${bagFactor(lvl)}`, `x${bagFactor(lvl + 1)}`);
     case 'cleaner':
-      return lvl === 0
-        ? `Recoge solo cada ${formatSeconds(cleanerInterval(1))}`
-        : arrow(`Cada ${formatSeconds(cleanerInterval(lvl))}`, formatSeconds(cleanerInterval(lvl + 1)));
-    case 'numberBet':
-      return maxed ? 'Número desbloqueado' : `Paga 35:1 · prob. ${formatPercent(betWinChance('number', state.upgrades.luck, 0))} sin riesgo`;
+      return lvl === 0 ? `Recoge solo cada ${formatSeconds(cleanerInterval(1))}` : arrow(`Cada ${formatSeconds(cleanerInterval(lvl))}`, formatSeconds(cleanerInterval(lvl + 1)));
   }
 }
 

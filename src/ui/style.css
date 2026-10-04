@@ -176,34 +176,85 @@ kbd {
 .debt-bar { height: 5px; background: #0a0908; border: 1px solid var(--line); }
 .debt-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--blood), var(--rust)); }
 
-/* Panel provisional con los controles antiguos (lo sustituyen el tapete y los cajones). */
-.temp-toggle { position: absolute; right: 6px; top: 24px; }
-.temp-panel {
+/* Nota del HUD (deuda saldada, ranking): centrada bajo la barra, se desvanece sola. */
+.hud-note {
   position: absolute;
-  right: 6px;
-  top: 40px;
-  bottom: 6px;
-  width: 300px;
-  overflow: auto;
-  padding: 6px;
-  font-size: 11px;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  font-size: 12px;
+  color: var(--green);
+  background: rgba(5, 4, 3, 0.8);
+  border: 1px solid #2a2219;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  white-space: nowrap;
 }
-.temp-panel .panel { margin-bottom: 6px; }
-.temp-panel table { width: 100%; border-collapse: collapse; }
-.temp-panel td { padding: 1px 2px; border-top: 1px solid var(--line); }
-.temp-panel .effect { font-size: 10px; }
-.temp-panel .level { color: var(--muted); white-space: nowrap; text-align: center; }
-.last-spin { padding: 2px 4px; border: 1px solid var(--line); background: #0f0e0b; }
-.last-spin[data-outcome='gana'] { border-color: var(--green); }
-.last-spin[data-outcome='pierde'] { border-color: var(--blood); }
-.last-spin[data-outcome='jackpot'] { border-color: var(--gold); color: var(--gold); }
-.spin-log { margin: 2px 0 0; padding-left: 14px; font-size: 10px; color: var(--muted); }
-.spin-log .gana { color: #8fa86a; }
-.spin-log .pierde { color: #a86a62; }
-.spin-log .jackpot { color: var(--gold); }
-.bet.black { background: #050505; }
-.bet.white { background: var(--bone); color: #111; }
-.temp-panel input[type='number'] { width: 36px; font: inherit; background: #0f0c09; color: var(--text); border: 1px solid #3a3022; }
+.hud-note.show { opacity: 1; }
+
+/* Cajones laterales: colapsados por defecto (pestaña de 20 px); abiertos, 140 px en total sobre la escena. */
+.drawer {
+  position: absolute;
+  top: 22px;
+  bottom: 4px;
+  display: flex;
+  align-items: flex-start;
+  z-index: 10;
+}
+.drawer.left { left: 0; }
+.drawer.right { right: 0; }
+.drawer-tab {
+  position: relative;
+  width: 20px;
+  height: 64px;
+  margin-top: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid #6b5428;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+.drawer-tab span { writing-mode: vertical-rl; }
+.drawer.left .drawer-tab span { transform: rotate(180deg); }
+.drawer-tab .dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  background: var(--gold);
+  border: 1px solid #0b0908;
+}
+.drawer-body {
+  /* 120 de cuerpo + 20 de pestaña = 140 px como mucho sobre la escena. */
+  width: 120px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 5px 6px;
+  scrollbar-width: thin;
+}
+.drawer[data-open='false'] .drawer-body { display: none; }
+.drawer-sub { margin-top: 6px; }
+.small-text { font-size: 10px; margin: 2px 0; }
+.shop-row { padding: 2px 0 3px; border-top: 1px solid var(--line); }
+.shop-row:first-of-type { border-top: 0; }
+.shop-line { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.shop-row .name { font-size: 11px; }
+.shop-row .level { color: var(--muted); font-size: 10px; }
+.shop-row .effect { font-size: 10px; color: var(--muted); line-height: 1; }
+.shop-row .buy { min-width: 30px; padding: 0 2px; }
+.shop-row.unaffordable { opacity: 0.45; }
+.shop-row.locked .name { color: var(--dim); }
+.profiles { gap: 2px; }
+.stats-toggle { margin-top: 6px; width: 100%; text-align: left; }
+.stats { font-size: 10px; margin-top: 3px; line-height: 1.1; }
 
 /* Filtro CRT sobre todo el escenario. Las unidades son píxeles del juego: 1 scanline cada 2. */
 .crt {

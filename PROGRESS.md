@@ -43,7 +43,7 @@ simulaciones largas si no han cambiado los números.
 - [x] M3.7 escena, HUD/cajones, pestaña 3, transición, cartel "Mesa 2 saldada"
 - [x] M3.8 diálogo del Barman (pendiente de revisión)
 - [x] M3.9 servidor v6 (validación estructural de la mesa 3)
-- [ ] M3.9b `shared/plausibility.json` regenerada (~20 min, `npx tsx sim/plausibility.ts`) y `cd server && ./mvnw test`: EN MARCHA. Si la sesión se corta, repetir ambos y hacer commit.
+- [x] M3.9b `shared/plausibility.json` regenerada (2.100 partidas en 817 s) · 208 tests de cliente y 26 de servidor en verde.
 - [x] M3.10 docs (GAME_DESIGN 4c, README) y resumen final aquí
 
 ## Diseño de la mesa 3 (decisiones propias)

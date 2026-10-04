@@ -16,8 +16,6 @@ import {
 import {
   buyDiceUpgrade,
   canBuyDice,
-  collectDiceItem,
-  diceItemValue,
   diceNextCost,
   dicePassiveRate,
   ghostLuckBonus,
@@ -55,7 +53,7 @@ export interface DiceRunResult {
   phaseStart: Record<Phase, number | null>;
   bankruptcies: Record<Phase, number>;
   reachedPhase: Record<Phase, boolean>;
-  earned: { work: number; dice: number; jackpot: number; passive: number };
+  earned: { dice: number; jackpot: number; passive: number };
   rolls: { player: number; helper: number };
   rerolls: number;
   rerollWins: number;
@@ -99,7 +97,7 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
     phaseStart: { inicio: 0, media: null, alta: null, final: null },
     bankruptcies: { inicio: 0, media: 0, alta: 0, final: 0 },
     reachedPhase: { inicio: true, media: false, alta: false, final: false },
-    earned: { work: 0, dice: 0, jackpot: 0, passive: 0 },
+    earned: { dice: 0, jackpot: 0, passive: 0 },
     rolls: { player: 0, helper: 0 },
     rerolls: 0,
     rerollWins: 0,
@@ -112,13 +110,7 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
 
   let actionTimer = 0;
   let betTimer = player.betInterval;
-  let room: 'casino' | 'trastienda' = 'casino';
-  let switchLeft = 0;
   let seen = dice.stats.rolls;
-  const goTo = (next: typeof room) => {
-    room = next;
-    switchLeft = player.roomSwitchSeconds;
-  };
 
   let jackpotTotal = 0;
   /** Contabiliza las tiradas nuevas (las del ayudante ya llegan cerradas). */
@@ -178,10 +170,6 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
     selectGhostProfile(dice, Math.min(strategy.ghostProfile(state), dice.upgrades.helperProfile));
 
     betTimer += player.dt;
-    if (switchLeft > 0) {
-      switchLeft -= player.dt;
-      continue;
-    }
     actionTimer += player.dt;
     if (actionTimer < player.actionInterval) continue;
     actionTimer -= player.actionInterval;
@@ -199,20 +187,6 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
     }
 
     const wanted = strategy.chooseRoll(state);
-    const items = dice.work.items.length;
-    const trashWorthIt = diceCeiling(dice) <= player.ignoreTrashAboveCeiling;
-    if (room === 'casino') {
-      if ((trashWorthIt && items >= player.collectAtItems) || (!wanted && items > 0)) {
-        goTo('trastienda');
-        continue;
-      }
-    } else {
-      if (items > 0 && (trashWorthIt || !wanted)) {
-        const top = dice.work.items.reduce((a, b) => (diceItemValue(dice, b.kind) > diceItemValue(dice, a.kind) ? b : a));
-        collectDiceItem(dice, top.id);
-      } else if (wanted) goTo('casino');
-      continue;
-    }
     if (wanted && betTimer >= player.betInterval) {
       const chip = diceChips(dice).find((c) => c.index === wanted.chipIndex);
       if (!chip?.affordable) continue;
@@ -227,13 +201,12 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
   result.time = dice.playTime;
   result.finished = dice.balance >= CONFIG.dice.debt.amount;
   result.passive.end = dicePassiveRate(state);
-  result.earned.work = dice.stats.workEarned;
   result.earned.passive = dice.stats.passiveEarned;
   result.jackpots = dice.stats.jackpots;
   result.earned.jackpot = jackpotTotal;
   // Neto de los dados (sin jackpot): lo ganado en total menos el resto de fuentes.
   const totalGain = dice.balance - startBalance + spent;
-  result.earned.dice = totalGain - result.earned.work - result.earned.passive - result.earned.jackpot;
+  result.earned.dice = totalGain - result.earned.passive - result.earned.jackpot;
   return result;
 }
 

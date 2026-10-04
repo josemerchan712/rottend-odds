@@ -2,9 +2,38 @@
 
 Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
-no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDrive).
+no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
-## Sesión actual (bloques 0-3: comprobaciones y push, regeneración rápida y mesa 3, mesa 4, cierre)
+## Sesión 5 (bloques 1-6: sin trastienda en 2-4, auditoría de ayudantes, texto nítido, mesa 5, publicación, sonido)
+
+Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con force.
+
+### Hecho
+
+- [x] **B1 Sin trastienda en las mesas 2-4.** Fuera puerta, Tab, basura, jugador, aprendices y mejoras de
+  trabajo (código, provisionales, assets y entradas del pipeline de las mesas 2-4; la mesa 1 intacta).
+  - Suelo del pasivo `conversion.floor = 1`/s en las mesas 2-4 (`max(suelo, k·√ingreso)`); test
+    `tests/floor.test.ts`: con saldo 0 la apuesta mínima llega en ≤ 10 s y un ayudante agresivo nunca
+    deja la mesa más de 10 s sin poder apostar.
+  - Guardado v8: la migración borra `work` y las mejoras de trabajo y devuelve su coste en la moneda de
+    cada mesa (test). shared/config.json v8 y servidor (fixtures y tests a v8; la validación de basura
+    ya era solo de la mesa 1). plausibility.json regenerado.
+  - Recalibración (200 partidas, sin basura): mesa 2 (d) 11:51 con tramo final de 18 s → **techo máximo
+    nivel 11 → 10**: 12:23 y tramo 47 s. Mesa 3 (d) 13:38, tramo 1:01; mesa 4 (d) 12:25, tramo 1:01:
+    sin cambios. Mesas 1-4 ≈ 46 min.
+  - Decisión: los diálogos de entrar/salir de la trastienda de las mesas 2-4 quedan vacíos (`{}`).
+
+### Pendiente
+
+- B2 auditoría de ayudantes (+N/min y "recomendado" en la interfaz)
+- B3 texto nítido (canvas a resolución física, fuente bitmap, HTML con zoom entero, CRT de tres niveles)
+- B4 mesa 5 (doble o nada, el Dueño)
+- B5 final del juego y preparación para publicar (DEPLOY.md)
+- B6 sonido (opcional)
+
+---
+
+## Sesión 4 (bloques 0-3: comprobaciones y push, regeneración rápida y mesa 3, mesa 4, cierre)
 
 ### Hecho
 
@@ -126,14 +155,7 @@ descarta (o clic en las zonas del tapete y en la última carta).
 Mismo estilo que los anteriores (pixel art de terror, contorno negro, paleta verde enfermizo, óxido y
 rojo seco, fondo magenta plano para los sprites):
 
-| Asset | Archivo | Tamaño | Prompt de Nano Banana |
-|---|---|---|---|
-| Trastienda de la mesa 4 | `assets/raw/trastienda4.*` (el pipeline lo detecta) | 640x360 (o 16:9 mayor) | "Pixel art 16:9, trastienda de un salón de blackjack abandonado en un casino de terror: mesa de barajar con mazos y cartas desparramadas, cajas de fichas volcadas, ceniceros con puros, cortinas rojas raídas, puerta metálica oxidada a la izquierda, suelo de madera manchado, luz roja tenue de una bombilla, telarañas, paleta verde enfermizo, óxido y rojo seco, sin personajes" |
-| Basura de la mesa 4 (6) | hoja magenta de 6 paneles → `assets/sprites/trash4/<id>.png` (ceniza, carta, ficha, mazo, propina, anillo) | 32x32 cada uno | "Pixel art, hoja de 6 objetos sueltos separados en paneles sobre fondo magenta plano: cenizas de puro con colilla, carta de póker suelta boca abajo y doblada, ficha de casino negra, mazo de cartas atascado con una goma, montoncito de fichas de propina, anillo de sello de oro con piedra roja; estilo terror, contorno negro grueso, sin texto" |
-| Repartidor (ayudante de limpieza) | hoja magenta de 2 frames → `assets/sprites/cards-dealer/walk-1.png`, `walk-2.png` | 64x64 | "Pixel art, chico repartidor de cartas zombi con chaleco y visera verde, llevando un mazo, caminando de lado, 2 frames de animación, fondo magenta plano, estilo terror, contorno negro" |
-| (Mesa 3) Trastienda del bar | `assets/raw/trastienda3.*` | 640x360 | "Pixel art 16:9, trastienda de un bar abandonado de casino de terror: fregadero con platos sucios, cajas de botellas, barril, estantes con vasos, suelo de baldosas manchado, puerta metálica a la izquierda, luz ámbar, paleta verde enfermizo, óxido y rojo seco" |
-| (Mesa 3) Basura (6) | hoja magenta → `assets/sprites/trash3/<id>.png` (servilleta, vaso, botella, copa, propina, dentadura) | 32x32 | "Pixel art, 6 objetos sueltos en paneles sobre fondo magenta plano: servilleta manchada, vaso sucio, botella vacía tumbada, copa rota, billetes de propina doblados, dentadura de oro; estilo terror, contorno negro" |
-| (Mesa 3) Friegaplatos | hoja magenta de 2 frames → `assets/sprites/busboy/` | 64x64 | "Pixel art, chico friegaplatos zombi con delantal y trapo, caminando de lado, 2 frames, fondo magenta plano" |
+(Ninguno de la mesa 4: eran la trastienda, su basura y el repartidor, que la sesión 5 quitó.)
 
 Pendientes de antes: idle del jugador; ruleta con bola y marcador aparte.
 
@@ -279,8 +301,7 @@ min; atajos Q W E R T para los objetivos.
 
 ### Assets que faltan (provisionales; tamaños y prompts en GAME_DESIGN 8.1)
 
-Trastienda del bar (640x360), 6 objetos de basura de la mesa 3 (32x32), friegaplatos (64x64, 2
-frames). Pendientes de antes: idle del jugador; ruleta con bola y marcador aparte.
+(Sesión 5: la trastienda de las mesas 2-4 ya no existe; sus assets ya no hacen falta.) Pendientes de antes: idle del jugador; ruleta con bola y marcador aparte.
 
 ### Problemas conocidos
 

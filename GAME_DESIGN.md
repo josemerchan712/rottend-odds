@@ -146,13 +146,13 @@ Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la c
 
 ## 4b. Mesa 2: Tragaperras (hecha)
 
-**Prestamista**: la Tragaperras viviente. **Trabajo**: limpiar las tragaperras en su trastienda. **Moneda**: monedas. **Deuda**: 10M de monedas.
+**Prestamista**: la Tragaperras viviente. **Sin trastienda ni trabajo** (solo la mesa 1 la tiene). **Moneda**: monedas. **Deuda**: 10M de monedas.
 
 ### 4b.1 Desbloqueo, pestañas y conversión
 
 - Al pagar la deuda de la mesa 1 sale el cartel **"Mesa 1 saldada"** y aparecen las **pestañas de mesa** en el HUD. Cambiar de mesa es un fundido a negro con un rótulo ("MESA 2 · LAS TRAGAPERRAS"), de ~1,5 s. El ranking de la mesa 1 no cambia.
 - La mesa 1 **sigue jugando sola** con su ayudante y su limpiador (las dos mesas se actualizan a la vez) y se puede volver a ella en cualquier momento para gastar fichas en sus mejoras.
-- **Conversión**: la mesa 2 recibe `monedas/s = k * (ingreso/s de la mesa 1)^0,5`, con **k = 0,3**. El ingreso de la mesa 1 es el **esperado** de lo que gana sola: el valor esperado de la apuesta actual de su ayudante entre su intervalo (si es positivo) más su ayudante de limpieza. Subir las mejoras de la mesa 1 (o que su ayudante rehaga saldo) sube el pasivo. El HUD de la mesa 2 lo enseña ("+88/s de la mesa 1").
+- **Conversión**: la mesa 2 recibe `monedas/s = k * (ingreso/s de la mesa 1)^0,5`, con **k = 0,3** y un **suelo de 1 moneda/s** (`max(suelo, k·√ingreso)`, igual en todas las mesas sin trastienda: con saldo 0 la apuesta mínima llega en 1 s y ningún ayudante puede dejar la mesa bloqueada). El ingreso de la mesa 1 es el **esperado** de lo que gana sola: el valor esperado de la apuesta actual de su ayudante entre su intervalo (si es positivo) más su ayudante de limpieza. Subir las mejoras de la mesa 1 (o que su ayudante rehaga saldo) sube el pasivo. El HUD de la mesa 2 lo enseña ("+88/s de la mesa 1").
 
 ### 4b.2 La máquina
 
@@ -167,77 +167,61 @@ Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la c
 - **Jackpot**: tres diamantes, **x1000** la apuesta, con **tope del 25% de la deuda** (2,5M) y **pozo progresivo**. Probabilidad: 0,1% base + hasta 0,7% por la suerte (curva L) + 0,07% por nivel de su mejora, **tope 1,5%**.
   - **Pozo** (decisión propia): el jackpot paga como mucho lo que haya en el pozo. Empieza en 50 y crece con el 15% de cada apuesta de la mesa (del jugador y del zombi); al salir el jackpot vuelve a 50. Sin pozo, x1000 con un 0,1% de probabilidad ya daba +100% de valor esperado por tirada desde el primer segundo y el jackpot era casi todo el dinero de la mesa. Con el pozo, el jackpot es el ~6% de las monedas, como pedía el diseño. La tabla de premios de la máquina enseña el pozo.
 
-### 4b.3 Trabajo: limpiar tragaperras
+### 4b.3 Sin trastienda (sesión 5)
 
-- Trastienda propia, con la misma mecánica que la de la mesa 1 (máximo 6 objetos, uno cada 2 s, el suelo empieza lleno, tecla E):
-
-| Objeto | Monedas | Frecuencia |
-|---|---|---|
-| Chicle pegado | 2 | 45% |
-| Moneda atascada | 5 | 30% |
-| Bombilla rota | 8 | 14% |
-| Cable pelado | 25 | 7% |
-| Ficha oxidada | 60 | 3,5% |
-| Llave dorada (rara) | 800 | 0,5% |
-
-- Mejoras propias: **Trapo** (2 objetos por clic), **Caja de herramientas** (+50% de valor por nivel) y **Aprendiz de limpieza** (recoge solo).
-- El trabajo es común a las dos mesas en el código (`src/game/workCore.ts`).
+- Las mesas 2 a 5 no tienen trastienda, puerta, Tab, basura, jugador, aprendiz ni mejoras de trabajo: la basura era < 1% de las monedas y solo añadía clics. La red de seguridad es el suelo del pasivo. Los guardados viejos (v7) devuelven lo que costaron esas mejoras en la moneda de su mesa.
 
 ### 4b.4 Ayudante: el empleado zombi
 
-- Juega en la máquina de al lado (sus tiradas salen como texto junto a él, o en el HUD si estás en la trastienda). Mejoras de velocidad (4 s → ~0,6 s), suerte propia (+0,5% por nivel) y perfiles: **prudente** (5% del techo, como mucho el 3% del saldo; siempre seguro), **normal** (20% / 10%) y **agresivo** (50% / 30%; solo compensa con suerte alta).
+- Juega en la máquina de al lado (sus tiradas salen como texto junto a él). Mejoras de velocidad (4 s → ~0,6 s), suerte propia (+0,5% por nivel) y perfiles: **prudente** (5% del techo, como mucho el 3% del saldo; siempre seguro), **normal** (20% / 10%) y **agresivo** (50% / 30%; solo compensa con suerte alta).
 
 ### 4b.5 Mejoras de la mesa 2 (calibradas con simulación)
 
 | Mejora | Efecto por nivel | Coste base | Crecimiento | Niveles máx. |
 |---|---|---|---|---|
 | Suerte | Probabilidad de premio (convexa hasta 97%) | 140 | 1,6 | 20 |
-| Apuesta máxima | x2,5 el techo (de 15) | 130 | 2,0 | 11 |
+| Apuesta máxima | x2,5 el techo (de 15) | 130 | 2,0 | 10 (antes 11) |
 | Empleado zombi | Desbloquea el ayudante | 800 | - | 1 |
 | Velocidad del zombi | −12% al intervalo | 500 | 1,6 | 15 |
 | Perfil del zombi | Normal y agresivo | 1.500 | 4 | 2 |
 | Suerte del zombi | +0,5% solo para el zombi | 1.200 | 1,8 | 10 |
 | Jackpot | +0,07% de probabilidad | 3.000 | 1,8 | 10 |
 | Retener carrete | Desbloquea y mejora la retención | 300 | 2,2 | 5 |
-| Trapo | 2 objetos por clic | 80 | - | 1 |
-| Caja de herramientas | +50% de valor por objeto | 60 | 2,25 | 4 |
-| Aprendiz de limpieza | Limpia solo; 4 s, −20% por nivel | 300 | 2 | 5 |
 
 La suerte y el techo cuestan mucho más que en la mesa 1 porque aquí el pasivo de la mesa 1 (~60-130 monedas/s) da capital desde el primer segundo: con los costes de la mesa 1, la tragaperras se terminaba en 2:40.
 
 ### 4b.6 Simulación (`npm run simulate:slots`, 200 partidas por estrategia)
 
-Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de la mesa 1 de la misma semilla (la mesa 1 sigue sola y alimenta la conversión). Mismo jugador que en la mesa 1: una acción cada 0,5 s, una tirada por segundo como mucho, 1,5 s por cambio de sala, tira en la sala y recoge en la trastienda.
+Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de la mesa 1 de la misma semilla (la mesa 1 sigue sola y alimenta la conversión). Mismo jugador que en la mesa 1: una acción cada 0,5 s, una tirada por segundo como mucho.
 
 | Estrategia | Media | p10 | p50 | p90 | Último tramo | Mesa 1 + 2 |
 |---|---|---|---|---|---|---|
-| (a) Ficha mínima | 41:56 | 39:45 | 41:53 | 43:58 | 5:35 | 50:15 |
-| (b) Siempre TODO | 19:20 | 13:25 | 19:17 | 25:50 | 0:19 | 27:39 |
-| (c) Ficha óptima, sin retener | 14:30 | 12:47 | 14:24 | 16:16 | 0:18 | 22:49 |
-| (d) Ficha óptima y retener cuando compensa | **12:21** | 10:50 | 12:21 | 13:54 | 0:19 | **20:39** |
+| (a) Ficha mínima | 51:05 | 48:53 | 51:09 | 53:42 | 13:05 | 59:23 |
+| (b) Siempre TODO | 20:21 | 14:10 | 20:00 | 27:46 | 0:47 | 28:40 |
+| (c) Ficha óptima, sin retener | 14:53 | 13:10 | 14:48 | 16:46 | 0:47 | 23:12 |
+| (d) Ficha óptima y retener cuando compensa | **12:23** | 10:50 | 12:22 | 13:49 | **0:47** | **20:41** |
 
-- Mesa 2 de ~12 minutos con la mejor estrategia; **mesa 1 + mesa 2 ≈ 20:40**. Último tramo (de suerte 20 a 10M) de ~20 s.
-- Ninguna estrategia trivial es mejor: siempre TODO tarda un 55% más y quiebra en casi todas las partidas en las fases media y alta.
-- **Retener** da una ventaja real (−15% de tiempo frente a no retener nunca) pero no es obligatorio: sin retener se termina igual, en 14:30.
-- Sin bancarrotas en las fases inicial y media con las estrategias (c) y (d); el **zombi prudente** no deja el saldo a 0 en ninguna fase (tampoco normal ni agresivo, gracias al límite por saldo). El zombi agresivo acaba antes (11:18 frente a 15:01 con prudente).
-- **Monedas por fuente** (d): máquina 93%, jackpot 6%, pasivo 1%, trabajo < 1%. El jackpot sale ~2,4 veces por partida y casi siempre lo recorta el pozo.
+- Mesa 2 de ~12 minutos con la mejor estrategia; **mesa 1 + mesa 2 ≈ 20:40**. Último tramo (de suerte 20 a 10M) de ~47 s (sesión 5: sin basura, el techo máximo baja del nivel 11 al 10; antes el tramo duraba ~18 s porque la apuesta máxima de 357K liquidaba la deuda en 30 tiradas).
+- Ninguna estrategia trivial es mejor: siempre TODO tarda un 64% más y quiebra en casi todas las partidas en las fases media y alta.
+- **Retener** da una ventaja real (−15% de tiempo frente a no retener nunca) pero no es obligatorio: sin retener se termina igual, en 14:53.
+- Sin bancarrotas en las fases inicial y media con las estrategias (c) y (d); el **zombi prudente** no deja el saldo a 0 en ninguna fase (tampoco normal ni agresivo, gracias al límite por saldo). El zombi agresivo acaba antes (11:33 frente a 15:49 con prudente).
+- **Monedas por fuente** (d): máquina 92%, jackpot 7%, pasivo 1%. El jackpot sale ~2,4 veces por partida y casi siempre lo recorta el pozo.
 - **La conversión importa mucho al principio**: sin pasivo (k = 0) la mesa 2 tarda 48 minutos; con él, 12. Aporta poco en total, pero es el capital inicial.
 - Una variante que además gasta las fichas de la mesa 1 en ella sale igual, porque el jugador simulado paga la mesa 1 con todo comprado: el pasivo solo sube porque el ayudante de la mesa 1 rehace saldo (de ~65 a ~130 monedas/s).
 
 ### 4b.7 Escena
 
 - **Sala**: el fondo de la mesa 2; la Tragaperras viviente (96 px) asoma la cabeza por detrás de la máquina central, con respiración y un foco verde; la máquina (200x252) con los tres carretes en su pantalla, que giran de verdad y se paran de izquierda a derecha con un pequeño rebote (0,7 / 0,95 / 1,2 s), línea de premio y destello al ganar; placa "TIRAR" y palanca (clic o Espacio); la columna de fichas; la tabla de premios con el pozo; el zombi en la máquina de la izquierda.
-- **Trastienda**: su fondo propio (taller con máquinas abiertas y cubos de monedas), su basura y el aprendiz de limpieza con pinza y cubo. La puerta está a la izquierda en las dos salas.
-- Temblor al perder una tirada grande y el CRT de siempre; el diálogo en el mismo bocadillo (a la derecha de la cabeza) o en la caja de la trastienda con el nombre "TRAGAPERRAS VIVIENTE".
+- Temblor al perder una tirada grande y el CRT de siempre; el diálogo en el mismo bocadillo (a la derecha de la cabeza).
 
 ## 4c. Mesa 3: Dados (hecha)
 
-**Prestamista**: el Barman. **Trabajo**: servir copas (recoger lo que queda en su trastienda). **Moneda**: chapas. **Deuda**: 10M de chapas.
+**Prestamista**: el Barman. **Sin trastienda ni trabajo**. **Moneda**: chapas. **Deuda**: 10M de chapas.
 
 ### 4c.1 Desbloqueo y conversión
 
 - Al pagar la deuda de la mesa 2 sale el cartel **"Mesa 2 saldada"** y aparece la pestaña **MESA 3**. Las mesas 1 y 2 siguen jugando solas con sus ayudantes.
-- **Conversión**: `chapas/s = k * (ingreso/s de la mesa 2)^0,5`, con **k = 0,3**. El ingreso de la mesa 2 es el esperado de su zombi (sin retener) y su aprendiz. Sin pasivo, la mesa 3 tarda ~57 min (la mitad no termina en una hora); con él, ~13.
+- **Conversión**: `chapas/s = k * (ingreso/s de la mesa 2)^0,5`, con **k = 0,3**. Suelo de 1 chapa/s. El ingreso de la mesa 2 es el esperado de su zombi (sin retener). Sin pasivo, la mesa 3 tarda ~57 min (la mitad no termina en una hora); con él, ~13.
 
 ### 4c.2 El juego
 
@@ -258,19 +242,6 @@ Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de
 - **Selector**: las mismas fichas de cantidades reales. Techo: 20 × 2,5^nivel.
 - **Ayudante**: el **camarero fantasma**, al otro lado de la barra. Elige el objetivo que más hace crecer su saldo con su apuesta (criterio de Kelly: por valor esperado perseguía el doble seis con apuestas grandes y hundía el saldo) y relanza el mejor dado si convierte con al menos 1/3. Perfiles prudente, normal y agresivo con límite por saldo, como en las otras mesas.
 
-### 4c.3 Trabajo: servir copas
-
-| Objeto | Chapas | Frecuencia |
-|---|---|---|
-| Servilleta manchada | 2 | 45% |
-| Vaso sucio | 5 | 30% |
-| Botella vacía | 9 | 14% |
-| Copa rota | 30 | 7% |
-| Propina | 75 | 3,5% |
-| Dentadura de oro (rara) | 1.000 | 0,5% |
-
-Mejoras: **Bandeja** (2 objetos por clic), **Carrito** (+50% de valor por nivel) y **Friegaplatos** (recoge solo).
-
 ### 4c.4 Mejoras (calibradas con simulación)
 
 | Mejora | Coste base | Crecimiento | Niveles |
@@ -282,23 +253,22 @@ Mejoras: **Bandeja** (2 objetos por clic), **Carrito** (+50% de valor por nivel)
 | Jackpot | 4.000 | 1,8 | 10 |
 | Más de 9 y doble | 300 | - | 1 |
 | Doble seis | 2.500 | - | 1 |
-| Bandeja / Carrito / Friegaplatos | 100 / 80 / 400 | - / 2,25 / 2 | 1 / 4 / 5 |
 
 ### 4c.5 Simulación (`npm run simulate:dice`)
 
-Empieza al pagar la deuda de la mesa 2 con el estado real de una partida (d) de la mesa 2 de la misma semilla (que a su vez empieza desde una (c) de la mesa 1). Mismo jugador: una acción cada 0,5 s, una tirada por segundo como mucho, 1,5 s por cambio de sala; decidir un relanzamiento gasta una acción.
+Empieza al pagar la deuda de la mesa 2 con el estado real de una partida (d) de la mesa 2 de la misma semilla (que a su vez empieza desde una (c) de la mesa 1). Mismo jugador: una acción cada 0,5 s, una tirada por segundo como mucho; decidir un relanzamiento gasta una acción.
 
-Con los números actuales (40 partidas por estrategia):
+Con los números actuales (200 partidas por estrategia, sesión 5, sin basura):
 
 | Estrategia | Media | p10 | p50 | p90 | Tramo final | Mesas 1+2+3 |
 |---|---|---|---|---|---|---|
-| (b) Par, siempre TODO | 19:16 | 16:00 | 18:40 | 24:04 | 1:58 | 40:19 |
-| (b2) Siempre doble seis, ficha óptima | 17:39 | 15:31 | 17:42 | 19:59 | 0:56 | 38:42 |
-| (c) Óptima, solo par, sin relanzar | 16:22 | 15:23 | 16:34 | 17:17 | 1:58 | 37:26 |
-| (c2) Óptima, todos los objetivos, sin relanzar | 15:52 | 15:00 | 15:49 | 17:08 | 1:20 | 36:55 |
-| (d) Óptima, todos los objetivos y relanzando | **13:57** | 12:44 | 13:49 | 15:18 | **1:00** | **35:01** |
+| (b) Par, siempre TODO | 19:34 | 16:03 | 19:26 | 24:16 | 2:00 | 39:44 |
+| (b2) Siempre doble seis, ficha óptima | 17:37 | 15:34 | 17:34 | 19:43 | 1:01 | 37:47 |
+| (c) Óptima, solo par, sin relanzar | 16:17 | 15:22 | 16:17 | 17:24 | 1:59 | 36:27 |
+| (c2) Óptima, todos los objetivos, sin relanzar | 15:24 | 14:16 | 15:19 | 16:33 | 1:11 | 35:34 |
+| (d) Óptima, todos los objetivos y relanzando | **13:38** | 12:19 | 13:30 | 15:09 | **1:01** | **33:48** |
 
-- Mesa 3 de ~14 minutos con la mejor estrategia; mesas 1+2+3 ≈ 35 min.
+- Mesa 3 de ~14 minutos con la mejor estrategia; mesas 1+2+3 ≈ 34 min. Sin basura no hizo falta tocar números.
 - **Tramo final** (de suerte 20 a 10M) de ~1 minuto: el momento de dominar el casino. Antes duraba ~6 s porque el techo llegaba a 238K y el último nivel de suerte costaba 3,2M (se compraba casi al final). Ajuste mínimo: techo máximo en el nivel 8 (30.517) y suerte con crecimiento 1,5 (base 550) para que la suerte 20 llegue antes y la duración total siga en ~14 min.
 - Ninguna estrategia trivial gana: siempre TODO quiebra en casi todas las partidas en las fases media y alta; perseguir siempre el doble seis tarda un 26% más.
 - Los relanzamientos dan una ventaja real (−12% frente a no relanzar) y no son obligatorios.
@@ -308,16 +278,15 @@ Con los números actuales (40 partidas por estrategia):
 ### 4c.6 Escena
 
 - **Bar**: el fondo de la mesa 3; el Barman (96 px) tras la barra, recortado por ella, con respiración; un tapete verde delante con los dos dados, que ruedan desde la izquierda con rebote y caras cambiando (y el dado en 3/4) y se paran en el resultado; la racha 6·6, el pozo y las cargas; los cinco objetivos (clic o Q W E R T); TIRAR (o Espacio) y ACEPTAR; la columna de fichas; el camarero fantasma a la derecha.
-- **Trastienda**: provisional (la de la mesa 1 con luz ámbar) con la basura dibujada con código y el limpiador de la mesa 1 como friegaplatos.
 
 ## 4d. Mesa 4: Blackjack (hecha)
 
-**Prestamista**: la Crupier. **Trabajo**: barajar y repartir (recoger lo que queda en su trastienda). **Moneda**: fichas negras. **Deuda**: 10M.
+**Prestamista**: la Crupier. **Sin trastienda ni trabajo**. **Moneda**: fichas negras. **Deuda**: 10M.
 
 ### 4d.1 Desbloqueo y conversión
 
 - Al pagar la deuda de la mesa 3 sale **"Mesa 3 saldada"** y la pestaña **MESA 4**. Las mesas 1 a 3 siguen solas con sus ayudantes.
-- **Conversión**: `fichas/s = k * (ingreso/s de la mesa 3)^0,5`, con **k = 0,3** (ingreso esperado del camarero, sin relanzar, y del friegaplatos). Sin pasivo la mesa 4 tarda ~33 min; con él, ~12,5.
+- **Conversión**: `fichas/s = k * (ingreso/s de la mesa 3)^0,5`, con **k = 0,3** y suelo de 1 ficha/s (ingreso esperado del camarero, sin relanzar). Sin pasivo la mesa 4 tarda ~33 min; con él, ~12,5.
 
 ### 4d.2 El juego
 
@@ -329,19 +298,6 @@ Con los números actuales (40 partidas por estrategia):
 - **Selector**: las mismas fichas de cantidades reales. Techo: 15 × 2,5^nivel (máximo 143K en el nivel 10).
 - **Ayudante**: el **esqueleto barajador**. Juega con estrategia básica (y pide con 7-7), descarta solo si se pasa y quedan al menos 2 cargas, y apuesta lo menor entre su fracción del techo, su máximo del saldo y `kelly ×` la fracción de Kelly del saldo (prudente ½, normal 1, agresivo 2): **con valor esperado negativo espera**. Agresivo (60% del techo, 40% del saldo, 2× Kelly) solo compensa cuando lo limita el techo.
 
-### 4d.3 Trabajo: barajar y repartir
-
-| Objeto | Fichas | Frecuencia |
-|---|---|---|
-| Cenizas de puro | 2 | 45% |
-| Carta suelta | 6 | 30% |
-| Ficha de otro | 11 | 14% |
-| Mazo atascado | 36 | 7% |
-| Propina | 90 | 3,5% |
-| Anillo de sello (raro) | 1.200 | 0,5% |
-
-Mejoras: **Manga ancha** (2 objetos por clic), **Faltriquera** (+50% de valor por nivel) y **Repartidor** (recoge solo).
-
 ### 4d.4 Mejoras (calibradas con simulación)
 
 | Mejora | Coste base | Crecimiento | Niveles |
@@ -351,30 +307,28 @@ Mejoras: **Manga ancha** (2 objetos por clic), **Faltriquera** (+50% de valor po
 | Esqueleto barajador | 1.200 | - | 1 |
 | Velocidad / perfil / suerte del esqueleto | 700 / 2.500 / 1.800 | 1,6 / 4 / 1,8 | 15 / 2 / 10 |
 | Jackpot | 5.000 | 1,8 | 10 |
-| Manga ancha / Faltriquera / Repartidor | 120 / 90 / 450 | - / 2,25 / 2 | 1 / 4 / 5 |
 
-### 4d.5 Simulación (`npm run simulate:cards`, 30 partidas por estrategia)
+### 4d.5 Simulación (`npm run simulate:cards`, 200 partidas por estrategia, sesión 5, sin basura)
 
 Empieza al pagar la deuda de la mesa 3 con el estado real de una partida (d) de la mesa 3 de la misma semilla. Cada decisión (repartir, pedir, plantarse, descartar, aceptar) gasta una acción del jugador (0,5 s) y entre manos pasa al menos 1 s.
 
 | Estrategia | Media | p10 | p50 | p90 | Tramo final | Mesas 1-4 |
 |---|---|---|---|---|---|---|
-| (b) Siempre TODO, estrategia básica | 15:25 | 13:54 | 15:29 | 17:17 | 1:02 | 50:31 |
-| (e) Óptima, nunca pide (no se pasa) | 13:44 | 12:58 | 13:57 | 14:43 | 1:00 | 48:50 |
-| (c) Óptima, estrategia básica, sin descartes | 13:34 | 12:59 | 13:33 | 14:22 | 1:00 | 48:40 |
-| (d) Óptima, estrategia básica y descartes | **12:42** | 11:57 | 12:42 | 13:39 | **1:02** | **47:48** |
+| (b) Siempre TODO, estrategia básica | 15:08 | 13:22 | 15:00 | 17:19 | 1:00 | 48:57 |
+| (e) Óptima, nunca pide (no se pasa) | 13:22 | 12:39 | 13:19 | 14:08 | 1:01 | 47:10 |
+| (c) Óptima, estrategia básica, sin descartes | 13:13 | 12:26 | 13:11 | 14:03 | 1:01 | 47:01 |
+| (d) Óptima, estrategia básica y descartes | **12:25** | 11:51 | 12:25 | 13:05 | **1:01** | **46:14** |
 
-- Mesa 4 de ~12,5 minutos con la mejor estrategia; tramo final de ~1 minuto; mesas 1 a 4 ≈ 48 min.
+- Mesa 4 de ~12,5 minutos con la mejor estrategia; tramo final de ~1 minuto; mesas 1 a 4 ≈ 46 min. Sin basura no hizo falta tocar números.
 - Ninguna estrategia trivial gana: siempre TODO tarda un 21% más. "Nunca pedir" casi empata con la estrategia básica sin descartes (la baraja que favorece hace que la banca se pase a menudo), pero pierde frente a la mejor.
 - Los **descartes** dan una ventaja real (−6,4% de tiempo, ~130 por partida del jugador) y no son obligatorios.
 - Sin bancarrotas en ninguna fase.
 - **Esqueleto por fase**: normal gana la fase media (8:24) y agresivo solo la alta (2:48 frente a 4:46 y 6:39); prudente es el más lento pero nunca arriesga. Ningún perfil deja el saldo a 0.
-- Fichas por fuente (d): manos 94%, jackpot 5%, pasivo 1%, trabajo < 1%.
+- Fichas por fuente (d): manos 94%, jackpot 5%, pasivo < 1%.
 
 ### 4d.6 Escena
 
 - **Sala**: el fondo de la mesa 4; la Crupier (96 px) tras la mesa, recortada por ella, con respiración; un tapete delante con las cartas de la banca y del jugador, que salen del zapato, se deslizan y **se voltean** (la de la banca boca abajo hasta que te plantas); caras dibujadas en código (papel viejo, índices, palo y una corona en las figuras) y el dorso del arte; **PEDIR, PLANTARSE, REPARTIR y ACEPTAR impresos en el propio tapete**; la última carta resaltada con una "D" para descartar; totales, manos, descartes, pozo y 7·7·7; la columna de fichas; el esqueleto a la derecha. Teclas: Espacio (repartir / plantarse), P, S, D, 1-4.
-- **Trastienda**: provisional (la de la mesa 1 con luz roja) con la basura dibujada con código y el limpiador de la mesa 1 como repartidor.
 
 ## 5. Conversión de monedas entre mesas
 
@@ -460,14 +414,6 @@ Implementado para la basura y el jugador (`npm run assets`; código en `scripts/
   - El brazo esquelético de la Tragaperras viviente conserva un halo rosado de 1 px en algunos píxeles.
   - Mesa 4: la Crupier a 96x96 con cajas a mano (la hoja trae un degradado blanco en los bordes de los paneles que unía los tres frames; se recorta por encima), el dorso de las cartas a 32x48 (las caras se dibujan con código porque la hoja solo trae A, K y 7), el esqueleto barajador a 64x64 (cuarta celda de la hoja de ayudantes) y el fondo de la mesa 4. Lo que falta, con tamaños y prompts, está en PROGRESS.md.
   - Mesa 3: el Barman a 96x96 (bloques), las 6 caras de los dados a 32x32 y el dado en 3/4 (cajas a mano), el camarero fantasma a 64x64 (tercera celda de la hoja de ayudantes; sus piernas translúcidas conservan algo de tono rosado) y el fondo de la mesa 3.
-  - **Faltan de la mesa 3 (provisionales en el juego):**
-
-| Asset | Archivo esperado | Tamaño | Provisional | Prompt sugerido |
-|---|---|---|---|---|
-| Trastienda del bar | `assets/raw/trastienda3.*` (el pipeline lo detecta solo) | 640x360 (o 16:9 mayor) | La de la mesa 1 con luz ámbar | "Pixel art 16:9, trastienda de un bar abandonado de casino de terror: fregadero con platos sucios, cajas de botellas, barril, estantes con vasos, suelo de baldosas manchado, puerta metálica a la izquierda, luz ámbar de bombilla, paleta verde enfermizo, óxido y rojo seco" |
-| Basura de la mesa 3 (6) | hoja magenta con 6 paneles, o `assets/sprites/trash3/<id>.png` (servilleta, vaso, botella, copa, propina, dentadura) | 32x32 cada uno | Dibujada con código | "Pixel art, 6 objetos sueltos sobre fondo magenta plano: servilleta manchada, vaso sucio, botella vacía tumbada, copa rota, billetes de propina doblados, dentadura de oro; estilo terror, contorno negro" |
-| Friegaplatos | `assets/sprites/busboy/walk-1.png` y `walk-2.png` (o hoja magenta de 2 frames) | 64x64 | El limpiador de la mesa 1 | "Pixel art, chico friegaplatos zombi con delantal y trapo, caminando de lado, 2 frames, fondo magenta plano" |
-  - Arte de la trastienda de la mesa 2 (procesado después): fondo `assets/raw/trastienda2.*` a 640x360; basura en 6 paneles con rejilla (`basura2`), troceada por cuadrícula a 32x32; la moneda atascada llena su celda con su ranura oxidada y se recorta sin quitar fondo (`keepBackground`), porque su borde no es magenta; el aprendiz (`ayudante2`) en dos frames con cajas a mano, para dejar fuera la línea de suelo que une los frames. El objeto raro es una llave dorada (antes "diente de oro", sin arte).
 
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
 
@@ -488,7 +434,7 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 Rediseño en 8 pasos (hecho). Todo vive en un escenario de 640x360 escalado por un factor entero de píxeles físicos, con los menús HTML dentro del escenario y el CRT encima de todo.
 
 - **Pantalla completa** (botón y tecla F; ajuste para pedirla al empezar).
-- **Dos salas**: el **casino** (ruleta, tapete y Encargado) y la **trastienda** (basura, jugador y limpiador). Se cambia con las puertas o con Tab, con un fundido de 0,3 s por mitad. La sala no se guarda: siempre se empieza en el casino. Las tiradas del ayudante fuera del casino se avisan en el HUD.
+- **Dos salas (solo la mesa 1)**: el **casino** (ruleta, tapete y Encargado) y la **trastienda** (basura, jugador y limpiador). Se cambia con las puertas o con Tab, con un fundido de 0,3 s por mitad. La sala no se guarda: siempre se empieza en el casino. Las tiradas del ayudante fuera del casino se avisan en el HUD.
 - **Ruleta** en el centro del casino, con anillo de casillas propio (0, Cero Dorado y 1-36 en negro y blanco hueso). La rueda se para recta y la bola cae en la casilla del resultado lógico (`src/ui/wheelMath.ts`, con tests). Debajo, la tira de las últimas tiradas.
 - **Tapete de apuestas** con zonas clicables (negro, blanco, docenas y la rejilla de números; candados en lo bloqueado) y un tooltip con pago, probabilidad y valor esperado. Al lado, la columna de **fichas** con cantidades reales (3.1).
 - **El Encargado detrás de la mesa** (96 px), con respiración y un giro de cabeza hacia la rueda en cada tirada; su sprite según la fase (0-33% calmado, 33-66% inquieto, 66-100% deformado).
@@ -541,9 +487,9 @@ Estado: ✅ hecho · 🔲 pendiente.
    - ✅ **Rediseño de la interfaz en 8 pasos**: pantalla completa, dos salas, tapete y selector con cantidades reales, cajones laterales, el Encargado detrás de la mesa, diálogo conectado a la escena, simulación con coste de cambiar de sala (mesa 1 ≈ 8:18 con (c), sin tocar números) y documentación (3.1, 9.2, 9.3).
 7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
 8. ✅ **Deuda y paso a la mesa 2**: pago, cartel "Mesa 1 saldada", pestañas, transición, conversión de monedas y guardado v5 (con migración desde v4; el servidor acepta v5 con validación estructural de la mesa 2).
-   - ✅ **Mesa 4 (blackjack)** jugable completa (ver 4d): baraja real que favorece según la suerte (tabla calibrada), descartes, jackpot 7-7-7 con pozo, barajar y repartir, esqueleto barajador con criterio de Kelly, la Crupier con diálogo (pendiente de revisión), guardado v7. Faltan arte de su trastienda, su basura y el repartidor (provisionales).
-   - ✅ **Mesa 3 (dados)** jugable completa (ver 4c): objetivos con el mismo VE base, relanzamientos, jackpot de tres dobles seises con racha visible y pozo, servir copas, camarero fantasma, el Barman con diálogo (pendiente de revisión), guardado v6. Faltan arte de su trastienda, su basura y el friegaplatos (provisionales).
-   - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, trabajo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Su trastienda, su basura y el aprendiz ya tienen arte.
+   - ✅ **Mesa 4 (blackjack)** jugable completa (ver 4d): baraja real que favorece según la suerte (tabla calibrada), descartes, jackpot 7-7-7 con pozo, esqueleto barajador con criterio de Kelly, la Crupier con diálogo (pendiente de revisión), guardado v7. Sin trastienda desde la sesión 5.
+   - ✅ **Mesa 3 (dados)** jugable completa (ver 4c): objetivos con el mismo VE base, relanzamientos, jackpot de tres dobles seises con racha visible y pozo, camarero fantasma, el Barman con diálogo (pendiente de revisión), guardado v6. Sin trastienda desde la sesión 5.
+   - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Sin trastienda desde la sesión 5.
 9. 🔲 Mesa 5 (de la 2 a la 4 ya están), reutilizando el sistema de suerte, mejoras y prestamistas.
 10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.
 

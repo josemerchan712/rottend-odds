@@ -17,10 +17,8 @@ import {
 import {
   buySlotUpgrade,
   canBuySlot,
-  collectSlotItem,
   passiveRate,
   selectZombieProfile,
-  slotItemValue,
   slotNextCost,
   zombieLuckBonus,
 } from '../src/game/slots/table';
@@ -34,7 +32,7 @@ import { STRATEGIES } from './strategies';
  * Simulación de la mesa 2: empieza en el momento en que se paga la deuda de la mesa 1 (con el
  * estado real de una partida de la estrategia (c) de la mesa 1) y juega la tragaperras hasta
  * reunir 10M de monedas. La mesa 1 sigue sola con su ayudante y su limpiador, y alimenta la
- * conversión. Mismo jugador que en la mesa 1: una acción cada 0,5 s, salas con 1,5 s por cambio.
+ * conversión. Mismo jugador que en la mesa 1: una acción cada 0,5 s, sin trastienda (no hay basura en las mesas 2 a 4).
  */
 export interface SlotStrategy {
   id: string;
@@ -59,7 +57,7 @@ export interface SlotRunResult {
   firstLuckTime: number | null;
   bankruptcies: Record<Phase, number>;
   reachedPhase: Record<Phase, boolean>;
-  earned: { work: number; machine: number; jackpot: number; passive: number };
+  earned: { machine: number; jackpot: number; passive: number };
   lost: number;
   spins: { player: number; helper: number; held: number };
   jackpots: number;
@@ -108,7 +106,7 @@ export function runSlots(strategy: SlotStrategy, seed: number, player: PlayerMod
     firstLuckTime: null,
     bankruptcies: { inicio: 0, media: 0, alta: 0, final: 0 },
     reachedPhase: { inicio: true, media: false, alta: false, final: false },
-    earned: { work: 0, machine: 0, jackpot: 0, passive: 0 },
+    earned: { machine: 0, jackpot: 0, passive: 0 },
     lost: 0,
     spins: { player: 0, helper: 0, held: 0 },
     jackpots: 0,
@@ -122,13 +120,7 @@ export function runSlots(strategy: SlotStrategy, seed: number, player: PlayerMod
 
   let actionTimer = 0;
   let betTimer = player.betInterval;
-  let room: 'casino' | 'trastienda' = 'casino';
-  let switchLeft = 0;
   let seen = slots.stats.spins;
-  const goTo = (next: typeof room) => {
-    room = next;
-    switchLeft = player.roomSwitchSeconds;
-  };
 
   const record = () => {
     const count = Math.min(slots.stats.spins - seen, CONFIG.tech.recentSpins);
@@ -160,9 +152,8 @@ export function runSlots(strategy: SlotStrategy, seed: number, player: PlayerMod
 
   while (slots.playTime < player.timeLimit) {
     const passiveBefore = slots.stats.passiveEarned;
-    const tick = updateGame(state, player.dt, rng);
+    updateGame(state, player.dt, rng);
     result.earned.passive += slots.stats.passiveEarned - passiveBefore;
-    for (const c of tick.slots.cleaned) result.earned.work += c.value;
     record();
     if (slots.balance >= CONFIG.slots.debt.amount) break;
 
@@ -205,29 +196,11 @@ export function runSlots(strategy: SlotStrategy, seed: number, player: PlayerMod
     }
 
     betTimer += player.dt;
-    if (switchLeft > 0) {
-      switchLeft -= player.dt;
-      continue;
-    }
     actionTimer += player.dt;
     if (actionTimer < player.actionInterval) continue;
     actionTimer -= player.actionInterval;
 
     const wanted = strategy.chooseSpin(state);
-    const items = slots.work.items.length;
-    const trashWorthIt = slotCeiling(slots) <= player.ignoreTrashAboveCeiling;
-    if (room === 'casino') {
-      if ((trashWorthIt && items >= player.collectAtItems) || (!wanted && items > 0)) {
-        goTo('trastienda');
-        continue;
-      }
-    } else {
-      if (items > 0 && (trashWorthIt || !wanted)) {
-        const top = slots.work.items.reduce((a, b) => (slotItemValue(slots, b.kind) > slotItemValue(slots, a.kind) ? b : a));
-        for (const c of collectSlotItem(slots, top.id)) result.earned.work += c.value;
-      } else if (wanted) goTo('casino');
-      continue;
-    }
     if (wanted && betTimer >= player.betInterval) {
       const chip = slotChips(slots).find((c) => c.index === wanted.chipIndex);
       if (!chip?.affordable) continue;

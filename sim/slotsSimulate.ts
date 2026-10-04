@@ -70,19 +70,17 @@ table(
 
 section('De dónde salen las monedas (bruto), jackpot y retención');
 table(
-  ['Estrategia', 'Trabajo', 'Máquina', 'Jackpot', 'Pasivo', 'Jackpots/partida', 'Con tope', 'Retenidas', 'Pasivo/s inicio→fin'],
+  ['Estrategia', 'Máquina', 'Jackpot', 'Pasivo', 'Jackpots/partida', 'Con tope', 'Retenidas', 'Pasivo/s inicio→fin'],
   strategies.map((s) => {
     const r = results.get(s)!;
-    const work = sum(r.map((x) => x.earned.work));
     const machine = sum(r.map((x) => x.earned.machine));
     const jackpot = sum(r.map((x) => x.earned.jackpot));
     const passive = sum(r.map((x) => x.earned.passive));
-    const total = work + machine + jackpot + passive;
+    const total = machine + jackpot + passive;
     const spins = sum(r.map((x) => x.spins.player + x.spins.helper));
     const jackpots = sum(r.map((x) => x.jackpots));
     return [
       s.label,
-      pct(work / total),
       pct(machine / total),
       pct(jackpot / total),
       pct(passive / total),

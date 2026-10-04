@@ -19,10 +19,8 @@ import { handTotal } from '../src/game/cards/rules';
 import {
   buyCardsUpgrade,
   canBuyCards,
-  cardsItemValue,
   cardsNextCost,
   cardsPassiveRate,
-  collectCardsItem,
   selectSkeletonProfile,
   skeletonLuckBonus,
 } from '../src/game/cards/table';
@@ -62,7 +60,7 @@ export interface CardsRunResult {
   phaseStart: Record<Phase, number | null>;
   bankruptcies: Record<Phase, number>;
   reachedPhase: Record<Phase, boolean>;
-  earned: { work: number; cards: number; jackpot: number; passive: number };
+  earned: { cards: number; jackpot: number; passive: number };
   hands: { player: number; helper: number; wins: number; pushes: number };
   discards: number;
   jackpots: number;
@@ -101,7 +99,7 @@ export function runCards(strategy: CardsStrategy, seed: number, player: PlayerMo
     phaseStart: { inicio: 0, media: null, alta: null, final: null },
     bankruptcies: { inicio: 0, media: 0, alta: 0, final: 0 },
     reachedPhase: { inicio: true, media: false, alta: false, final: false },
-    earned: { work: 0, cards: 0, jackpot: 0, passive: 0 },
+    earned: { cards: 0, jackpot: 0, passive: 0 },
     hands: { player: 0, helper: 0, wins: 0, pushes: 0 },
     discards: 0,
     jackpots: 0,
@@ -111,16 +109,10 @@ export function runCards(strategy: CardsStrategy, seed: number, player: PlayerMo
 
   let actionTimer = 0;
   let sinceHand = player.betInterval;
-  let room: 'casino' | 'trastienda' = 'casino';
-  let switchLeft = 0;
   let seenHands = 0;
   let jackpotTotal = 0;
   let spent = 0;
   const startBalance = cards.balance;
-  const goTo = (next: typeof room) => {
-    room = next;
-    switchLeft = player.roomSwitchSeconds;
-  };
 
   /** Contabiliza las manos resueltas nuevas. */
   const record = () => {
@@ -183,10 +175,6 @@ export function runCards(strategy: CardsStrategy, seed: number, player: PlayerMo
     }
 
     sinceHand += player.dt;
-    if (switchLeft > 0) {
-      switchLeft -= player.dt;
-      continue;
-    }
     actionTimer += player.dt;
     if (actionTimer < player.actionInterval) continue;
     actionTimer -= player.actionInterval;
@@ -204,20 +192,6 @@ export function runCards(strategy: CardsStrategy, seed: number, player: PlayerMo
     }
 
     const chip = strategy.chooseChip(state);
-    const items = cards.work.items.length;
-    const trashWorthIt = cardsCeiling(cards) <= player.ignoreTrashAboveCeiling;
-    if (room === 'casino') {
-      if ((trashWorthIt && items >= player.collectAtItems) || (chip === null && items > 0)) {
-        goTo('trastienda');
-        continue;
-      }
-    } else {
-      if (items > 0 && (trashWorthIt || chip === null)) {
-        const top = cards.work.items.reduce((a, b) => (cardsItemValue(cards, b.kind) > cardsItemValue(cards, a.kind) ? b : a));
-        collectCardsItem(cards, top.id);
-      } else if (chip !== null) goTo('casino');
-      continue;
-    }
     if (chip !== null && sinceHand >= player.betInterval) {
       const amount = cardsChips(cards).find((c) => c.index === chip);
       if (!amount?.affordable) continue;
@@ -233,11 +207,10 @@ export function runCards(strategy: CardsStrategy, seed: number, player: PlayerMo
   result.passive.end = cardsPassiveRate(state);
   result.discards = cards.stats.discards;
   result.jackpots = cards.stats.jackpots;
-  result.earned.work = cards.stats.workEarned;
   result.earned.passive = cards.stats.passiveEarned;
   result.earned.jackpot = jackpotTotal;
   const totalGain = cards.balance - startBalance + spent;
-  result.earned.cards = totalGain - result.earned.work - result.earned.passive - result.earned.jackpot;
+  result.earned.cards = totalGain - result.earned.passive - result.earned.jackpot;
   return result;
 }
 

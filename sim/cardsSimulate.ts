@@ -66,18 +66,16 @@ table(
 
 section('De dónde salen las fichas (neto de las manos), jackpot y descartes');
 table(
-  ['Estrategia', 'Trabajo', 'Manos', 'Jackpot', 'Pasivo', 'Jackpots', 'Descartes/partida', 'Manos jugador', 'Ganadas', 'Empates', 'Pasivo/s'],
+  ['Estrategia', 'Manos', 'Jackpot', 'Pasivo', 'Jackpots', 'Descartes/partida', 'Manos jugador', 'Ganadas', 'Empates', 'Pasivo/s'],
   strategies.map((s) => {
     const r = results.get(s)!;
-    const work = sum(r.map((x) => x.earned.work));
     const cards = sum(r.map((x) => x.earned.cards));
     const jackpot = sum(r.map((x) => x.earned.jackpot));
     const passive = sum(r.map((x) => x.earned.passive));
-    const total = work + cards + jackpot + passive;
+    const total = cards + jackpot + passive;
     const hands = sum(r.map((x) => x.hands.player + x.hands.helper)) || 1;
     return [
       s.label,
-      pct(work / total),
       pct(cards / total),
       pct(jackpot / total),
       pct(passive / total),

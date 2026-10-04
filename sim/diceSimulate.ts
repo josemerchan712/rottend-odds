@@ -66,19 +66,17 @@ table(
 
 section('De dónde salen las chapas (neto de los dados), jackpot, relanzamientos y objetivos');
 table(
-  ['Estrategia', 'Trabajo', 'Dados', 'Jackpot', 'Pasivo', 'Jackpots', 'Relanz./partida', 'Convierten', ...DICE_TARGETS.map((x) => CONFIG.dice.targets[x].short), 'Pasivo/s'],
+  ['Estrategia', 'Dados', 'Jackpot', 'Pasivo', 'Jackpots', 'Relanz./partida', 'Convierten', ...DICE_TARGETS.map((x) => CONFIG.dice.targets[x].short), 'Pasivo/s'],
   strategies.map((s) => {
     const r = results.get(s)!;
-    const work = sum(r.map((x) => x.earned.work));
     const dice = sum(r.map((x) => x.earned.dice));
     const jackpot = sum(r.map((x) => x.earned.jackpot));
     const passive = sum(r.map((x) => x.earned.passive));
-    const total = work + dice + jackpot + passive;
+    const total = dice + jackpot + passive;
     const rolls = sum(r.map((x) => x.rolls.player)) || 1;
     const rerolls = sum(r.map((x) => x.rerolls));
     return [
       s.label,
-      pct(work / total),
       pct(dice / total),
       pct(jackpot / total),
       pct(passive / total),

@@ -5,7 +5,7 @@
  */
 type Painter = (px: (x: number, y: number, w: number, h: number, color: string) => void) => void;
 
-const PAINTERS: Record<string, Painter> = {
+const PAINTERS3: Record<string, Painter> = {
   // Servilleta arrugada con una mancha.
   servilleta: (px) => {
     px(10, 20, 12, 7, '#d8d0b8');
@@ -55,9 +55,56 @@ const PAINTERS: Record<string, Painter> = {
   },
 };
 
-export function provisionalTrash(): Map<string, HTMLCanvasElement> {
+/** Mesa 4: barajar y repartir. */
+const PAINTERS4: Record<string, Painter> = {
+  // Cenizas de puro con la colilla.
+  ceniza: (px) => {
+    px(9, 24, 14, 3, '#5e5a55');
+    px(11, 23, 9, 1, '#8a857d');
+    px(18, 21, 7, 3, '#6b4a2a');
+    px(24, 21, 2, 3, '#c0473d');
+  },
+  // Carta suelta boca abajo, doblada.
+  carta: (px) => {
+    px(10, 15, 12, 13, '#1d1b19');
+    px(11, 16, 10, 11, '#3f5a2e');
+    px(13, 19, 6, 5, '#cfc5a6');
+    px(15, 21, 2, 1, '#8a2f2a');
+  },
+  // Ficha de otro jugador (negra con borde).
+  ficha: (px) => {
+    px(10, 20, 12, 7, '#141110');
+    px(11, 21, 10, 5, '#2e2b28');
+    px(13, 22, 6, 3, '#d4ad48');
+    px(10, 26, 12, 1, '#000000');
+  },
+  // Mazo atascado: cartas apretadas con una goma.
+  mazo: (px) => {
+    px(10, 17, 13, 10, '#cfc5a6');
+    px(10, 18, 13, 1, '#8f8670');
+    px(10, 21, 13, 1, '#8f8670');
+    px(10, 24, 13, 1, '#8f8670');
+    px(15, 17, 2, 10, '#8a2f2a');
+  },
+  // Propina: fichas apiladas.
+  propina: (px) => {
+    px(11, 22, 10, 5, '#5e1f1b');
+    px(11, 19, 10, 3, '#8a2f2a');
+    px(11, 16, 10, 3, '#a8841f');
+    px(13, 17, 6, 1, '#f0cf55');
+  },
+  // Anillo de sello (la recompensa alta).
+  anillo: (px) => {
+    px(11, 19, 10, 8, '#a8841f');
+    px(13, 21, 6, 4, '#1d1b19');
+    px(12, 17, 8, 3, '#f0cf55');
+    px(14, 18, 4, 1, '#8a2f2a');
+  },
+};
+
+export function provisionalTrash(table: 3 | 4 = 3): Map<string, HTMLCanvasElement> {
   const out = new Map<string, HTMLCanvasElement>();
-  for (const [id, paint] of Object.entries(PAINTERS)) {
+  for (const [id, paint] of Object.entries(table === 3 ? PAINTERS3 : PAINTERS4)) {
     const canvas = document.createElement('canvas');
     canvas.width = 32;
     canvas.height = 32;

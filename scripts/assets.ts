@@ -132,10 +132,10 @@ const SHEETS: Sheet[] = [
     source: 'assets/raw/ayudantes.png.jpeg',
     outDir: 'assets/sprites/helpers',
     // Los paneles no miden lo mismo: el del brazo llega hasta x≈445 y el del zombi hasta x≈707.
-    columns: [0, 446, 708, 1022],
+    columns: [0, 446, 708, 1022, 1310],
     rows: [0, 320],
     inset: 10,
-    names: ['arm', 'zombie', 'ghost'],
+    names: ['arm', 'zombie', 'ghost', 'skeleton'],
     size: [64, 64],
   },
   {
@@ -218,6 +218,39 @@ const SHEETS: Sheet[] = [
     source: 'assets/raw/fondo-mesa3.png.jpeg',
     out: 'assets/sprites/backgrounds/mesa3.png',
     size: [640, 360],
+  },
+  {
+    // Mesa 4: el dorso de las cartas (las caras se dibujan con código: la hoja solo trae A, K y 7).
+    kind: 'boxes',
+    source: 'assets/raw/cartas.png.jpeg',
+    outDir: 'assets/sprites/cards',
+    boxes: [{ name: 'back', x: 478, y: 216, width: 212, height: 316, size: [32, 48] }],
+  },
+  {
+    // Prestamista de la mesa 4, a tamaño de escena (detrás de la mesa). Cajas a mano: la hoja trae un
+    // degradado blanco en los bordes de los paneles que une los tres frames.
+    kind: 'boxes',
+    source: 'assets/raw/crupier.png.jpeg',
+    outDir: 'assets/sprites/lender4-scene',
+    boxes: [
+      { name: 'calm', x: 40, y: 0, width: 455, height: 506, size: [96, 96] },
+      { name: 'uneasy', x: 565, y: 0, width: 455, height: 506, size: [96, 96] },
+      { name: 'deformed', x: 1100, y: 0, width: 480, height: 506, size: [96, 96] },
+    ],
+  },
+  {
+    kind: 'background',
+    source: 'assets/raw/fondo-mesa4.png.jpeg',
+    out: 'assets/sprites/backgrounds/mesa4.png',
+    size: [640, 360],
+  },
+  {
+    // Trastienda de la mesa 4: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.
+    kind: 'background',
+    source: 'assets/raw/trastienda4.*',
+    out: 'assets/sprites/backgrounds/trastienda4.png',
+    size: [640, 360],
+    optional: true,
   },
   {
     // Trastienda de la mesa 3: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.

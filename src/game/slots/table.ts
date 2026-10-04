@@ -1,5 +1,6 @@
 import { currentMaxBet } from '../betting';
 import { CONFIG, type SlotUpgradeId } from '../config';
+import { chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, type HelperChoice } from '../helperPolicy';
 import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus } from '../helper';
 import { expectedValue } from '../luck';
 import type { Rng } from '../rng';
@@ -7,7 +8,7 @@ import type { LenderPhase } from '../lender';
 import type { GameState } from '../state';
 import { WORK_DEF, bagMultiplier } from '../work';
 import { cleanerIncomeRate } from '../workCore';
-import { bestHold, slotCeiling, spinSlots } from './machine';
+import { heldWinChance, holdableReel, slotCeiling, slotWinChance, spinSlots } from './machine';
 import type { SlotSpin, SlotsState } from './state';
 
 /**
@@ -101,13 +102,42 @@ export function selectZombieProfile(slots: SlotsState, index: number): boolean {
   return true;
 }
 
-/** Apuesta del zombi: su fracción del techo, como mucho su fracción del saldo. 0 = espera. */
-export function zombieBet(slots: SlotsState): number {
-  const profile = zombieProfile(slots);
+/**
+ * Decisión del zombi con un perfil (criterio común de helperPolicy): cuánto apuesta y si retiene
+ * (la retención sube la probabilidad de premio y cuesta un extra; no cuenta el jackpot).
+ */
+export function zombieChoiceFor(slots: SlotsState, profileIndex = slots.helper.profile): HelperChoice<'tirar' | 'retener'> | null {
+  const unlocked = Math.min(slots.upgrades.helperProfile, S.helper.profiles.length - 1);
+  const profile = S.helper.profiles[Math.min(Math.max(profileIndex, 0), unlocked)];
   const ceiling = slotCeiling(slots);
-  const wanted = Math.max(Math.floor(ceiling * profile.fraction), S.bet.minBet);
-  const bet = Math.min(wanted, Math.floor(slots.balance * profile.maxBalanceFraction));
-  return bet >= S.bet.minBet ? bet : 0;
+  const bonus = zombieLuckBonus(slots.upgrades.helperLuck);
+  const canHold = slots.upgrades.hold > 0 && holdableReel(slots.helper.reels) !== null;
+  return chooseHelperBet(
+    canHold ? (['tirar', 'retener'] as const) : (['tirar'] as const),
+    (key, bet) => {
+      const base = slotWinChance(slots.upgrades.luck, bet / ceiling, bonus);
+      const held = key === 'retener';
+      const p = held ? heldWinChance(base, slots.upgrades.hold) : base;
+      const fee = held ? S.hold.feeFraction : 0;
+      return [
+        { p: p * (1 - S.tripleShare), net: S.pairPayout - 1 - fee },
+        { p: p * S.tripleShare, net: S.triplePayout - 1 - fee },
+        { p: 1 - p, net: -1 - fee },
+      ];
+    },
+    profile,
+    { balance: slots.balance, ceiling, minBet: S.bet.minBet, interval: zombieInterval(slots.upgrades.helperSpeed) },
+  );
+}
+
+/** Perfil recomendado del zombi para la suerte y el saldo de ahora. */
+export function recommendedZombieProfile(slots: SlotsState): number {
+  return recommendedProfile(Math.min(slots.upgrades.helperProfile, S.helper.profiles.length - 1), (i) => zombieChoiceFor(slots, i));
+}
+
+/** Apuesta del zombi. 0 = espera. */
+export function zombieBet(slots: SlotsState): number {
+  return zombieChoiceFor(slots)?.bet ?? 0;
 }
 
 /**
@@ -120,14 +150,15 @@ export function updateZombie(slots: SlotsState, dt: number, rng: Rng): SlotSpin[
   const interval = zombieInterval(slots.upgrades.helperSpeed);
   slots.helper.timer += dt;
   while (slots.helper.timer >= interval) {
-    const bet = zombieBet(slots);
-    if (bet <= 0) {
-      slots.helper.timer = interval;
+    const choice = zombieChoiceFor(slots);
+    if (!choice) {
+      slots.helper.timer = Math.max(interval - HELPER_RETRY_SECONDS, 0);
       break;
     }
+    const bet = choice.bet;
     slots.helper.timer -= interval;
     const bonus = zombieLuckBonus(slots.upgrades.helperLuck);
-    let hold = bestHold(slots.helper.reels, bet, slotCeiling(slots), slots.upgrades.luck, slots.upgrades.jackpot, slots.upgrades.hold, bonus, slots.pot);
+    let hold = choice.key === 'retener' ? holdableReel(slots.helper.reels) : null;
     if (hold !== null && slots.balance < bet + Math.ceil(bet * S.hold.feeFraction)) hold = null;
     const result = spinSlots(slots, { bettor: 'ayudante', bet, hold, from: slots.helper.reels, luckBonus: bonus }, rng);
     if (!result) break;

@@ -32,6 +32,7 @@ import {
   payDiceDebt,
   table2IncomeRate,
   updateDice,
+  ghostChoiceFor,
   updateGhost,
 } from '../src/game/dice/table';
 import { createInitialState } from '../src/game/state';
@@ -201,9 +202,21 @@ describe('mesa 3: desbloqueo, ayudante, conversión y guardado', () => {
   it('el camarero tira, relanza con criterio y nunca deja el saldo a 0', () => {
     const d = fresh({ balance: 40 });
     d.upgrades.ghost = 1;
+    d.upgrades.luck = 12; // con suerte 0 no tiene ventaja y espera
     for (let i = 0; i < 300; i++) updateGhost(d, 4, seededRng(i));
     expect(d.balance).toBeGreaterThan(0);
     expect(d.stats.rolls).toBeGreaterThan(0);
+  });
+
+  it('el camarero prudente no persigue el doble seis aunque tenga más valor esperado', () => {
+    const d = fresh({ balance: 1e6 });
+    d.upgrades.ghost = 1;
+    d.upgrades.luck = 15;
+    d.upgrades.maxBet = 6;
+    d.upgrades.hardTargets = 1;
+    d.upgrades.boxcars = 1;
+    expect(ghostChoiceFor(d, 0)?.key).not.toBe('boxcars');
+    expect(updateGhost(fresh({ balance: 1e6 }), 40, seededRng(1))).toHaveLength(0); // sin camarero
   });
 
   it('pasivo = k * (ingreso/s de la mesa 2)^0,5, solo con la mesa 3 abierta', () => {

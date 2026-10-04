@@ -1,7 +1,8 @@
 import { CONFIG, type DiceUpgradeId } from '../game/config';
-import { diceJackpotChance, diceLuckChance, diceMaxBet, maxRerolls, rerollInterval, targetChance } from '../game/dice/game';
+import { diceJackpotChance, diceLuckChance, diceMaxBet, maxRerolls, rerollInterval } from '../game/dice/game';
 import type { DiceState } from '../game/dice/state';
 import {
+  recommendedGhostProfile,
   canBuyDice,
   canPayDiceDebt,
   diceDebtProgress,
@@ -18,6 +19,7 @@ import {
 import type { GameState } from '../game/state';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 import { setText, TABS_HTML, type Drawer } from './render';
+import { markRecommended, renderHelperNet } from './helperMeter';
 
 /** HUD y cajones de la mesa 3, con la misma forma que los de las mesas 1 y 2. */
 export const DRAWERS3 = {
@@ -54,6 +56,7 @@ export interface Ui3 {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
+  helperNet: HTMLElement;
 }
 
 function shopRows(ids: readonly DiceUpgradeId[]): string {
@@ -107,6 +110,7 @@ export function mountUi3(root: HTMLElement): Ui3 {
             ${CONFIG.dice.helper.profiles.map((p, i) => `<button class="chip small" data-profile3="${i}">${p.name}</button>`).join('')}
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
+          <p class="small-text helper-net" data-ref="helperNet"></p>
         </div>
         ${shopRows(DRAWERS3.ayuda.upgrades)}
       </div>
@@ -143,6 +147,7 @@ export function mountUi3(root: HTMLElement): Ui3 {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile3]')],
     helperInfo: ref('helperInfo'),
+    helperNet: ref('helperNet'),
   };
 }
 
@@ -171,9 +176,9 @@ export function render3(ui: Ui3, state: GameState): void {
       b.disabled = i > upgrades.helperProfile;
       b.classList.toggle('active', CONFIG.dice.helper.profiles[i] === profile);
     });
-    const bet = ghostBet(dice);
-    const chance = targetChance('par', upgrades.luck, bet / diceMaxBet(upgrades.maxBet), ghostLuckBonus(upgrades.helperLuck));
-    setText(ui.helperInfo, `Tira cada ${formatSeconds(ghostInterval(upgrades.helperSpeed), 2)} · ${bet <= 0 ? 'esperando chapas' : `acierta par el ${formatPercent(chance)}`}`);
+    setText(ui.helperInfo, `Tira cada ${formatSeconds(ghostInterval(upgrades.helperSpeed), 2)}`);
+    renderHelperNet(ui.helperNet, 3, state.playTime, ghostBet(dice) <= 0);
+    markRecommended(ui.profileButtons, recommendedGhostProfile(dice));
   }
 
   for (const id of Object.keys(DRAWERS3) as Drawer3Id[]) {

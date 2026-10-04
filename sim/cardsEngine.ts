@@ -1,4 +1,5 @@
 import { CARD_UPGRADE_IDS, CONFIG, type CardUpgradeId } from '../src/game/config';
+import { recommendedSkeletonProfile } from '../src/game/cards/table';
 import { seededRng, type Rng } from '../src/game/rng';
 import { payDiceDebt } from '../src/game/dice/table';
 import {
@@ -244,8 +245,9 @@ function bestChip(state: GameState, withDiscards = false): number | null {
   return best?.index ?? null;
 }
 
+/** El perfil que recomienda el juego (más crecimiento esperado del saldo; ver helperPolicy). */
 function bestSkeletonProfile(state: GameState): number {
-  return state.cards.upgrades.helperProfile; // el criterio de Kelly ya limita cada perfil
+  return recommendedSkeletonProfile(state.cards);
 }
 
 function ceilingIsBinding(state: GameState): boolean {

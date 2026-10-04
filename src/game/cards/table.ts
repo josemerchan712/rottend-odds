@@ -1,6 +1,7 @@
 import { CONFIG, type CardUpgradeId } from '../config';
 import { diceCeiling, targetExpectedValue } from '../dice/game';
-import { ghostBet, ghostInterval, ghostLuckBonus, ghostTarget, hasGhost } from '../dice/table';
+import { ghostChoiceFor, ghostInterval, ghostLuckBonus, hasGhost } from '../dice/table';
+import { binaryOutcomes, chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, type HelperChoice } from '../helperPolicy';
 import type { LenderPhase } from '../lender';
 import type { Rng } from '../rng';
 import type { GameState } from '../state';
@@ -116,19 +117,30 @@ export function kellyFraction(win: number, push: number): number {
  * del saldo y `kelly` veces la fracción de Kelly del saldo. Si la mano no tiene valor esperado
  * positivo, espera (0).
  */
-export function skeletonBet(cards: CardsState): number {
-  const profile = skeletonProfile(cards);
+export function skeletonChoiceFor(cards: CardsState, profileIndex = cards.helper.profile): HelperChoice<'hand'> | null {
+  const unlocked = Math.min(cards.upgrades.helperProfile, K.helper.profiles.length - 1);
+  const profile = K.helper.profiles[Math.min(Math.max(profileIndex, 0), unlocked)];
   const ceiling = cardsCeiling(cards);
-  let bet = Math.min(Math.floor(ceiling * profile.fraction), Math.floor(cards.balance * profile.maxBalanceFraction));
-  bet = Math.max(bet, Math.min(K.bet.minBet, Math.floor(cards.balance)));
-  // Kelly con la probabilidad que tendría esa apuesta (la penalización depende de la fracción del techo).
-  for (let i = 0; i < 2; i++) {
-    const win = cardsWinChance(cards.upgrades.luck, bet / ceiling, skeletonLuckBonus(cards.upgrades.helperLuck));
-    const f = kellyFraction(win, pushChanceFor(win));
-    if (f <= 0) return 0;
-    bet = Math.min(bet, Math.floor(cards.balance * f * profile.kelly));
-  }
-  return bet >= K.bet.minBet ? bet : 0;
+  const bonus = skeletonLuckBonus(cards.upgrades.helperLuck);
+  return chooseHelperBet(
+    ['hand'] as const,
+    (_, bet) => {
+      const win = cardsWinChance(cards.upgrades.luck, bet / ceiling, bonus);
+      return binaryOutcomes(win, 1, pushChanceFor(win));
+    },
+    profile,
+    { balance: cards.balance, ceiling, minBet: K.bet.minBet, interval: skeletonInterval(cards.upgrades.helperSpeed) },
+  );
+}
+
+/** Perfil recomendado del esqueleto para la suerte y el saldo de ahora. */
+export function recommendedSkeletonProfile(cards: CardsState): number {
+  return recommendedProfile(Math.min(cards.upgrades.helperProfile, K.helper.profiles.length - 1), (i) => skeletonChoiceFor(cards, i));
+}
+
+/** Apuesta del esqueleto. 0 = espera. */
+export function skeletonBet(cards: CardsState): number {
+  return skeletonChoiceFor(cards)?.bet ?? 0;
 }
 
 /** El esqueleto juega cuando le toca: estrategia básica, descarta si se pasa (reserva común). */
@@ -140,7 +152,7 @@ export function updateSkeleton(cards: CardsState, dt: number, rng: Rng): CardHan
   while (cards.helper.timer >= interval) {
     const bet = skeletonBet(cards);
     if (bet <= 0) {
-      cards.helper.timer = interval;
+      cards.helper.timer = Math.max(interval - HELPER_RETRY_SECONDS, 0);
       break;
     }
     cards.helper.timer -= interval;
@@ -160,9 +172,10 @@ export function table3IncomeRate(state: GameState): number {
   const dice = state.dice;
   let rate = 0;
   if (hasGhost(dice)) {
-    const bet = ghostBet(dice);
+    const choice = ghostChoiceFor(dice);
+    const bet = choice?.bet ?? 0;
     if (bet > 0) {
-      const ev = targetExpectedValue(ghostTarget(dice, bet), bet, diceCeiling(dice), dice.upgrades.luck, ghostLuckBonus(dice.upgrades.helperLuck));
+      const ev = targetExpectedValue(choice!.key, bet, diceCeiling(dice), dice.upgrades.luck, ghostLuckBonus(dice.upgrades.helperLuck));
       rate += Math.max(ev, 0) / ghostInterval(dice.upgrades.helperSpeed);
     }
   }

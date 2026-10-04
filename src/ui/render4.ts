@@ -1,7 +1,8 @@
 import { CONFIG, type CardUpgradeId } from '../game/config';
-import { cardsJackpotChance, cardsLuckChance, cardsMaxBet, cardsWinChance, discardInterval, maxDiscards } from '../game/cards/game';
+import { cardsJackpotChance, cardsLuckChance, cardsMaxBet, discardInterval, maxDiscards } from '../game/cards/game';
 import type { CardsState } from '../game/cards/state';
 import {
+  recommendedSkeletonProfile,
   canBuyCards,
   canPayCardsDebt,
   cardsDebtProgress,
@@ -18,6 +19,7 @@ import {
 import type { GameState } from '../game/state';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 import { setText, TABS_HTML, type Drawer } from './render';
+import { markRecommended, renderHelperNet } from './helperMeter';
 
 /** HUD y cajones de la mesa 4, con la misma forma que los de las otras mesas. */
 export const DRAWERS4 = {
@@ -54,6 +56,7 @@ export interface Ui4 {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
+  helperNet: HTMLElement;
 }
 
 function shopRows(ids: readonly CardUpgradeId[]): string {
@@ -107,6 +110,7 @@ export function mountUi4(root: HTMLElement): Ui4 {
             ${CONFIG.cards.helper.profiles.map((p, i) => `<button class="chip small" data-profile4="${i}">${p.name}</button>`).join('')}
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
+          <p class="small-text helper-net" data-ref="helperNet"></p>
         </div>
         ${shopRows(DRAWERS4.ayuda.upgrades)}
       </div>
@@ -143,6 +147,7 @@ export function mountUi4(root: HTMLElement): Ui4 {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile4]')],
     helperInfo: ref('helperInfo'),
+    helperNet: ref('helperNet'),
   };
 }
 
@@ -172,9 +177,9 @@ export function render4(ui: Ui4, state: GameState): void {
       b.disabled = i > upgrades.helperProfile;
       b.classList.toggle('active', CONFIG.cards.helper.profiles[i] === profile);
     });
-    const bet = skeletonBet(cards);
-    const chance = cardsWinChance(upgrades.luck, Math.max(bet, 1) / cardsMaxBet(upgrades.maxBet), skeletonLuckBonus(upgrades.helperLuck));
-    setText(ui.helperInfo, `Juega cada ${formatSeconds(skeletonInterval(upgrades.helperSpeed), 2)} · ${bet <= 0 ? 'espera: sin ventaja' : `gana el ${formatPercent(chance)}`}`);
+    setText(ui.helperInfo, `Juega cada ${formatSeconds(skeletonInterval(upgrades.helperSpeed), 2)}`);
+    renderHelperNet(ui.helperNet, 4, state.playTime, skeletonBet(cards) <= 0);
+    markRecommended(ui.profileButtons, recommendedSkeletonProfile(cards));
   }
 
   for (const id of Object.keys(DRAWERS4) as Drawer4Id[]) {

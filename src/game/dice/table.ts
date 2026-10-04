@@ -1,10 +1,11 @@
-import { CONFIG, type DiceUpgradeId } from '../config';
+import { CONFIG, type DiceTarget, type DiceUpgradeId } from '../config';
 import type { LenderPhase } from '../lender';
 import type { Rng } from '../rng';
+import { binaryOutcomes, chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, RISK_WINDOW_SECONDS, type HelperChoice } from '../helperPolicy';
 import { hasZombie, zombieBet, zombieInterval, zombieLuckBonus } from '../slots/table';
 import { slotCeiling, slotExpectedValue } from '../slots/machine';
 import type { GameState } from '../state';
-import { bestReroll, closeRoll, diceCeiling, rollDice, reroll, targetChance, updateRerolls, unlockedTargets } from './game';
+import { bestReroll, closeRoll, diceCeiling, rerollInterval, rerollRescue, rollDice, reroll, targetChance, updateRerolls, unlockedTargets } from './game';
 import type { DiceRoll, DiceState } from './state';
 
 /**
@@ -102,27 +103,40 @@ export function selectGhostProfile(dice: DiceState, index: number): boolean {
   return true;
 }
 
-export function ghostBet(dice: DiceState): number {
-  const profile = ghostProfile(dice);
-  const wanted = Math.max(Math.floor(diceCeiling(dice) * profile.fraction), D.bet.minBet);
-  const bet = Math.min(wanted, Math.floor(dice.balance * profile.maxBalanceFraction));
-  return bet >= D.bet.minBet ? bet : 0;
-}
-
 /**
- * El objetivo del ayudante (criterio sencillo): el que más hace crecer su saldo con esa apuesta,
- * p·ln(1 + pago·x) + (1 − p)·ln(1 − x), con x = apuesta / saldo. Así no persigue el doble seis con
- * una apuesta grande solo porque su valor esperado sea alto.
+ * Decisión del camarero con un perfil (criterio común de helperPolicy): objetivo y apuesta. Entre
+ * objetivos gana el que más hace crecer el saldo a su fracción de Kelly, y el umbral de riesgo del
+ * perfil descarta los que, con su apuesta, pierden demasiado a menudo en 2 minutos (el doble seis
+ * con prudente). Sin contar relanzamientos ni jackpot.
  */
-export function ghostTarget(dice: DiceState, bet: number) {
+export function ghostChoiceFor(dice: DiceState, profileIndex = dice.helper.profile): HelperChoice<DiceTarget> | null {
+  const unlocked = Math.min(dice.upgrades.helperProfile, D.helper.profiles.length - 1);
+  const profile = D.helper.profiles[Math.min(Math.max(profileIndex, 0), unlocked)];
   const bonus = ghostLuckBonus(dice.upgrades.helperLuck);
   const ceiling = diceCeiling(dice);
-  const x = Math.min(bet / Math.max(dice.balance, 1), 0.999);
-  const growth = (t: ReturnType<typeof unlockedTargets>[number]) => {
-    const p = targetChance(t, dice.upgrades.luck, bet / ceiling, bonus);
-    return p * Math.log1p(CONFIG.dice.targets[t].payout * x) + (1 - p) * Math.log1p(-x);
-  };
-  return unlockedTargets(dice).reduce((best, t) => (growth(t) > growth(best) ? t : best));
+  const interval = ghostInterval(dice.upgrades.helperSpeed);
+  // Cargas por apuesta: las que se recargan más las que hay, repartidas en la ventana de riesgo.
+  const perBet = interval / rerollInterval(dice.upgrades.luck) + (dice.rerolls.charges * interval) / RISK_WINDOW_SECONDS;
+  return chooseHelperBet(
+    unlockedTargets(dice),
+    (t, bet) => {
+      const p = targetChance(t, dice.upgrades.luck, bet / ceiling, bonus);
+      const covered = Math.min(1, perBet / Math.max(1 - p, 0.01));
+      return binaryOutcomes(p + (1 - p) * rerollRescue(t) * covered, CONFIG.dice.targets[t].payout);
+    },
+    profile,
+    { balance: dice.balance, ceiling, minBet: D.bet.minBet, interval },
+  );
+}
+
+/** Perfil recomendado del camarero para la suerte y el saldo de ahora. */
+export function recommendedGhostProfile(dice: DiceState): number {
+  return recommendedProfile(Math.min(dice.upgrades.helperProfile, D.helper.profiles.length - 1), (i) => ghostChoiceFor(dice, i));
+}
+
+/** Apuesta del camarero. 0 = espera. */
+export function ghostBet(dice: DiceState): number {
+  return ghostChoiceFor(dice)?.bet ?? 0;
 }
 
 /**
@@ -135,13 +149,14 @@ export function updateGhost(dice: DiceState, dt: number, rng: Rng): DiceRoll[] {
   const interval = ghostInterval(dice.upgrades.helperSpeed);
   dice.helper.timer += dt;
   while (dice.helper.timer >= interval) {
-    const bet = ghostBet(dice);
-    if (bet <= 0) {
-      dice.helper.timer = interval;
+    const choice = ghostChoiceFor(dice);
+    if (!choice) {
+      dice.helper.timer = Math.max(interval - HELPER_RETRY_SECONDS, 0);
       break;
     }
+    const bet = choice.bet;
     dice.helper.timer -= interval;
-    const roll = rollDice(dice, { bettor: 'ayudante', target: ghostTarget(dice, bet), bet, luckBonus: ghostLuckBonus(dice.upgrades.helperLuck) }, rng);
+    const roll = rollDice(dice, { bettor: 'ayudante', target: choice.key, bet, luckBonus: ghostLuckBonus(dice.upgrades.helperLuck) }, rng);
     if (!roll) break;
     if (!roll.final) {
       const best = bestReroll(roll.target, roll.dice);

@@ -1,8 +1,9 @@
 import { maxBet } from '../game/betting';
 import { CONFIG, type UpgradeId } from '../game/config';
 import { canPayDebt, debtProgress } from '../game/debt';
-import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus, helperProfile } from '../game/helper';
-import { effectiveWinChance, jackpotChance, luckChance } from '../game/luck';
+import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus, helperProfile, recommendedHelperProfile } from '../game/helper';
+import { markRecommended, renderHelperNet } from './helperMeter';
+import { jackpotChance, luckChance } from '../game/luck';
 import type { GameState } from '../game/state';
 import { canBuy, isMaxed, isUnlocked, nextCost } from '../game/upgrades';
 import { bagMultiplier, cleanerInterval } from '../game/work';
@@ -62,6 +63,7 @@ export interface Ui {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
+  helperNet: HTMLElement;
   workInfo: HTMLElement;
 }
 
@@ -120,6 +122,7 @@ export function mountUi(root: HTMLElement): Ui {
             ${CONFIG.helper.profiles.map((p, i) => `<button class="chip small" data-profile="${i}">${p.name}</button>`).join('')}
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
+          <p class="small-text helper-net" data-ref="helperNet"></p>
         </div>
         ${shopRows(DRAWERS.ayuda.upgrades.slice(0, 4))}
         <h2 class="drawer-sub">Trastienda</h2>
@@ -162,6 +165,7 @@ export function mountUi(root: HTMLElement): Ui {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile]')],
     helperInfo: ref('helperInfo'),
+    helperNet: ref('helperNet'),
     workInfo: ref('workInfo'),
   };
 }
@@ -210,10 +214,10 @@ export function render(ui: Ui, state: GameState): void {
     });
     const interval = helperInterval(upgrades.helperSpeed);
     const hBet = helperBetAmount(state);
-    const hChance = effectiveWinChance(upgrades.luck, hBet / maxBet(upgrades.maxBet), helperLuckBonus(upgrades.helperLuck));
-    const status =
-      state.helper.lockout > 0 ? `bloqueado ${formatSeconds(state.helper.lockout)}` : hBet <= 0 ? 'esperando fichas' : `gana con un ${formatPercent(hChance)}`;
-    setText(ui.helperInfo, `Apuesta cada ${formatSeconds(interval, 2)} · ${status}`);
+    const status = state.helper.lockout > 0 ? ` · bloqueado ${formatSeconds(state.helper.lockout)}` : '';
+    setText(ui.helperInfo, `Apuesta cada ${formatSeconds(interval, 2)}${status}`);
+    renderHelperNet(ui.helperNet, 1, state.playTime, hBet <= 0);
+    markRecommended(ui.profileButtons, recommendedHelperProfile(state));
   }
 
   // Mejoras y puntos de aviso de las pestañas.

@@ -6,6 +6,20 @@ import shared from '../../shared/config.json';
  * salvo los números que también usa el servidor para validar (deuda, versión del guardado y
  * costes de las mejoras), que viven en shared/config.json y se leen desde allí.
  */
+/**
+ * Perfil de un ayudante (todas las mesas): como mucho `fraction` del techo y `maxBalanceFraction` del
+ * saldo; `kelly` veces la fracción de Kelly; `maxLossWindow` = probabilidad máxima de acabar 2 minutos
+ * en negativo (ver helperPolicy).
+ */
+export interface HelperProfileConfig {
+  id: string;
+  name: string;
+  fraction: number;
+  maxBalanceFraction: number;
+  kelly: number;
+  maxLossWindow: number;
+}
+
 export const CONFIG = {
   tech: {
     /** Clave de localStorage. */
@@ -103,10 +117,10 @@ export const CONFIG = {
      * llega a la apuesta mínima, espera. Así el ayudante nunca deja el saldo a 0.
      */
     profiles: [
-      { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03 },
-      { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1 },
-      { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3 },
-    ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number }[],
+      { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
+      { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+      { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1 },
+    ] as readonly HelperProfileConfig[],
     /** Probabilidad extra por nivel de "Suerte del ayudante" (respeta el tope). */
     luckPerLevel: 0.005,
     /** Segundos que se bloquea el ayudante cuando el jugador pierde un TODO. */
@@ -251,10 +265,10 @@ export const CONFIG = {
       speedReductionPerLevel: 0.12,
       /** Prudente: siempre seguro. Agresivo: solo compensa con suerte alta. */
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03 },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1 },
-        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3 },
-      ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number }[],
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1 },
+      ] as readonly HelperProfileConfig[],
       luckPerLevel: 0.005,
     },
     /**
@@ -320,13 +334,11 @@ export const CONFIG = {
       baseInterval: 4,
       speedReductionPerLevel: 0.12,
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03 },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1 },
-        // Agresivo: todo el techo y hasta el 60% del saldo. Con los relanzamientos, a media suerte sigue
-        // ganando a menudo, así que solo un límite por encima del de Kelly a media suerte (y por debajo
-        // del de suerte alta) hace que compense solo con suerte alta. Con 50% / 30% ganaba en todas las fases.
-        { id: 'agresivo', name: 'Agresivo', fraction: 1, maxBalanceFraction: 0.6 },
-      ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number }[],
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+        // Agresivo: todo el techo y hasta el 60% del saldo, el doble de Kelly y sin umbral de riesgo.
+        { id: 'agresivo', name: 'Agresivo', fraction: 1, maxBalanceFraction: 0.6, kelly: 2, maxLossWindow: 1 },
+      ] as readonly HelperProfileConfig[],
       luckPerLevel: 0.005,
     },
     /** Conversión: chapas/s = k * (ingreso/s de la mesa 2)^0,5. */
@@ -391,10 +403,10 @@ export const CONFIG = {
        * negativo espera. Agresivo (2× Kelly) solo compensa cuando lo limita el techo (suerte alta).
        */
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5 },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1 },
-        { id: 'agresivo', name: 'Agresivo', fraction: 0.6, maxBalanceFraction: 0.4, kelly: 2 },
-      ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number; kelly: number }[],
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.6, maxBalanceFraction: 0.4, kelly: 2, maxLossWindow: 1 },
+      ] as readonly HelperProfileConfig[],
       luckPerLevel: 0.005,
     },
     /** Conversión: fichas negras/s = k * (ingreso/s de la mesa 3)^0,5. */

@@ -203,6 +203,8 @@ describe('tragaperras: selector, mejoras y zombi', () => {
   it('el zombi apuesta su fracción del techo, limitada por el saldo, y nunca deja el saldo a 0', () => {
     const slots = { ...createSlotsState(), balance: 100 };
     slots.upgrades.zombie = 1;
+    expect(zombieBet(slots)).toBe(0); // sin suerte no tiene ventaja: espera
+    slots.upgrades.luck = 20;
     expect(zombieBet(slots)).toBe(Math.min(Math.max(Math.floor(15 * 0.05), 1), 3));
     slots.balance = 20;
     for (let i = 0; i < 200; i++) updateZombie(slots, 4, seededRng(i));

@@ -1,4 +1,5 @@
 import { CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, type DiceTarget, type DiceUpgradeId } from '../src/game/config';
+import { recommendedGhostProfile } from '../src/game/dice/table';
 import { seededRng, type Rng } from '../src/game/rng';
 import { paySlotsDebt } from '../src/game/slots/table';
 import {
@@ -18,7 +19,6 @@ import {
   canBuyDice,
   diceNextCost,
   dicePassiveRate,
-  ghostLuckBonus,
   selectGhostProfile,
 } from '../src/game/dice/table';
 import type { GameState } from '../src/game/state';
@@ -259,24 +259,9 @@ function smartReroll(state: GameState): number | null {
   return best.chance >= (full ? 1 / 6 : 1 / 3) ? best.die : null;
 }
 
+/** El perfil que recomienda el juego (más crecimiento esperado del saldo; ver helperPolicy). */
 function bestGhostProfile(state: GameState): number {
-  const dice = state.dice;
-  const ceiling = diceCeiling(dice);
-  let best = 0;
-  let bestGrowth = 0;
-  CONFIG.dice.helper.profiles.forEach((profile, i) => {
-    if (i > dice.upgrades.helperProfile) return;
-    const bet = Math.min(Math.floor(ceiling * profile.fraction), Math.floor(dice.balance * profile.maxBalanceFraction));
-    if (bet < 1) return;
-    const p = targetChance('par', dice.upgrades.luck, bet / ceiling, ghostLuckBonus(dice.upgrades.helperLuck));
-    const x = bet / dice.balance;
-    const g = p * Math.log1p(x) + (1 - p) * Math.log1p(-x);
-    if (g > bestGrowth) {
-      best = i;
-      bestGrowth = g;
-    }
-  });
-  return best;
+  return recommendedGhostProfile(state.dice);
 }
 
 function ceilingIsBinding(state: GameState): boolean {

@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { playerBet, selectBetFraction } from '../src/game/actions';
 import { maxBet } from '../src/game/betting';
 import { CONFIG } from '../src/game/config';
-import { helperInterval, selectHelperProfile, updateHelper } from '../src/game/helper';
+import { helperBetAmount, helperInterval, selectHelperProfile, updateHelper } from '../src/game/helper';
 import { seededRng } from '../src/game/rng';
 import { spin } from '../src/game/roulette';
 import { LOSE, NEGRO, WIN, stateWith } from './helpers';
 
+/** Con suerte máxima: el ayudante tiene ventaja de sobra y apuesta lo que le deja su perfil. */
 function withHelper(balance: number, fractionIndex = 3) {
   const state = stateWith({ balance, betFractionIndex: fractionIndex });
   state.upgrades.crupier = 1;
+  state.upgrades.luck = 20;
   return state;
 }
 
@@ -115,12 +117,35 @@ describe('ayudante', () => {
 
   it('su suerte propia sube su probabilidad sin pasar del tope', () => {
     const state = withHelper(1e9);
+    state.upgrades.luck = 14;
+    const [r0] = updateHelper(state, 4, LOSE);
     state.upgrades.helperLuck = 10;
     const [r] = updateHelper(state, 4, LOSE);
-    expect(r.winChance).toBeGreaterThan(0.486);
+    expect(r.winChance).toBeGreaterThan(r0.winChance);
     state.upgrades.luck = 20;
     const [r2] = updateHelper(state, 4, LOSE);
     expect(r2.winChance).toBeLessThanOrEqual(0.97);
+  });
+
+  it('sin ventaja (suerte 0, valor esperado negativo) espera en vez de perder', () => {
+    const state = withHelper(1e6);
+    state.upgrades.luck = 0;
+    state.upgrades.helperProfile = 2;
+    for (const profile of [0, 1, 2]) {
+      state.helper.profile = profile;
+      expect(updateHelper(state, 40, seededRng(2))).toHaveLength(0);
+    }
+    expect(state.balance).toBe(1e6);
+  });
+
+  it('con poca ventaja, el prudente espera y el agresivo apuesta', () => {
+    const state = withHelper(1e6);
+    state.upgrades.luck = 5;
+    state.upgrades.helperProfile = 2;
+    state.helper.profile = 0;
+    expect(helperBetAmount(state)).toBe(0);
+    state.helper.profile = 2;
+    expect(helperBetAmount(state)).toBeGreaterThan(0);
   });
 
   it('sin Crupier no hace nada', () => {

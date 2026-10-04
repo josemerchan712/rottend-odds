@@ -41,6 +41,7 @@ import {
   slotsLenderPhase,
 } from './game/slots/table';
 import { updateGame } from './game/update';
+import { helperMeters } from './ui/helperMeter';
 import { SLOT_UPGRADE_IDS, UPGRADE_IDS } from './game/config';
 import { createInitialState, type TableId } from './game/state';
 import { canSwitchTo } from './game/tables';
@@ -982,6 +983,11 @@ startLoop(
         const entered = updateRooms(rooms, dt);
         const tick = updateGame(state, dt, defaultRng);
         if (state.activeTable === 1) scene.cleanerCollected(tick.cleaned);
+        const now = state.playTime;
+        for (const r of tick.helper) helperMeters[1].add(now, r.delta);
+        for (const r of tick.slots.zombie) helperMeters[2].add(now, r.delta);
+        for (const r of tick.dice.ghost) helperMeters[3].add(now, r.delta);
+        for (const r of tick.cards.skeleton) helperMeters[4].add(now, r.delta);
         updateTableFade(state, dt);
         updateDialogue(state, dt, entered);
       }

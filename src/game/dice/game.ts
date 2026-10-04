@@ -175,6 +175,27 @@ export function bestReroll(target: DiceTarget, dice: Dice): { die: number; chanc
 const PAIRS: Dice[] = [];
 for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) PAIRS.push([a, b]);
 
+const RESCUE = new Map<DiceTarget, number>();
+
+/**
+ * Parte media de las tiradas perdidas a un objetivo que un relanzamiento convierte, contando solo
+ * los relanzamientos que hace el ayudante (los que convierten con al menos su umbral).
+ */
+export function rerollRescue(target: DiceTarget): number {
+  let r = RESCUE.get(target);
+  if (r === undefined) {
+    const pool = PAIRS.filter((p) => !hits(target, p) && !(p[0] === 6 && p[1] === 6));
+    let sum = 0;
+    for (const p of pool) {
+      const best = bestReroll(target, p);
+      if (best.chance >= D.rerolls.helperThreshold) sum += best.chance;
+    }
+    r = pool.length ? sum / pool.length : 0;
+    RESCUE.set(target, r);
+  }
+  return r;
+}
+
 function pick<T>(items: T[], rng: Rng): T {
   return items[Math.floor(rng() * items.length)];
 }

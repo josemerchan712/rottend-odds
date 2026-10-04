@@ -1,6 +1,6 @@
 import { currentMaxBet, isBetTypeUnlocked, stateChips } from '../src/game/betting';
+import { recommendedHelperProfile } from '../src/game/helper';
 import { CONFIG, type BetType, type UpgradeId } from '../src/game/config';
-import { helperLuckBonus } from '../src/game/helper';
 import { betWinChance } from '../src/game/luck';
 import type { BetChoice, GameState } from '../src/game/state';
 import type { Strategy } from './engine';
@@ -73,25 +73,9 @@ function bestBet(state: GameState): { choice: BetChoice; fractionIndex: number }
   return { choice: CHOICES[best.type], fractionIndex: best.index };
 }
 
-/** Perfil del ayudante con mayor crecimiento logarítmico (si ninguno es positivo, el más prudente). */
+/** El perfil que recomienda el juego (más crecimiento esperado del saldo; ver helperPolicy). */
 function bestHelperProfile(state: GameState): number {
-  const bonus = helperLuckBonus(state.upgrades.helperLuck);
-  const ceiling = currentMaxBet(state);
-  let best = 0;
-  let bestGrowth = 0;
-  CONFIG.helper.profiles.forEach((profile, i) => {
-    if (i > state.upgrades.helperProfile) return;
-    const bet = Math.min(Math.floor(ceiling * profile.fraction), Math.floor(state.balance * profile.maxBalanceFraction));
-    if (bet < CONFIG.bet.minBet) return;
-    const p = betWinChance('color', state.upgrades.luck, bet / ceiling, bonus);
-    const x = bet / state.balance;
-    const growth = p * Math.log1p(x) + (1 - p) * Math.log1p(-x);
-    if (growth > bestGrowth) {
-      best = i;
-      bestGrowth = growth;
-    }
-  });
-  return best;
+  return recommendedHelperProfile(state);
 }
 
 /** Guarda para una apuesta con el botón óptimo (nada si aún no compensa apostar). */

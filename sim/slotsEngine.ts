@@ -1,4 +1,5 @@
 import { CONFIG, UPGRADE_IDS, type SlotUpgradeId, type UpgradeId } from '../src/game/config';
+import { recommendedZombieProfile } from '../src/game/slots/table';
 import { payDebt } from '../src/game/debt';
 import { selectHelperProfile } from '../src/game/helper';
 import { seededRng, type Rng } from '../src/game/rng';
@@ -20,7 +21,6 @@ import {
   passiveRate,
   selectZombieProfile,
   slotNextCost,
-  zombieLuckBonus,
 } from '../src/game/slots/table';
 import type { GameState } from '../src/game/state';
 import { updateGame } from '../src/game/update';
@@ -259,25 +259,9 @@ export function bestSpin(state: GameState, allowHold: boolean): { chipIndex: num
   return best && { chipIndex: best.chipIndex, hold: best.hold };
 }
 
-/** Perfil del zombi con mayor crecimiento (el más prudente si ninguno crece). */
+/** El perfil que recomienda el juego (más crecimiento esperado del saldo; ver helperPolicy). */
 function bestZombieProfile(state: GameState): number {
-  const slots = state.slots;
-  const ceiling = slotCeiling(slots);
-  let best = 0;
-  let bestGrowth = 0;
-  CONFIG.slots.helper.profiles.forEach((profile, i) => {
-    if (i > slots.upgrades.helperProfile) return;
-    const bet = Math.min(Math.floor(ceiling * profile.fraction), Math.floor(slots.balance * profile.maxBalanceFraction));
-    if (bet < 1) return;
-    const p = slotWinChance(slots.upgrades.luck, bet / ceiling, zombieLuckBonus(slots.upgrades.helperLuck));
-    const x = bet / slots.balance;
-    const growth = p * ((1 - T) * Math.log1p(0.5 * x) + T * Math.log1p(9 * x)) + (1 - p) * Math.log1p(-x);
-    if (growth > bestGrowth) {
-      best = i;
-      bestGrowth = growth;
-    }
-  });
-  return best;
+  return recommendedZombieProfile(state.slots);
 }
 
 /** El techo solo se sube cuando limita (como en la mesa 1). */

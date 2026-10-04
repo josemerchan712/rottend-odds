@@ -1,7 +1,8 @@
 import { CONFIG, type SlotUpgradeId } from '../game/config';
-import { holdShare, slotJackpotChance, slotLuckChance, slotMaxBet, slotWinChance } from '../game/slots/machine';
+import { holdShare, slotJackpotChance, slotLuckChance, slotMaxBet } from '../game/slots/machine';
 import type { SlotsState } from '../game/slots/state';
 import {
+  recommendedZombieProfile,
   canBuySlot,
   canPaySlotsDebt,
   hasZombie,
@@ -18,6 +19,7 @@ import {
 import type { GameState } from '../game/state';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 import { setText, TABS_HTML, type Drawer } from './render';
+import { markRecommended, renderHelperNet } from './helperMeter';
 
 /**
  * HUD y cajones de la mesa 2, con la misma forma que los de la mesa 1: monedas, pestañas, deuda
@@ -58,6 +60,7 @@ export interface Ui2 {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
+  helperNet: HTMLElement;
 }
 
 function shopRows(ids: readonly SlotUpgradeId[]): string {
@@ -111,6 +114,7 @@ export function mountUi2(root: HTMLElement): Ui2 {
             ${CONFIG.slots.helper.profiles.map((p, i) => `<button class="chip small" data-profile2="${i}">${p.name}</button>`).join('')}
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
+          <p class="small-text helper-net" data-ref="helperNet"></p>
         </div>
         ${shopRows(DRAWERS2.ayuda.upgrades)}
       </div>
@@ -148,6 +152,7 @@ export function mountUi2(root: HTMLElement): Ui2 {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile2]')],
     helperInfo: ref('helperInfo'),
+    helperNet: ref('helperNet'),
   };
 }
 
@@ -176,9 +181,9 @@ export function render2(ui: Ui2, state: GameState): void {
       b.disabled = i > upgrades.helperProfile;
       b.classList.toggle('active', CONFIG.slots.helper.profiles[i] === profile);
     });
-    const bet = zombieBet(slots);
-    const chance = slotWinChance(upgrades.luck, bet / slotMaxBet(upgrades.maxBet), zombieLuckBonus(upgrades.helperLuck));
-    setText(ui.helperInfo, `Tira cada ${formatSeconds(zombieInterval(upgrades.helperSpeed), 2)} · ${bet <= 0 ? 'esperando monedas' : `premio el ${formatPercent(chance)}`}`);
+    setText(ui.helperInfo, `Tira cada ${formatSeconds(zombieInterval(upgrades.helperSpeed), 2)}`);
+    renderHelperNet(ui.helperNet, 2, state.playTime, zombieBet(slots) <= 0);
+    markRecommended(ui.profileButtons, recommendedZombieProfile(slots));
   }
 
   for (const id of Object.keys(DRAWERS2) as Drawer2Id[]) {

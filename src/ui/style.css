@@ -121,6 +121,10 @@ button.small { font-size: 10px; padding: 0 4px; }
 button.danger:hover:not(:disabled) { border-color: var(--blood); }
 button.gold:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 button.chip.active { background: #3a3220; border-color: var(--gold); color: var(--gold); }
+/* Perfil recomendado del ayudante para la suerte de ahora: una estrellita discreta. */
+button.chip.recommended::after { content: '\2605'; margin-left: 4px; font-size: 0.75em; color: var(--gold); opacity: 0.8; }
+.helper-net[data-tone='pos'] { color: #8fbf4a; }
+.helper-net[data-tone='neg'] { color: #d0503f; }
 :focus-visible { outline: 1px solid var(--gold); outline-offset: 1px; }
 
 .setting { display: flex; align-items: center; gap: 6px; margin: 6px 0; }

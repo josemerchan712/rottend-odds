@@ -318,10 +318,10 @@ export const CONFIG = {
     risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
     /**
      * Relanzamientos: cargas que da la suerte. Máximo 1 + nivel / perLevels; se recarga una cada
-     * rechargeSeconds × rechargeFactor^nivel. Tras una tirada perdida se puede gastar una para
+     * rechargeSeconds × rechargeFactor^nivel (16 s → ~3,7 s). Tras una tirada perdida se puede gastar una para
      * volver a tirar un dado (honrado). La reserva es común con el ayudante.
      */
-    rerolls: { base: 1, perLevels: 4, rechargeSeconds: 24, rechargeFactor: 0.93, helperThreshold: 1 / 3 },
+    rerolls: { base: 1, perLevels: 4, rechargeSeconds: 16, rechargeFactor: 0.93, helperThreshold: 1 / 3 },
     /**
      * Jackpot: tres dobles seises seguidos. Los dados están cargados: el doble seis sale con
      * probabilidad j^(1/3) (dentro de las tiradas ganadoras), con j de 0,1% a 1,5% como en las otras

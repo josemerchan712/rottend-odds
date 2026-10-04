@@ -38,8 +38,8 @@
   "dice": {
     "debt": { "amount": 10000000 },
     "upgrades": {
-      "luck": { "baseCost": 140, "growth": 1.6, "maxLevel": 20 },
-      "maxBet": { "baseCost": 130, "growth": 2, "maxLevel": 11 },
+      "luck": { "baseCost": 420, "growth": 1.6, "maxLevel": 20 },
+      "maxBet": { "baseCost": 350, "growth": 2, "maxLevel": 11 },
       "ghost": { "baseCost": 1000, "growth": 1, "maxLevel": 1 },
       "helperSpeed": { "baseCost": 600, "growth": 1.6, "maxLevel": 15 },
       "helperProfile": { "baseCost": 2000, "growth": 4, "maxLevel": 2 },

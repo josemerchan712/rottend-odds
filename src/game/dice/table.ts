@@ -14,7 +14,7 @@ import {
   type Collected,
   type WorkHost,
 } from '../workCore';
-import { bestReroll, closeRoll, diceCeiling, rollDice, reroll, targetExpectedValue, updateRerolls, unlockedTargets } from './game';
+import { bestReroll, closeRoll, diceCeiling, rollDice, reroll, targetChance, updateRerolls, unlockedTargets } from './game';
 import type { DiceRoll, DiceState } from './state';
 
 /**
@@ -119,13 +119,20 @@ export function ghostBet(dice: DiceState): number {
   return bet >= D.bet.minBet ? bet : 0;
 }
 
-/** El objetivo con mayor valor esperado para el ayudante (criterio sencillo). */
+/**
+ * El objetivo del ayudante (criterio sencillo): el que más hace crecer su saldo con esa apuesta,
+ * p·ln(1 + pago·x) + (1 − p)·ln(1 − x), con x = apuesta / saldo. Así no persigue el doble seis con
+ * una apuesta grande solo porque su valor esperado sea alto.
+ */
 export function ghostTarget(dice: DiceState, bet: number) {
   const bonus = ghostLuckBonus(dice.upgrades.helperLuck);
   const ceiling = diceCeiling(dice);
-  return unlockedTargets(dice).reduce((best, t) =>
-    targetExpectedValue(t, bet, ceiling, dice.upgrades.luck, bonus) > targetExpectedValue(best, bet, ceiling, dice.upgrades.luck, bonus) ? t : best,
-  );
+  const x = Math.min(bet / Math.max(dice.balance, 1), 0.999);
+  const growth = (t: ReturnType<typeof unlockedTargets>[number]) => {
+    const p = targetChance(t, dice.upgrades.luck, bet / ceiling, bonus);
+    return p * Math.log1p(CONFIG.dice.targets[t].payout * x) + (1 - p) * Math.log1p(-x);
+  };
+  return unlockedTargets(dice).reduce((best, t) => (growth(t) > growth(best) ? t : best));
 }
 
 /**

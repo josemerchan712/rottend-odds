@@ -69,6 +69,8 @@ export interface SlotRunResult {
   helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number }>;
   /** Pasivo por segundo al empezar y al terminar. */
   passive: { start: number; end: number };
+  /** Estado al terminar (para empezar la mesa 3 desde ahí). */
+  finalState: GameState;
 }
 
 const SIDE: readonly SlotUpgradeId[] = ['helperLuck', 'jackpot'];
@@ -115,6 +117,7 @@ export function runSlots(strategy: SlotStrategy, seed: number, player: PlayerMod
     table1Purchases: 0,
     helper: { inicio: empty(), media: empty(), alta: empty(), final: empty() },
     passive: { start: passiveRate(state), end: 0 },
+    finalState: state,
   };
 
   let actionTimer = 0;

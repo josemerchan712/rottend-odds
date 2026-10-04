@@ -38,7 +38,7 @@ simulaciones largas si no han cambiado los números.
 - [x] M3.2 lógica: dados, objetivos, relanzamientos, penalización, jackpot con racha y pozo; tests
 - [x] M3.3 mesa: mejoras, ayudante (camarero fantasma), trabajo, conversión desde la mesa 2, deuda; tests
 - [x] M3.4 guardado v6 + migración; activeTable 1|2|3; tests (plausibility.json pendiente de regenerar al final: su test falla hasta entonces)
-- [ ] M3.5 simulación (`npm run simulate:dice`) y calibración
+- [x] M3.5 simulación (`npm run simulate:dice`) y calibración: suerte base 420, techo base 350, recarga de relanzamientos 16 s; k = 0,3. (d) 13:41 con 30 partidas; el informe de 200 partidas queda en el scratchpad y se resume en GAME_DESIGN 4c. El camarero elige objetivo por crecimiento (Kelly), no por VE: por VE perseguía el doble seis y hundía el saldo.
 - [ ] M3.6 assets (barman, dados, fondo-mesa3, camarero) + provisionales (trastienda3, basura3, friegaplatos)
 - [ ] M3.7 escena, HUD/cajones, pestaña 3, transición, cartel "Mesa 2 saldada"
 - [ ] M3.8 diálogo del Barman (pendiente de revisión)

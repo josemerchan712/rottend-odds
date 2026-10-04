@@ -106,16 +106,18 @@ Se abre en http://localhost:5173. Otros comandos:
 | `npm run simulate` | Simula miles de partidas de la mesa 1 con varias estrategias e imprime un informe |
 | `npm run simulate:slots` | Lo mismo para la mesa 2 (tragaperras), empezando al pagar la mesa 1 (~5 min con 200 partidas) |
 | `npm run simulate:dice` | Lo mismo para la mesa 3 (dados), empezando al pagar la mesa 2 (~15 min con 200 partidas; `--no-study` lo acorta) |
+| `npm run simulate:cards` | Lo mismo para la mesa 4 (blackjack), empezando al pagar la mesa 3 (~1,5 min con 30 partidas) |
+| `npx tsx sim/cardsRig.ts` | Recalibra la baraja de la mesa 4 (`src/game/cards/rigTable.ts`, ~4 min) |
 | `npm run plausibility` | Regenera `shared/plausibility.json` completa (`--full`): ~80 s si cambia la mesa 1 (en paralelo, un worker por núcleo), ~3 s si no (caché por mesa en `shared/plausibility-cache.json`) |
 | `npm run plausibility:quick` | Versión rápida para desarrollo (200 partidas); el test la rechaza para que se suba la completa |
-| `npm run assets` | Regenera los sprites y los fondos de las mesas 1 a 3 en `assets/sprites/` desde las hojas de `assets/raw/` |
+| `npm run assets` | Regenera los sprites y los fondos de las mesas 1 a 4 en `assets/sprites/` desde las hojas de `assets/raw/` |
 
 El frontend busca el servidor en `http://localhost:8080`. Para cambiarlo, define `VITE_API_URL`.
 
-**Llegar rápido a la mesa 2 o 3 (solo en desarrollo):** abre http://localhost:5173/?dev=mesa2 (o
-`?dev=mesa3`) y pulsa Continuar. Usa un hueco de guardado aparte (`casino-incremental-save-dev2` o
-`-dev3`) con las mesas anteriores saldadas y todo comprado, y moneda de prueba; tu partida normal no
-se toca. En el build de producción
+**Llegar rápido a la mesa 2, 3 o 4 (solo en desarrollo):** abre http://localhost:5173/?dev=mesa4 (o
+`?dev=mesa2`, `?dev=mesa3`) y pulsa Continuar. Usa un hueco de guardado aparte
+(`casino-incremental-save-dev4`, `-dev2`, `-dev3`) con las mesas anteriores saldadas y todo comprado,
+y moneda de prueba; tu partida normal no se toca. En el build de producción
 el parámetro no hace nada. Para empezar de cero ese hueco, bórralo desde Ajustes con el parámetro puesto.
 
 ### Backend
@@ -232,7 +234,7 @@ regenera, fallan los tests de los dos lados y el servidor no arranca. Para regen
   dispositivos no se pisen.
 - **Ranking:** se guarda el mejor resultado de cada usuario. Un resultado verificado siempre gana a
   uno sin verificar. Es solo de la mesa 1.
-- **Mesas 2 y 3 en el servidor:** el guardado v6 lleva la tragaperras y los dados. El servidor valida
+- **Mesas 2 a 4 en el servidor:** el guardado v7 lleva la tragaperras, los dados y el blackjack. El servidor valida
   su estructura, los niveles de sus mejoras, las de su ayudante sin ayudante y que no haya progreso en
   una (ni esté activa) sin la deuda de la anterior pagada. No tienen capa estadística propia ni ranking.
 
@@ -266,5 +268,5 @@ sistema antitrampas:
 - Sin verificación de email ni recuperación de contraseña.
 - Sin progreso offline ni sincronización automática: se sincroniza con el botón.
 - No hay despliegue: el `Dockerfile` y el `docker-compose.yml` son para desarrollo local.
-- Las mesas 2 y 3 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
+- Las mesas 2 a 4 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
   servidor acepta cualquier saldo.

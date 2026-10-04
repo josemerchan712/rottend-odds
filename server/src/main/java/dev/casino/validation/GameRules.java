@@ -38,6 +38,9 @@ public class GameRules {
     /** Mesa 3 (dados): igual, solo estructura. */
     private final Map<String, Upgrade> diceUpgrades;
     private final int diceHelperProfiles;
+    /** Mesa 4 (blackjack): igual, solo estructura. */
+    private final Map<String, Upgrade> cardsUpgrades;
+    private final int cardsHelperProfiles;
 
     public GameRules(ObjectMapper mapper) throws IOException {
         String configText = read("shared/config.json");
@@ -57,6 +60,9 @@ public class GameRules {
         JsonNode dice = config.path("dice");
         this.diceUpgrades = Collections.unmodifiableMap(readUpgrades(dice.path("upgrades")));
         this.diceHelperProfiles = dice.path("helperProfiles").asInt();
+        JsonNode cards = config.path("cards");
+        this.cardsUpgrades = Collections.unmodifiableMap(readUpgrades(cards.path("upgrades")));
+        this.cardsHelperProfiles = cards.path("helperProfiles").asInt();
         JsonNode w = config.path("work");
         this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(),
                 w.path("maxItemValue").asDouble(), w.path("bagValuePerLevel").asDouble());
@@ -67,7 +73,7 @@ public class GameRules {
             throw new IllegalStateException("shared/plausibility.json no corresponde a shared/config.json: "
                     + "regenérala con `npm run plausibility`");
         }
-        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty()) {
+        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty() || cardsUpgrades.isEmpty()) {
             throw new IllegalStateException("shared/config.json incompleto");
         }
     }
@@ -159,5 +165,13 @@ public class GameRules {
 
     public int diceHelperProfiles() {
         return diceHelperProfiles;
+    }
+
+    public Map<String, Upgrade> cardsUpgrades() {
+        return cardsUpgrades;
+    }
+
+    public int cardsHelperProfiles() {
+        return cardsHelperProfiles;
     }
 }

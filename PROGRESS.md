@@ -68,8 +68,85 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
 - [x] M4.6 assets (crupier, cartas, fondo, esqueleto) + provisionales
 - [x] M4.7 escena (cartas que se reparten y voltean, PEDIR/PLANTARSE en la mesa), HUD, pestaña, ?dev=mesa4
 - [x] M4.8 diálogo de la Crupier (pendiente de revisión)
-- [ ] M4.9 servidor v7 + plausibility --full + docs
-- [ ] B3 cierre
+- [x] M4.9 servidor v7 (validación estructural de la mesa 4) + plausibility --full (83 s) + docs (GAME_DESIGN 4d, README)
+- [x] B3 cierre (abajo)
+
+## Cierre de esta sesión (bloque 3)
+
+### Push
+
+**Pendiente: falta remoto.** No hay `git remote` y `gh` no está instalado, así que no se ha subido
+nada ni se ha creado el repositorio. Para subirlo: crea un repositorio privado vacío y ejecuta
+`git remote add origin <url>` y `git push -u origin main`. Seguridad comprobada antes: sin `.env` en
+git ni en su historial, sin secretos en el árbol ni en el historial (solo el secreto de prueba del
+perfil `test`), `.gitignore` ampliado.
+
+### Rutas absolutas corregidas
+
+Ninguna: no había rutas absolutas en el código, la configuración, los scripts ni los tests. (Fuera
+del repositorio: el `.claude/launch.json` de la carpeta antigua de OneDrive tiene una configuración
+`dev-c` que arranca el servidor de desarrollo de `C:/videojuego`, porque el panel de vista previa de
+esta sesión arranca desde la carpeta antigua.)
+
+### Regeneración de `shared/plausibility.json`
+
+- Antes: **817 s** (secuencial). Ahora: **81-83 s** si cambia la mesa 1 (8 workers en un i5-8265U de 4
+  núcleos) y **~3 s** si no (caché por mesa). Tabla idéntica a la secuencial.
+- "Una mesa sola por debajo de 1 minuto" no se alcanza en esta máquina: la mesa 1 son 2.100 partidas
+  de 30 minutos de juego y ya va 3,7 veces más rápido que en secuencial (límite de CPU).
+
+### Números cambiados y por qué
+
+- Mesa 3: camarero agresivo 50%/30% → **100% del techo / 60% del saldo** (ganaba en todas las fases);
+  techo máximo nivel 11 → **8** y suerte 420/1,6 → **550/1,5** (tramo final de 6 s a 1 min, total ~14 min).
+- Mesa 4 (nueva): suerte base 150 (crec. 1,5), techo base 15 hasta nivel 10, descartes cada 6 s y
+  1 + nivel/3 con la sustituta elegida entre 2 candidatas más, pozo 8%, k = 0,3. Guardado v7.
+
+### Decisiones propias
+
+- `--quick` = 200 partidas en total; la tabla estadística sigue siendo solo de la mesa 1.
+- Mesa 4: moneda "fichas negras"; una baraja por mano; la banca se planta con 17 blando; el natural
+  paga 1:1; la suerte es una baraja que favorece (intensidad calibrada con una tabla) en vez de decidir
+  el resultado antes, para que pedir, plantarse y descartar sigan importando; si te pasas con cargas, la
+  mano espera; el jackpot trae 7-7 y otro 7 arriba (hay que pedir con 14); el esqueleto apuesta con un
+  tope de Kelly (con valor esperado negativo espera) y solo descarta si se pasa con 2+ cargas; una
+  mano a medias no sobrevive a cargar la partida (se pierde la apuesta); el objeto raro es un anillo de
+  sello; atajos Espacio, P, S, D.
+- "Nunca pedir" casi empata con la estrategia básica sin descartes (la baraja hace que la banca se pase
+  a menudo); no gana a la mejor estrategia, así que se deja y se anota.
+
+### Cómo probar la mesa 4 rápido
+
+`npm run dev` y abre http://localhost:5173/?dev=mesa4 → Continuar → pestaña MESA 4 (hueco de guardado
+aparte con las mesas 1-3 saldadas y 4.000 fichas negras). Espacio reparte; P pide, S se planta, D
+descarta (o clic en las zonas del tapete y en la última carta).
+
+### Assets que faltan (provisionales en el juego)
+
+Mismo estilo que los anteriores (pixel art de terror, contorno negro, paleta verde enfermizo, óxido y
+rojo seco, fondo magenta plano para los sprites):
+
+| Asset | Archivo | Tamaño | Prompt de Nano Banana |
+|---|---|---|---|
+| Trastienda de la mesa 4 | `assets/raw/trastienda4.*` (el pipeline lo detecta) | 640x360 (o 16:9 mayor) | "Pixel art 16:9, trastienda de un salón de blackjack abandonado en un casino de terror: mesa de barajar con mazos y cartas desparramadas, cajas de fichas volcadas, ceniceros con puros, cortinas rojas raídas, puerta metálica oxidada a la izquierda, suelo de madera manchado, luz roja tenue de una bombilla, telarañas, paleta verde enfermizo, óxido y rojo seco, sin personajes" |
+| Basura de la mesa 4 (6) | hoja magenta de 6 paneles → `assets/sprites/trash4/<id>.png` (ceniza, carta, ficha, mazo, propina, anillo) | 32x32 cada uno | "Pixel art, hoja de 6 objetos sueltos separados en paneles sobre fondo magenta plano: cenizas de puro con colilla, carta de póker suelta boca abajo y doblada, ficha de casino negra, mazo de cartas atascado con una goma, montoncito de fichas de propina, anillo de sello de oro con piedra roja; estilo terror, contorno negro grueso, sin texto" |
+| Repartidor (ayudante de limpieza) | hoja magenta de 2 frames → `assets/sprites/cards-dealer/walk-1.png`, `walk-2.png` | 64x64 | "Pixel art, chico repartidor de cartas zombi con chaleco y visera verde, llevando un mazo, caminando de lado, 2 frames de animación, fondo magenta plano, estilo terror, contorno negro" |
+| (Mesa 3) Trastienda del bar | `assets/raw/trastienda3.*` | 640x360 | "Pixel art 16:9, trastienda de un bar abandonado de casino de terror: fregadero con platos sucios, cajas de botellas, barril, estantes con vasos, suelo de baldosas manchado, puerta metálica a la izquierda, luz ámbar, paleta verde enfermizo, óxido y rojo seco" |
+| (Mesa 3) Basura (6) | hoja magenta → `assets/sprites/trash3/<id>.png` (servilleta, vaso, botella, copa, propina, dentadura) | 32x32 | "Pixel art, 6 objetos sueltos en paneles sobre fondo magenta plano: servilleta manchada, vaso sucio, botella vacía tumbada, copa rota, billetes de propina doblados, dentadura de oro; estilo terror, contorno negro" |
+| (Mesa 3) Friegaplatos | hoja magenta de 2 frames → `assets/sprites/busboy/` | 64x64 | "Pixel art, chico friegaplatos zombi con delantal y trapo, caminando de lado, 2 frames, fondo magenta plano" |
+
+Pendientes de antes: idle del jugador; ruleta con bola y marcador aparte.
+
+### Tests
+
+Cliente **230** en verde (`npx vitest run`), servidor **27** en verde (`cd server && ./mvnw test`),
+`shared/plausibility.json` al día (--full), build de producción correcto.
+
+### Problemas conocidos
+
+- Las líneas de la Crupier, el Barman y la Tragaperras viviente están pendientes de revisión.
+- Las mesas 2-4 no tienen validación estadística en el servidor (solo estructural).
+- El camarero fantasma conserva algo de tono rosado en las piernas translúcidas.
 
 ## Diseño de la mesa 4 (decisiones propias)
 

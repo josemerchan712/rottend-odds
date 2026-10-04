@@ -38,8 +38,9 @@ public final class SaveFixtures {
         state.put("activeTable", 1);
         state.put("slots", slots(0, 0, slotUpgrades(), false));
         state.put("dice", dice(0, 0, diceUpgrades(), false));
+        state.put("cards", cards(0, 0, cardsUpgrades(), false));
         Map<String, Object> file = new HashMap<>();
-        file.put("version", 6);
+        file.put("version", 7);
         file.put("savedAt", 1_700_000_000_000L);
         file.put("state", state);
         return file;
@@ -104,6 +105,35 @@ public final class SaveFixtures {
         dice.put("debtPaid", debtPaid);
         dice.put("visited", false);
         return dice;
+    }
+
+    public static Map<String, Object> cardsUpgrades() {
+        Map<String, Object> ups = new LinkedHashMap<>();
+        for (String id : new String[] {"luck", "maxBet", "skeleton", "helperSpeed", "helperProfile", "helperLuck",
+                "jackpot", "sleeve", "satchel", "dealer"}) {
+            ups.put(id, 0);
+        }
+        return ups;
+    }
+
+    /** La mesa 4 como la guarda el juego (src/game/cards/state.ts). */
+    public static Map<String, Object> cards(double balance, double playTime, Map<String, Object> upgrades, boolean debtPaid) {
+        Map<String, Object> cards = new HashMap<>();
+        cards.put("balance", balance);
+        cards.put("playTime", playTime);
+        cards.put("upgrades", upgrades);
+        cards.put("betFractionIndex", 1);
+        cards.put("hand", null);
+        cards.put("discards", Map.of("charges", 1, "timer", 0));
+        cards.put("helper", Map.of("timer", 0, "profile", 0));
+        cards.put("work", Map.of("items", java.util.List.of(), "spawnTimer", 0, "nextId", 0,
+                "cleaner", Map.of("timer", 0, "x", 520, "y", 340), "lastItem", ""));
+        cards.put("pot", 50);
+        cards.put("passiveCarry", 0);
+        cards.put("recentHands", java.util.List.of());
+        cards.put("debtPaid", debtPaid);
+        cards.put("visited", false);
+        return cards;
     }
 
     /** Una mesa terminada en un tiempo normal (~8 min) y con lo que sobra tras pagar. */

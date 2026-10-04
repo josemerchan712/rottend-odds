@@ -310,6 +310,72 @@ Con los números actuales (40 partidas por estrategia):
 - **Bar**: el fondo de la mesa 3; el Barman (96 px) tras la barra, recortado por ella, con respiración; un tapete verde delante con los dos dados, que ruedan desde la izquierda con rebote y caras cambiando (y el dado en 3/4) y se paran en el resultado; la racha 6·6, el pozo y las cargas; los cinco objetivos (clic o Q W E R T); TIRAR (o Espacio) y ACEPTAR; la columna de fichas; el camarero fantasma a la derecha.
 - **Trastienda**: provisional (la de la mesa 1 con luz ámbar) con la basura dibujada con código y el limpiador de la mesa 1 como friegaplatos.
 
+## 4d. Mesa 4: Blackjack (hecha)
+
+**Prestamista**: la Crupier. **Trabajo**: barajar y repartir (recoger lo que queda en su trastienda). **Moneda**: fichas negras. **Deuda**: 10M.
+
+### 4d.1 Desbloqueo y conversión
+
+- Al pagar la deuda de la mesa 3 sale **"Mesa 3 saldada"** y la pestaña **MESA 4**. Las mesas 1 a 3 siguen solas con sus ayudantes.
+- **Conversión**: `fichas/s = k * (ingreso/s de la mesa 3)^0,5`, con **k = 0,3** (ingreso esperado del camarero, sin relanzar, y del friegaplatos). Sin pasivo la mesa 4 tarda ~33 min; con él, ~12,5.
+
+### 4d.2 El juego
+
+- **Blackjack simplificado**: una baraja de 52 barajada en cada mano; la banca pide hasta 17 (se planta también con 17 blando); solo **pedir o plantarse** (sin doblar ni dividir); ganar paga **1:1** (también el blackjack natural); **empate devuelve** la apuesta. Con estrategia básica y baraja honrada se gana el 43,3% de las manos (empate 9,3%): valor esperado **−4%**, la ventaja de la casa.
+- **Suerte = baraja que favorece**: cada carta se elige entre varias candidatas (1 + parte entera de la intensidad, y una más con la probabilidad de la parte decimal) y se queda la que más conviene al jugador (acercarse a 21 sin pasarse; a la banca, pasarse o quedarse corta). Con intensidad negativa favorece a la banca. Una tabla calibrada por simulación (`sim/cardsRig.ts` → `src/game/cards/rigTable.ts`, 60.000 manos por punto) traduce intensidad en probabilidad de ganar con estrategia básica, así que la suerte sigue la curva de siempre: `p(ganar) = 43,3% + (97% − 43,3%) · L` con `L = (n/20)^1,6`.
+- **Penalización por apostar fuerte**: la de siempre (`0,20 → 0,04` por `fracción^1,5`), restada de esa probabilidad; con poca suerte la baraja llega a favorecer a la banca si se apuesta fuerte.
+- **Descartes** (la mecánica de la Crupier): cargas como mucho `1 + nivel/3` (1 a 7) que se recargan solas (una cada `6 s × 0,93^nivel`). Justo después de recibir una carta (también si te has pasado) se puede **descartar la última** (clic en ella o D) y recibir otra, elegida con **dos candidatas más** y nunca a favor de la banca. Si te pasas y tienes cargas, la mano espera: descartar o ACEPTAR. La reserva es común con el ayudante.
+- **Jackpot 7-7-7** (21 con tres sietes): con probabilidad `j` por mano (0,1% → 1,5% con la suerte y su mejora) la baraja trae 7-7 al jugador y otro 7 arriba: **hay que pedir con 14** para cobrarlo (el indicador "7·7·7 POZO" se enciende con dos sietes en la mano). Paga **min(apuesta × 500, pozo, 25% de la deuda)**; pozo progresivo (semilla 50, +8% de cada apuesta). Aporta ~5-6% de las fichas.
+- **Selector**: las mismas fichas de cantidades reales. Techo: 15 × 2,5^nivel (máximo 143K en el nivel 10).
+- **Ayudante**: el **esqueleto barajador**. Juega con estrategia básica (y pide con 7-7), descarta solo si se pasa y quedan al menos 2 cargas, y apuesta lo menor entre su fracción del techo, su máximo del saldo y `kelly ×` la fracción de Kelly del saldo (prudente ½, normal 1, agresivo 2): **con valor esperado negativo espera**. Agresivo (60% del techo, 40% del saldo, 2× Kelly) solo compensa cuando lo limita el techo.
+
+### 4d.3 Trabajo: barajar y repartir
+
+| Objeto | Fichas | Frecuencia |
+|---|---|---|
+| Cenizas de puro | 2 | 45% |
+| Carta suelta | 6 | 30% |
+| Ficha de otro | 11 | 14% |
+| Mazo atascado | 36 | 7% |
+| Propina | 90 | 3,5% |
+| Anillo de sello (raro) | 1.200 | 0,5% |
+
+Mejoras: **Manga ancha** (2 objetos por clic), **Faltriquera** (+50% de valor por nivel) y **Repartidor** (recoge solo).
+
+### 4d.4 Mejoras (calibradas con simulación)
+
+| Mejora | Coste base | Crecimiento | Niveles |
+|---|---|---|---|
+| Suerte (y cargas de descarte) | 150 | 1,5 | 20 |
+| Apuesta máxima | 350 | 2,0 | 10 |
+| Esqueleto barajador | 1.200 | - | 1 |
+| Velocidad / perfil / suerte del esqueleto | 700 / 2.500 / 1.800 | 1,6 / 4 / 1,8 | 15 / 2 / 10 |
+| Jackpot | 5.000 | 1,8 | 10 |
+| Manga ancha / Faltriquera / Repartidor | 120 / 90 / 450 | - / 2,25 / 2 | 1 / 4 / 5 |
+
+### 4d.5 Simulación (`npm run simulate:cards`, 30 partidas por estrategia)
+
+Empieza al pagar la deuda de la mesa 3 con el estado real de una partida (d) de la mesa 3 de la misma semilla. Cada decisión (repartir, pedir, plantarse, descartar, aceptar) gasta una acción del jugador (0,5 s) y entre manos pasa al menos 1 s.
+
+| Estrategia | Media | p10 | p50 | p90 | Tramo final | Mesas 1-4 |
+|---|---|---|---|---|---|---|
+| (b) Siempre TODO, estrategia básica | 15:25 | 13:54 | 15:29 | 17:17 | 1:02 | 50:31 |
+| (e) Óptima, nunca pide (no se pasa) | 13:44 | 12:58 | 13:57 | 14:43 | 1:00 | 48:50 |
+| (c) Óptima, estrategia básica, sin descartes | 13:34 | 12:59 | 13:33 | 14:22 | 1:00 | 48:40 |
+| (d) Óptima, estrategia básica y descartes | **12:42** | 11:57 | 12:42 | 13:39 | **1:02** | **47:48** |
+
+- Mesa 4 de ~12,5 minutos con la mejor estrategia; tramo final de ~1 minuto; mesas 1 a 4 ≈ 48 min.
+- Ninguna estrategia trivial gana: siempre TODO tarda un 21% más. "Nunca pedir" casi empata con la estrategia básica sin descartes (la baraja que favorece hace que la banca se pase a menudo), pero pierde frente a la mejor.
+- Los **descartes** dan una ventaja real (−6,4% de tiempo, ~130 por partida del jugador) y no son obligatorios.
+- Sin bancarrotas en ninguna fase.
+- **Esqueleto por fase**: normal gana la fase media (8:24) y agresivo solo la alta (2:48 frente a 4:46 y 6:39); prudente es el más lento pero nunca arriesga. Ningún perfil deja el saldo a 0.
+- Fichas por fuente (d): manos 94%, jackpot 5%, pasivo 1%, trabajo < 1%.
+
+### 4d.6 Escena
+
+- **Sala**: el fondo de la mesa 4; la Crupier (96 px) tras la mesa, recortada por ella, con respiración; un tapete delante con las cartas de la banca y del jugador, que salen del zapato, se deslizan y **se voltean** (la de la banca boca abajo hasta que te plantas); caras dibujadas en código (papel viejo, índices, palo y una corona en las figuras) y el dorso del arte; **PEDIR, PLANTARSE, REPARTIR y ACEPTAR impresos en el propio tapete**; la última carta resaltada con una "D" para descartar; totales, manos, descartes, pozo y 7·7·7; la columna de fichas; el esqueleto a la derecha. Teclas: Espacio (repartir / plantarse), P, S, D, 1-4.
+- **Trastienda**: provisional (la de la mesa 1 con luz roja) con la basura dibujada con código y el limpiador de la mesa 1 como repartidor.
+
 ## 5. Conversión de monedas entre mesas
 
 - Cada mesa tiene su moneda (fichas, monedas, etc.).
@@ -317,7 +383,7 @@ Con los números actuales (40 partidas por estrategia):
 - La raíz evita que la mesa vieja sustituya a la nueva: mejorar la vieja ayuda de verdad, pero no la vuelve inútil.
 - La mesa vieja sigue funcionando con su ayudante, y el jugador puede volver a gastar su moneda en mejoras (que a su vez suben la producción pasiva de la nueva). Interfaz con **pestañas por mesa**.
 - Al pagar la deuda se descuentan los 10M del saldo; lo que sobre se conserva.
-- Implementado de la mesa 1 a la 2 y de la 2 a la 3, con k = 0,3 (ver 4b.1 y 4c.1).
+- Implementado de la mesa 1 a la 2, de la 2 a la 3 y de la 3 a la 4, con k = 0,3 (ver 4b.1, 4c.1 y 4d.1).
 
 ## 6. Mesas 2 a 5 (resumen)
 
@@ -327,7 +393,7 @@ Cada mesa mantiene suerte, valor de apuesta, ayudante y jackpot. Cambia el juego
 |---|---|---|---|---|
 | 2 | Tragaperras (3 carretes, 6 símbolos) | Limpiar tragaperras | Tragaperras viviente | Dos iguales x1,5, tres iguales x10. Mejora **retener carrete**. Jackpot: 3 diamantes x1000 con pozo. **Hecha: ver 4b.** |
 | 3 | Dados, mayor o menor | Servir copas | Barman | El jugador elige objetivo (más de 7, más de 9, doble seis) y cuanto más difícil más paga. Suerte = relanzar un dado. Jackpot: tres dobles seises seguidos. **Hecha: ver 4c.** |
-| 4 | Blackjack simplificado (pedir o plantarse) | Barajar y repartir | Crupier | Sin doblar ni dividir, pago 1:1. Suerte = descartar una carta mala. Jackpot: 21 con tres sietes. |
+| 4 | Blackjack simplificado (pedir o plantarse) | Barajar y repartir | Crupier | Sin doblar ni dividir, pago 1:1. Suerte = descartar una carta mala. Jackpot: 21 con tres sietes. **Hecha: ver 4d.** |
 | 5 | Doble o nada encadenado | Por decidir (siniestro) | El Dueño | Cada acierto duplica y decides retirarte o seguir; fallar lo pierde todo. Jackpot: racha de 10 aciertos. |
 
 Detalles finos de la mesas 2 a 5 se diseñan cuando la mesa 1 esté jugable.
@@ -392,6 +458,7 @@ Implementado para la basura y el jugador (`npm run assets`; código en `scripts/
 - Ampliado para la mesa 2:
   - Hoja de la tragaperras troceada con cajas a mano (la máquina con su palanca a 200x252 y los 6 símbolos a 32x32 con su cuadro negro, que hace de carrete). La Tragaperras viviente a 96x96 (detección de bloques), el empleado zombi a 64x64 (segunda celda de la hoja de ayudantes) y el fondo de la mesa 2 a 640x360.
   - El brazo esquelético de la Tragaperras viviente conserva un halo rosado de 1 px en algunos píxeles.
+  - Mesa 4: la Crupier a 96x96 con cajas a mano (la hoja trae un degradado blanco en los bordes de los paneles que unía los tres frames; se recorta por encima), el dorso de las cartas a 32x48 (las caras se dibujan con código porque la hoja solo trae A, K y 7), el esqueleto barajador a 64x64 (cuarta celda de la hoja de ayudantes) y el fondo de la mesa 4. Lo que falta, con tamaños y prompts, está en PROGRESS.md.
   - Mesa 3: el Barman a 96x96 (bloques), las 6 caras de los dados a 32x32 y el dado en 3/4 (cajas a mano), el camarero fantasma a 64x64 (tercera celda de la hoja de ayudantes; sus piernas translúcidas conservan algo de tono rosado) y el fondo de la mesa 3.
   - **Faltan de la mesa 3 (provisionales en el juego):**
 
@@ -474,9 +541,10 @@ Estado: ✅ hecho · 🔲 pendiente.
    - ✅ **Rediseño de la interfaz en 8 pasos**: pantalla completa, dos salas, tapete y selector con cantidades reales, cajones laterales, el Encargado detrás de la mesa, diálogo conectado a la escena, simulación con coste de cambiar de sala (mesa 1 ≈ 8:18 con (c), sin tocar números) y documentación (3.1, 9.2, 9.3).
 7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
 8. ✅ **Deuda y paso a la mesa 2**: pago, cartel "Mesa 1 saldada", pestañas, transición, conversión de monedas y guardado v5 (con migración desde v4; el servidor acepta v5 con validación estructural de la mesa 2).
+   - ✅ **Mesa 4 (blackjack)** jugable completa (ver 4d): baraja real que favorece según la suerte (tabla calibrada), descartes, jackpot 7-7-7 con pozo, barajar y repartir, esqueleto barajador con criterio de Kelly, la Crupier con diálogo (pendiente de revisión), guardado v7. Faltan arte de su trastienda, su basura y el repartidor (provisionales).
    - ✅ **Mesa 3 (dados)** jugable completa (ver 4c): objetivos con el mismo VE base, relanzamientos, jackpot de tres dobles seises con racha visible y pozo, servir copas, camarero fantasma, el Barman con diálogo (pendiente de revisión), guardado v6. Faltan arte de su trastienda, su basura y el friegaplatos (provisionales).
    - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, trabajo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Su trastienda, su basura y el aprendiz ya tienen arte.
-9. 🔲 Mesas 4 y 5 (la 2 y la 3 ya están), una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
+9. 🔲 Mesa 5 (de la 2 a la 4 ya están), reutilizando el sistema de suerte, mejoras y prestamistas.
 10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.
 
 ## 12. Decisiones abiertas

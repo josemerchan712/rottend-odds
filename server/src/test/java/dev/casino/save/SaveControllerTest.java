@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(4));
+                .andExpect(jsonPath("$.saveVersion").value(5));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -109,6 +109,57 @@ class SaveControllerTest extends ApiTestSupport {
         putSave(token, null, Map.of("version", 3)).andExpect(status().isUnprocessableEntity());
         // Nada de lo anterior se ha guardado.
         mvc.perform(get("/api/save").header("Authorization", bearer(token))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mesa2ValidacionEstructural() throws Exception {
+        String token = registerUser();
+        // Mesa 1 saldada y mesa 2 en marcha: se acepta.
+        Map<String, Object> ok = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> state = (Map<String, Object>) ok.get("state");
+        Map<String, Object> slotUps = SaveFixtures.slotUpgrades();
+        slotUps.put("luck", 7);
+        slotUps.put("zombie", 1);
+        slotUps.put("hold", 2);
+        state.put("slots", SaveFixtures.slots(12_345, 200, slotUps, false));
+        state.put("activeTable", 2);
+        putSave(token, null, ok).andExpect(status().isOk());
+
+        // Nivel fuera de rango en la mesa 2.
+        Map<String, Object> badLevel = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> ups = SaveFixtures.slotUpgrades();
+        ups.put("hold", 9);
+        ((Map<String, Object>) badLevel.get("state")).put("slots", SaveFixtures.slots(10, 10, ups, false));
+        putSave(token, 1L, badLevel)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("slots.upgrades.hold"))));
+
+        // Mejoras del zombi sin el zombi.
+        Map<String, Object> noZombie = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> ups2 = SaveFixtures.slotUpgrades();
+        ups2.put("helperSpeed", 2);
+        ((Map<String, Object>) noZombie.get("state")).put("slots", SaveFixtures.slots(10, 10, ups2, false));
+        putSave(token, 1L, noZombie)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("requiere el empleado zombi"))));
+
+        // Progreso en la mesa 2 sin haber pagado la mesa 1, o la mesa 2 activa sin pagarla.
+        Map<String, Object> early = SaveFixtures.save(100, 120);
+        ((Map<String, Object>) early.get("state")).put("slots", SaveFixtures.slots(500, 30, SaveFixtures.slotUpgrades(), false));
+        putSave(token, 1L, early)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("sin la deuda de la mesa 1"))));
+        Map<String, Object> activeEarly = SaveFixtures.save(100, 120);
+        ((Map<String, Object>) activeEarly.get("state")).put("activeTable", 2);
+        putSave(token, 1L, activeEarly)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("activeTable"))));
+
+        // Un guardado v5 sin la mesa 2: estructura incompleta.
+        Map<String, Object> missing = SaveFixtures.save(100, 120);
+        ((Map<String, Object>) missing.get("state")).remove("slots");
+        putSave(token, 1L, missing).andExpect(status().isUnprocessableEntity());
     }
 
     @Test

@@ -228,7 +228,8 @@ function updateTableFade(current: GameState, dt: number): void {
   const t = tableFade.elapsed;
   if (!tableFade.switched && t >= TABLE_FADE_SECONDS) {
     tableFade.switched = true;
-    const firstVisit = tableFade.to === 2 && current.slots.playTime === 0;
+    const firstVisit = tableFade.to === 2 && !current.slots.visited;
+    if (tableFade.to === 2) current.slots.visited = true;
     current.activeTable = tableFade.to;
     rooms = createRoomState();
     scene.reset(current);

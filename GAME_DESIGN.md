@@ -144,6 +144,92 @@ Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la c
 - Deuda: **10.000.000 fichas**. Botón "Pagar deuda" activo al alcanzarla.
 - Retrato del Encargado en una esquina, con 3 fases (ver sección 7).
 
+## 4b. Mesa 2: Tragaperras (hecha)
+
+**Prestamista**: la Tragaperras viviente. **Trabajo**: limpiar las tragaperras en su trastienda. **Moneda**: monedas. **Deuda**: 10M de monedas.
+
+### 4b.1 Desbloqueo, pestañas y conversión
+
+- Al pagar la deuda de la mesa 1 sale el cartel **"Mesa 1 saldada"** y aparecen las **pestañas de mesa** en el HUD. Cambiar de mesa es un fundido a negro con un rótulo ("MESA 2 · LAS TRAGAPERRAS"), de ~1,5 s. El ranking de la mesa 1 no cambia.
+- La mesa 1 **sigue jugando sola** con su ayudante y su limpiador (las dos mesas se actualizan a la vez) y se puede volver a ella en cualquier momento para gastar fichas en sus mejoras.
+- **Conversión**: la mesa 2 recibe `monedas/s = k * (ingreso/s de la mesa 1)^0,5`, con **k = 0,3**. El ingreso de la mesa 1 es el **esperado** de lo que gana sola: el valor esperado de la apuesta actual de su ayudante entre su intervalo (si es positivo) más su ayudante de limpieza. Subir las mejoras de la mesa 1 (o que su ayudante rehaga saldo) sube el pasivo. El HUD de la mesa 2 lo enseña ("+88/s de la mesa 1").
+
+### 4b.2 La máquina
+
+- 3 carretes y 6 símbolos: cereza, calavera, diamante, limón podrido, siete y ojo. **Dos iguales pagan x1,5** y **tres iguales x10** (pago bruto: lo que devuelve la máquina con la apuesta incluida); sin pareja se pierde. Con apuestas impares la pareja se redondea (1 → 2).
+- Como en la ruleta, primero se decide el resultado y después se eligen unos carretes que lo enseñen: lo que se ve al pararse siempre es lo que se cobra.
+- **Suerte** = probabilidad de premio (pareja o trío), curva convexa: `p(n) = 96/216 + (0,97 − 96/216) * (n/20)^1,6`. Sin suerte es la de unos carretes honrados (44,4%), con valor esperado −10%; con suerte máxima, el 97% de las tiradas tienen premio. De los premios, 1 de cada 16 es un trío (como con carretes honrados).
+- **Penalización por apostar fuerte**: la misma que la ruleta (`0,20 → 0,04` según la suerte, por `fracción^1,5`).
+- **Selector**: las mismas fichas de cantidades reales que la ruleta (1%, 10%, 50% del techo redondeados y TODO). Techo: 15 × 2,5^nivel.
+- **Retener carrete** (mejora de 5 niveles): clic en un carrete para que conserve su símbolo en la siguiente tirada. Cuesta un **extra del 25% de la apuesta** y convierte en premio una parte de las tiradas que perderían: `p_retenida = p + (1 − p) * parte`, con `parte = 35% + 6% por nivel` (35-59%). Una tirada con retención **no puede dar el jackpot**, y **el diamante no se deja retener**.
+  - Es una decisión real: compensa con poca suerte o con apuestas grandes (penalización alta) y deja de compensar con mucha suerte. El tooltip del carrete enseña la probabilidad con y sin retener.
+  - El zombi retiene con un criterio sencillo: si el valor esperado con retención (y su extra, sin jackpot) supera al de no retener.
+- **Jackpot**: tres diamantes, **x1000** la apuesta, con **tope del 25% de la deuda** (2,5M) y **pozo progresivo**. Probabilidad: 0,1% base + hasta 0,7% por la suerte (curva L) + 0,07% por nivel de su mejora, **tope 1,5%**.
+  - **Pozo** (decisión propia): el jackpot paga como mucho lo que haya en el pozo. Empieza en 50 y crece con el 15% de cada apuesta de la mesa (del jugador y del zombi); al salir el jackpot vuelve a 50. Sin pozo, x1000 con un 0,1% de probabilidad ya daba +100% de valor esperado por tirada desde el primer segundo y el jackpot era casi todo el dinero de la mesa. Con el pozo, el jackpot es el ~6% de las monedas, como pedía el diseño. La tabla de premios de la máquina enseña el pozo.
+
+### 4b.3 Trabajo: limpiar tragaperras
+
+- Trastienda propia, con la misma mecánica que la de la mesa 1 (máximo 6 objetos, uno cada 2 s, el suelo empieza lleno, tecla E):
+
+| Objeto | Monedas | Frecuencia |
+|---|---|---|
+| Chicle pegado | 2 | 45% |
+| Moneda atascada | 5 | 30% |
+| Bombilla rota | 8 | 14% |
+| Cable pelado | 25 | 7% |
+| Ficha oxidada | 60 | 3,5% |
+| Diente de oro (raro) | 800 | 0,5% |
+
+- Mejoras propias: **Trapo** (2 objetos por clic), **Caja de herramientas** (+50% de valor por nivel) y **Aprendiz de limpieza** (recoge solo).
+- El trabajo es común a las dos mesas en el código (`src/game/workCore.ts`).
+
+### 4b.4 Ayudante: el empleado zombi
+
+- Juega en la máquina de al lado (sus tiradas salen como texto junto a él, o en el HUD si estás en la trastienda). Mejoras de velocidad (4 s → ~0,6 s), suerte propia (+0,5% por nivel) y perfiles: **prudente** (5% del techo, como mucho el 3% del saldo; siempre seguro), **normal** (20% / 10%) y **agresivo** (50% / 30%; solo compensa con suerte alta).
+
+### 4b.5 Mejoras de la mesa 2 (calibradas con simulación)
+
+| Mejora | Efecto por nivel | Coste base | Crecimiento | Niveles máx. |
+|---|---|---|---|---|
+| Suerte | Probabilidad de premio (convexa hasta 97%) | 140 | 1,6 | 20 |
+| Apuesta máxima | x2,5 el techo (de 15) | 130 | 2,0 | 11 |
+| Empleado zombi | Desbloquea el ayudante | 800 | - | 1 |
+| Velocidad del zombi | −12% al intervalo | 500 | 1,6 | 15 |
+| Perfil del zombi | Normal y agresivo | 1.500 | 4 | 2 |
+| Suerte del zombi | +0,5% solo para el zombi | 1.200 | 1,8 | 10 |
+| Jackpot | +0,07% de probabilidad | 3.000 | 1,8 | 10 |
+| Retener carrete | Desbloquea y mejora la retención | 300 | 2,2 | 5 |
+| Trapo | 2 objetos por clic | 80 | - | 1 |
+| Caja de herramientas | +50% de valor por objeto | 60 | 2,25 | 4 |
+| Aprendiz de limpieza | Limpia solo; 4 s, −20% por nivel | 300 | 2 | 5 |
+
+La suerte y el techo cuestan mucho más que en la mesa 1 porque aquí el pasivo de la mesa 1 (~60-130 monedas/s) da capital desde el primer segundo: con los costes de la mesa 1, la tragaperras se terminaba en 2:40.
+
+### 4b.6 Simulación (`npm run simulate:slots`, 200 partidas por estrategia)
+
+Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de la mesa 1 de la misma semilla (la mesa 1 sigue sola y alimenta la conversión). Mismo jugador que en la mesa 1: una acción cada 0,5 s, una tirada por segundo como mucho, 1,5 s por cambio de sala, tira en la sala y recoge en la trastienda.
+
+| Estrategia | Media | p10 | p50 | p90 | Último tramo | Mesa 1 + 2 |
+|---|---|---|---|---|---|---|
+| (a) Ficha mínima | 41:56 | 39:45 | 41:53 | 43:58 | 5:35 | 50:15 |
+| (b) Siempre TODO | 19:20 | 13:25 | 19:17 | 25:50 | 0:19 | 27:39 |
+| (c) Ficha óptima, sin retener | 14:30 | 12:47 | 14:24 | 16:16 | 0:18 | 22:49 |
+| (d) Ficha óptima y retener cuando compensa | **12:21** | 10:50 | 12:21 | 13:54 | 0:19 | **20:39** |
+
+- Mesa 2 de ~12 minutos con la mejor estrategia; **mesa 1 + mesa 2 ≈ 20:40**. Último tramo (de suerte 20 a 10M) de ~20 s.
+- Ninguna estrategia trivial es mejor: siempre TODO tarda un 55% más y quiebra en casi todas las partidas en las fases media y alta.
+- **Retener** da una ventaja real (−15% de tiempo frente a no retener nunca) pero no es obligatorio: sin retener se termina igual, en 14:30.
+- Sin bancarrotas en las fases inicial y media con las estrategias (c) y (d); el **zombi prudente** no deja el saldo a 0 en ninguna fase (tampoco normal ni agresivo, gracias al límite por saldo). El zombi agresivo acaba antes (11:18 frente a 15:01 con prudente).
+- **Monedas por fuente** (d): máquina 93%, jackpot 6%, pasivo 1%, trabajo < 1%. El jackpot sale ~2,4 veces por partida y casi siempre lo recorta el pozo.
+- **La conversión importa mucho al principio**: sin pasivo (k = 0) la mesa 2 tarda 48 minutos; con él, 12. Aporta poco en total, pero es el capital inicial.
+- Una variante que además gasta las fichas de la mesa 1 en ella sale igual, porque el jugador simulado paga la mesa 1 con todo comprado: el pasivo solo sube porque el ayudante de la mesa 1 rehace saldo (de ~65 a ~130 monedas/s).
+
+### 4b.7 Escena
+
+- **Sala**: el fondo de la mesa 2; la Tragaperras viviente (96 px) asoma la cabeza por detrás de la máquina central, con respiración y un foco verde; la máquina (200x252) con los tres carretes en su pantalla, que giran de verdad y se paran de izquierda a derecha con un pequeño rebote (0,7 / 0,95 / 1,2 s), línea de premio y destello al ganar; placa "TIRAR" y palanca (clic o Espacio); la columna de fichas; la tabla de premios con el pozo; el zombi en la máquina de la izquierda.
+- **Trastienda**: provisional (la de la mesa 1 teñida de verde) con la basura de las tragaperras dibujada con código hasta que llegue su arte. La puerta está a la izquierda en las dos salas.
+- Temblor al perder una tirada grande y el CRT de siempre; el diálogo en el mismo bocadillo (a la derecha de la cabeza) o en la caja de la trastienda con el nombre "TRAGAPERRAS VIVIENTE".
+
 ## 5. Conversión de monedas entre mesas
 
 - Cada mesa tiene su moneda (fichas, monedas, etc.).
@@ -151,6 +237,7 @@ Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la c
 - La raíz evita que la mesa vieja sustituya a la nueva: mejorar la vieja ayuda de verdad, pero no la vuelve inútil.
 - La mesa vieja sigue funcionando con su ayudante, y el jugador puede volver a gastar su moneda en mejoras (que a su vez suben la producción pasiva de la nueva). Interfaz con **pestañas por mesa**.
 - Al pagar la deuda se descuentan los 10M del saldo; lo que sobre se conserva.
+- Implementado de la mesa 1 a la 2 con k = 0,3 (ver 4b.1).
 
 ## 6. Mesas 2 a 5 (resumen)
 
@@ -158,7 +245,7 @@ Cada mesa mantiene suerte, valor de apuesta, ayudante y jackpot. Cambia el juego
 
 | Mesa | Juego | Trabajo | Prestamista | Particularidad |
 |---|---|---|---|---|
-| 2 | Tragaperras (3 carretes, 6 símbolos) | Limpiar tragaperras | Tragaperras viviente | Dos iguales x1,5, tres iguales x10. Mejora **retener carrete**. Jackpot: 3 diamantes x1000. |
+| 2 | Tragaperras (3 carretes, 6 símbolos) | Limpiar tragaperras | Tragaperras viviente | Dos iguales x1,5, tres iguales x10. Mejora **retener carrete**. Jackpot: 3 diamantes x1000 con pozo. **Hecha: ver 4b.** |
 | 3 | Dados, mayor o menor | Servir copas | Barman | El jugador elige objetivo (más de 7, más de 9, doble seis) y cuanto más difícil más paga. Suerte = relanzar un dado. Jackpot: tres dobles seises seguidos. |
 | 4 | Blackjack simplificado (pedir o plantarse) | Barajar y repartir | Crupier | Sin doblar ni dividir, pago 1:1. Suerte = descartar una carta mala. Jackpot: 21 con tres sietes. |
 | 5 | Doble o nada encadenado | Por decidir (siniestro) | El Dueño | Cada acierto duplica y decides retirarte o seguir; fallar lo pierde todo. Jackpot: racha de 10 aciertos. |
@@ -175,7 +262,7 @@ Cada uno tiene una hoja de 3 frames (calmado, inquieto, deformado), 128x128 por 
 4. **Crupier**: máscara de porcelana agrietada, ojos cosidos.
 5. **El Dueño**: silueta con sombrero de copa, al final calavera de monedas.
 
-Decisión pendiente: qué dispara el cambio de fase. Propuesta inicial: **% de la deuda reunido** (0-33% calmado, 33-66% inquieto, 66-100% deformado). Cada prestamista debería tener 3-4 frases de cobro por fase (escribir cuando la mesa 1 funcione).
+Cambio de fase: **% de la deuda de su mesa reunido** (0-33% calmado, 33-66% inquieto, 66-100% deformado). Diálogo con el mismo motor (9.3): el Encargado tiene sus líneas aprobadas; las de la Tragaperras viviente (`src/content/dialogue2.es.ts`, ≥5 por disparador y fase, tono de cobrador mecánico y frío) están **pendientes de revisión**.
 
 ## 8. Arte y estética
 
@@ -222,6 +309,16 @@ Implementado para la basura y el jugador (`npm run assets`; código en `scripts/
   - Fichas y ayudantes se trocean por cuadrícula, con un margen para saltar las líneas de la rejilla. Cada celda se recorta desde sus propios bordes.
   - La fila de pilas de la hoja de fichas tiene dos pilas por celda y se parte en dos (8 pilas). Los paneles de ayudantes no miden lo mismo; solo se usa el brazo mecánico.
   - Salidas: Encargado 3 × 128x128, ruleta sana y rota a 150x150 (tamaño en escena), 8 fichas y 8 pilas a 32x32, brazo a 64x64 y fondo de la mesa 1 a 640x360 (recorte centrado a 16:9, sin quitar fondo).
+- Ampliado para la mesa 2:
+  - Hoja de la tragaperras troceada con cajas a mano (la máquina con su palanca a 200x252 y los 6 símbolos a 32x32 con su cuadro negro, que hace de carrete). La Tragaperras viviente a 96x96 (detección de bloques), el empleado zombi a 64x64 (segunda celda de la hoja de ayudantes) y el fondo de la mesa 2 a 640x360.
+  - El brazo esquelético de la Tragaperras viviente conserva un halo rosado de 1 px en algunos píxeles.
+  - **Faltan (provisionales en el juego):**
+
+| Asset | Archivo esperado | Tamaño | Provisional |
+|---|---|---|---|
+| Fondo de la trastienda de la mesa 2 | `assets/raw/trastienda2.*` (el pipeline lo detecta solo) | 640x360 (o 16:9 mayor) | La trastienda de la mesa 1 teñida de verde |
+| Basura de la mesa 2 (6 objetos) | `assets/sprites/trash2/<id>.png` (chicle, moneda, bombilla, cable, oxidada, diente) | 32x32 cada uno, fondo transparente (o una hoja magenta en `assets/raw/` para añadirla al pipeline) | Dibujada con código (`src/ui/provisional.ts`) |
+| Aprendiz de limpieza de la mesa 2 | sprite propio caminando, 2 frames | 64x64 | El mismo personaje que el limpiador de la mesa 1 |
 
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
 
@@ -294,8 +391,9 @@ Estado: ✅ hecho · 🔲 pendiente.
 6. ✅ **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases. Hecho para la mesa 1 (ver 8.1 y 9.2). Falta el arte limpio de la ruleta y el idle del jugador.
    - ✅ **Rediseño de la interfaz en 8 pasos**: pantalla completa, dos salas, tapete y selector con cantidades reales, cajones laterales, el Encargado detrás de la mesa, diálogo conectado a la escena, simulación con coste de cambiar de sala (mesa 1 ≈ 8:18 con (c), sin tocar números) y documentación (3.1, 9.2, 9.3).
 7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
-8. 🔲 **Deuda y paso a la mesa 2**: pago, pestañas, conversión de monedas.
-9. 🔲 Mesas 3 a 5, una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
+8. ✅ **Deuda y paso a la mesa 2**: pago, cartel "Mesa 1 saldada", pestañas, transición, conversión de monedas y guardado v5 (con migración desde v4; el servidor acepta v5 con validación estructural de la mesa 2).
+   - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, trabajo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Faltan arte de su trastienda y de su basura (provisionales).
+9. 🔲 Mesas 3 a 5 (la 2 ya está), una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
 10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.
 
 ## 12. Decisiones abiertas

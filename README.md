@@ -74,10 +74,16 @@ Se abre en http://localhost:5173. Otros comandos:
 | `npm test` | Tests de la lógica, la sincronización y los JSON compartidos |
 | `npm run build` | Comprobación de tipos y build de producción en `dist/` |
 | `npm run simulate` | Simula miles de partidas de la mesa 1 con varias estrategias e imprime un informe |
+| `npm run simulate:slots` | Lo mismo para la mesa 2 (tragaperras), empezando al pagar la mesa 1 (~5 min con 200 partidas) |
 | `npm run plausibility` | Regenera `shared/plausibility.json` (~3-4 min) |
-| `npm run assets` | Regenera los sprites y el fondo de la mesa 1 en `assets/sprites/` desde las hojas de `assets/raw/` |
+| `npm run assets` | Regenera los sprites y los fondos de las mesas 1 y 2 en `assets/sprites/` desde las hojas de `assets/raw/` |
 
 El frontend busca el servidor en `http://localhost:8080`. Para cambiarlo, define `VITE_API_URL`.
+
+**Llegar rápido a la mesa 2 (solo en desarrollo):** abre http://localhost:5173/?dev=mesa2 y pulsa
+Continuar. Usa un hueco de guardado aparte (`casino-incremental-save-dev`) con la mesa 1 saldada y
+todo comprado, y 2.000 monedas de prueba; tu partida normal no se toca. En el build de producción
+el parámetro no hace nada. Para empezar de cero ese hueco, bórralo desde Ajustes con el parámetro puesto.
 
 ### Backend
 
@@ -192,7 +198,10 @@ regenera, fallan los tests de los dos lados y el servidor no arranca. Para regen
 - **Un solo hueco de guardado por usuario**, con la fila bloqueada durante la escritura para que dos
   dispositivos no se pisen.
 - **Ranking:** se guarda el mejor resultado de cada usuario. Un resultado verificado siempre gana a
-  uno sin verificar.
+  uno sin verificar. Es solo de la mesa 1.
+- **Mesa 2 en el servidor:** el guardado v5 lleva la tragaperras. El servidor valida su estructura,
+  los niveles de sus mejoras, las del zombi sin zombi y que no haya progreso en ella (ni esté activa)
+  sin la deuda de la mesa 1 pagada. No tiene capa estadística propia ni ranking.
 
 ## Limitaciones y trampas
 
@@ -224,3 +233,5 @@ sistema antitrampas:
 - Sin verificación de email ni recuperación de contraseña.
 - Sin progreso offline ni sincronización automática: se sincroniza con el botón.
 - No hay despliegue: el `Dockerfile` y el `docker-compose.yml` son para desarrollo local.
+- La mesa 2 no tiene validación estadística: dentro de los niveles y la estructura válidos, el
+  servidor acepta cualquier saldo de monedas.

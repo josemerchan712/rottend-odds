@@ -32,6 +32,9 @@ public class GameRules {
     private final Map<String, Upgrade> upgrades;
     private final Work work;
     private final PlausibilityTable plausibility;
+    /** Mesa 2 (tragaperras): solo lo que hace falta para la validación estructural. */
+    private final Map<String, Upgrade> slotsUpgrades;
+    private final int slotsHelperProfiles;
 
     public GameRules(ObjectMapper mapper) throws IOException {
         String configText = read("shared/config.json");
@@ -45,6 +48,9 @@ public class GameRules {
                 e.getValue().path("growth").asDouble(),
                 e.getValue().path("maxLevel").asInt())));
         this.upgrades = Collections.unmodifiableMap(ups);
+        JsonNode slots = config.path("slots");
+        this.slotsUpgrades = Collections.unmodifiableMap(readUpgrades(slots.path("upgrades")));
+        this.slotsHelperProfiles = slots.path("helperProfiles").asInt();
         JsonNode w = config.path("work");
         this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(),
                 w.path("maxItemValue").asDouble(), w.path("bagValuePerLevel").asDouble());
@@ -55,9 +61,18 @@ public class GameRules {
             throw new IllegalStateException("shared/plausibility.json no corresponde a shared/config.json: "
                     + "regenérala con `npm run plausibility`");
         }
-        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty()) {
+        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty()) {
             throw new IllegalStateException("shared/config.json incompleto");
         }
+    }
+
+    private static Map<String, Upgrade> readUpgrades(JsonNode node) {
+        Map<String, Upgrade> out = new LinkedHashMap<>();
+        node.fields().forEachRemaining(e -> out.put(e.getKey(), new Upgrade(
+                e.getValue().path("baseCost").asDouble(),
+                e.getValue().path("growth").asDouble(),
+                e.getValue().path("maxLevel").asInt())));
+        return out;
     }
 
     /** Igual que sim/plausibility-hash.ts: SHA-256 del texto con saltos de línea normalizados. */
@@ -122,5 +137,13 @@ public class GameRules {
 
     public PlausibilityTable plausibility() {
         return plausibility;
+    }
+
+    public Map<String, Upgrade> slotsUpgrades() {
+        return slotsUpgrades;
+    }
+
+    public int slotsHelperProfiles() {
+        return slotsHelperProfiles;
     }
 }

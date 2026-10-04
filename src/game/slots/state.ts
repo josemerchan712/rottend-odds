@@ -45,6 +45,8 @@ export interface SlotsState {
   passiveCarry: number;
   recentSpins: SlotSpin[];
   debtPaid: boolean;
+  /** Si el jugador ya ha entrado alguna vez (para la bienvenida de la Tragaperras viviente). */
+  visited: boolean;
   stats: {
     spins: number;
     wins: number;
@@ -70,6 +72,7 @@ export function createSlotsState(): SlotsState {
     passiveCarry: 0,
     recentSpins: [],
     debtPaid: false,
+    visited: false,
     stats: { spins: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, holds: 0, workEarned: 0, passiveEarned: 0 },
   };
 }

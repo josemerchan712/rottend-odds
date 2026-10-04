@@ -83,6 +83,8 @@ export class Scene {
   revealedBets = 0;
   /** Tiradas del ayudante mientras el jugador no está en el casino (para el aviso del HUD). */
   onAwayResult: ((spin: SpinResult) => void) | null = null;
+  /** Cada tirada en cuanto el jugador la ve resolverse (cae la bola, o el aviso fuera del casino). */
+  onSpinShown: ((spin: SpinResult) => void) | null = null;
   private room: Room = 'casino';
 
   constructor(
@@ -192,6 +194,11 @@ export class Scene {
   }
 
   /** Tiradas cuya bola ya ha caído (la tira de resultados no adelanta el resultado). */
+  /** ¿Hay una tirada girando a la vista? */
+  spinInFlight(state: GameState): boolean {
+    return this.room === 'casino' && this.revealedBets < state.stats.bets;
+  }
+
   shownSpins(state: GameState): SpinResult[] {
     return state.recentSpins.filter((_, i) => state.stats.bets - i <= this.revealedBets);
   }
@@ -291,6 +298,7 @@ export class Scene {
       // Fuera del casino no se ve la ruleta: el resultado se muestra ya, como aviso en el HUD.
       this.revealedBets = bets;
       this.onAwayResult?.(latest);
+      this.onSpinShown?.(latest);
       return;
     }
     const balanceBefore = state.balance - latest.delta;
@@ -298,7 +306,10 @@ export class Scene {
     if (latest.bettor === 'ayudante') this.armReach = ARM_REACH_SECONDS;
     this.lenderLook = LOOK_SECONDS;
     const interrupted = this.roulette.start({ spin: latest, number: bets, bigLoss });
-    if (interrupted) this.revealedBets = Math.max(this.revealedBets, interrupted.number);
+    if (interrupted) {
+      this.revealedBets = Math.max(this.revealedBets, interrupted.number);
+      this.onSpinShown?.(interrupted.spin);
+    }
   }
 
   private advance(state: GameState, dt: number): void {
@@ -313,6 +324,7 @@ export class Scene {
       const text = spin.delta >= 0 ? `+${formatNumber(spin.delta)}` : `−${formatNumber(-spin.delta)}`;
       this.addFloat(text, WHEEL_CENTER.x, WHEEL_CENTER.y - 70, spin.delta >= 0 ? COLORS.text : '#c0473d');
       if (landed.bigLoss) this.effects.shake();
+      this.onSpinShown?.(spin);
     }
 
     const anim = this.playerAnim;

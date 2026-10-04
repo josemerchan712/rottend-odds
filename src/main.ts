@@ -32,6 +32,22 @@ import { formatNumber } from './util/format';
 import { playerBet, selectBetFraction } from './game/actions';
 import { stateChips } from './game/betting';
 import { tooltipLines } from './ui/tooltips';
+import { DIALOGUE_ES } from './content/dialogue.es';
+import { currentMaxBet } from './game/betting';
+import { lenderPhase } from './game/lender';
+import {
+  createWatch,
+  noteRoomEntered,
+  noteSessionStart,
+  noteSpinShown,
+  notePlayerActivity,
+  observe,
+  tickWatch,
+  type DialogueWatch,
+  type WatchSnapshot,
+} from './game/dialogueWatch';
+import { Speech } from './ui/speech';
+import { LENDER_SIZE, LENDER_SPOT } from './ui/casinoLayout';
 
 const { saveKey, settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
 
@@ -76,6 +92,21 @@ const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
 
 const scene = new Scene(sceneCanvas, loadSprites());
+const speech = new Speech(screens.game, 'EL ENCARGADO');
+/** Cuándo habla el Encargado (se crea al entrar en la partida). */
+let watch: DialogueWatch | null = null;
+
+function snapshot(current: GameState): WatchSnapshot {
+  return { balance: current.balance, phase: lenderPhase(current), helperBought: current.upgrades.crupier > 0, debtPaid: current.debtPaid };
+}
+
+scene.onSpinShown = (spin) => {
+  if (watch && state) noteSpinShown(watch, spin, currentMaxBet(state));
+};
+// Cualquier clic o tecla durante la partida cuenta como actividad (para el silencio largo).
+screens.game.addEventListener('pointerdown', () => watch && notePlayerActivity(watch), true);
+sceneCanvas.addEventListener('pointerdown', () => watch && notePlayerActivity(watch));
+window.addEventListener('keydown', () => screen === 'game' && watch && notePlayerActivity(watch));
 
 const api = createApi();
 let session: Session | null = loadSession(localStorage, sessionKey, Date.now());
@@ -158,13 +189,16 @@ window.addEventListener('keydown', (event) => {
   render(gameUi, state);
 });
 
-function enterGame(loaded: GameState): void {
+function enterGame(loaded: GameState, start: { kind: 'new' | 'resume'; absenceSeconds?: number }): void {
   // El clic de Continuar o Nueva partida es el gesto que permite el audio y la pantalla completa.
   unlockAudio();
   if (settings.startFullscreen) void enterFullscreen(root);
   state = loaded;
   rooms = createRoomState();
   scene.reset(loaded);
+  speech.close();
+  watch = createWatch(snapshot(loaded));
+  noteSessionStart(watch, start.kind, start.absenceSeconds);
   show('game');
 }
 
@@ -185,8 +219,9 @@ function applySettings(): void {
 
 // Pantalla de inicio
 menuUi.continueButton.addEventListener('click', () => {
+  const savedAt = loadGame(localStorage, saveKey)?.savedAt ?? Date.now();
   const loaded = continueGame(localStorage, saveKey);
-  if (loaded) enterGame(loaded);
+  if (loaded) enterGame(loaded, { kind: 'resume', absenceSeconds: Math.max(0, (Date.now() - savedAt) / 1000) });
   else show('menu');
 });
 menuUi.newGame.addEventListener('click', () => {
@@ -196,7 +231,7 @@ menuUi.newGame.addEventListener('click', () => {
     () => confirm('Ya hay una partida guardada. ¿Empezar de cero y borrarla?'),
     Date.now(),
   );
-  if (fresh) enterGame(fresh);
+  if (fresh) enterGame(fresh, { kind: 'new' });
 });
 menuUi.settings.addEventListener('click', () => show('settings'));
 menuUi.login.addEventListener('click', () => {
@@ -456,13 +491,31 @@ function updateTooltip(current: GameState): void {
   tip.style.top = `${Math.round(top)}px`;
 }
 
+/** El bocadillo empieza a la derecha de la rueda para no taparla. */
+const SPEECH_MIN_LEFT = 344;
+
+/** El Encargado: motivos de lo que pasa, una línea cuando se puede y el bocadillo. */
+function updateDialogue(current: GameState, dt: number, entered: ReturnType<typeof updateRooms>): void {
+  if (!watch) return;
+  if (entered) noteRoomEntered(watch, entered);
+  observe(watch, snapshot(current));
+  const blocked = inTransition(rooms) || scene.spinInFlight(current) || !settings.dialogues;
+  const line = tickWatch(watch, dt, DIALOGUE_ES, lenderPhase(current), defaultRng, blocked);
+  if (line) speech.say(line.text);
+  if (!settings.dialogues && speech.speaking) speech.close();
+  speech.update(dt, rooms.current === 'casino' && !inTransition(rooms)
+    ? { mode: 'bubble', anchor: { x: LENDER_SPOT.x, y: LENDER_SPOT.y - LENDER_SIZE + 4 }, minLeft: SPEECH_MIN_LEFT }
+    : { mode: 'box' });
+}
+
 let lastDt = 0;
 startLoop(
   {
     update: (dt) => {
       if (screen === 'game' && state) {
-        updateRooms(rooms, dt);
+        const entered = updateRooms(rooms, dt);
         scene.cleanerCollected(update(state, dt, defaultRng));
+        updateDialogue(state, dt, entered);
       }
       lastDt = dt;
     },

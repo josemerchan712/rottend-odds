@@ -159,6 +159,19 @@ export const CONFIG = {
     fadeSeconds: 0.3,
   },
 
+  dialogue: {
+    /** Segundos mínimos entre dos líneas del Encargado (salvo el pago de la deuda). */
+    cooldownSeconds: 25,
+    /** Apuestas mínimas entre líneas que disparan las apuestas (perder, ganar, quedarse sin fichas). */
+    minBetsBetweenLines: 3,
+    /** Líneas recientes que no se repiten. */
+    recentMemory: 8,
+    /** Segundos sin hacer nada para el comentario de silencio largo. */
+    silenceSeconds: 75,
+    /** Segundos que se ve cada línea antes de desvanecerse. */
+    displaySeconds: 4,
+  },
+
   lender: {
     /** Fracción de la deuda reunida a partir de la cual el prestamista pasa a inquieto y a deformado. */
     phaseThresholds: [1 / 3, 2 / 3] as readonly [number, number],

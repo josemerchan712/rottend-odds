@@ -17,6 +17,7 @@ export interface MenuUi {
 export interface SettingsUi {
   crt: HTMLInputElement;
   fullscreen: HTMLInputElement;
+  dialogues: HTMLInputElement;
   volume: HTMLInputElement;
   volumeValue: HTMLElement;
   deleteSave: HTMLButtonElement;
@@ -83,6 +84,10 @@ export function mountSettings(root: HTMLElement): SettingsUi {
         Iniciar en pantalla completa <span class="muted">(tecla F)</span>
       </label>
       <label class="setting">
+        <input type="checkbox" data-ref="dialogues" />
+        Diálogos del Encargado
+      </label>
+      <label class="setting">
         Volumen
         <input type="range" min="0" max="100" step="1" data-ref="volume" />
         <span data-ref="volumeValue"></span>
@@ -98,6 +103,7 @@ export function mountSettings(root: HTMLElement): SettingsUi {
   return {
     crt: ref('crt'),
     fullscreen: ref('fullscreen'),
+    dialogues: ref('dialogues'),
     volume: ref('volume'),
     volumeValue: ref('volumeValue'),
     deleteSave: ref('deleteSave'),
@@ -109,6 +115,7 @@ export function mountSettings(root: HTMLElement): SettingsUi {
 export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: boolean): void {
   ui.crt.checked = settings.crtEnabled;
   ui.fullscreen.checked = settings.startFullscreen;
+  ui.dialogues.checked = settings.dialogues;
   ui.volume.value = String(Math.round(settings.volume * 100));
   setText(ui.volumeValue, `${Math.round(settings.volume * 100)}%`);
   ui.deleteSave.disabled = !hasSave;

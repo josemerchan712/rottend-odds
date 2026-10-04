@@ -8,12 +8,14 @@ export interface Settings {
   volume: number;
   /** Pedir pantalla completa al pulsar Continuar o Nueva partida. */
   startFullscreen: boolean;
+  /** Diálogos del Encargado. */
+  dialogues: boolean;
 }
 
 export const SETTINGS_VERSION = 1;
 
 export function defaultSettings(): Settings {
-  return { crtEnabled: true, volume: 0.7, startFullscreen: false };
+  return { crtEnabled: true, volume: 0.7, startFullscreen: false, dialogues: true };
 }
 
 export function saveSettings(storage: KeyValueStorage, key: string, settings: Settings): boolean {
@@ -39,6 +41,7 @@ export function loadSettings(storage: KeyValueStorage, key: string): Settings {
     const parsed = JSON.parse(raw)?.settings;
     if (typeof parsed?.crtEnabled === 'boolean') settings.crtEnabled = parsed.crtEnabled;
     if (typeof parsed?.startFullscreen === 'boolean') settings.startFullscreen = parsed.startFullscreen;
+    if (typeof parsed?.dialogues === 'boolean') settings.dialogues = parsed.dialogues;
     if (typeof parsed?.volume === 'number' && Number.isFinite(parsed.volume)) {
       settings.volume = Math.min(Math.max(parsed.volume, 0), 1);
     }

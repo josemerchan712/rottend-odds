@@ -224,6 +224,10 @@ settingsUi.crt.addEventListener('change', () => {
   settings.crtEnabled = settingsUi.crt.checked;
   applySettings();
 });
+settingsUi.dialogues.addEventListener('change', () => {
+  settings.dialogues = settingsUi.dialogues.checked;
+  applySettings();
+});
 settingsUi.fullscreen.addEventListener('change', () => {
   settings.startFullscreen = settingsUi.fullscreen.checked;
   applySettings();

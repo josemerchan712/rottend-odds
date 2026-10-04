@@ -17,6 +17,10 @@ const urls = {
   lender2Scene: import.meta.glob<string>('../../assets/sprites/lender2-scene/*.png', { eager: true, query: '?url', import: 'default' }),
   trash2: import.meta.glob<string>('../../assets/sprites/trash2/*.png', { eager: true, query: '?url', import: 'default' }),
   apprentice: import.meta.glob<string>('../../assets/sprites/apprentice/*.png', { eager: true, query: '?url', import: 'default' }),
+  dice: import.meta.glob<string>('../../assets/sprites/dice/*.png', { eager: true, query: '?url', import: 'default' }),
+  lender3Scene: import.meta.glob<string>('../../assets/sprites/lender3-scene/*.png', { eager: true, query: '?url', import: 'default' }),
+  trash3: import.meta.glob<string>('../../assets/sprites/trash3/*.png', { eager: true, query: '?url', import: 'default' }),
+  busboy: import.meta.glob<string>('../../assets/sprites/busboy/*.png', { eager: true, query: '?url', import: 'default' }),
 };
 
 export type PlayerFrame = 'walk-1' | 'walk-2' | 'crouch' | 'lift';

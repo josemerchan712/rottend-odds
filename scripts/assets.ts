@@ -132,10 +132,10 @@ const SHEETS: Sheet[] = [
     source: 'assets/raw/ayudantes.png.jpeg',
     outDir: 'assets/sprites/helpers',
     // Los paneles no miden lo mismo: el del brazo llega hasta x≈445 y el del zombi hasta x≈707.
-    columns: [0, 446, 708],
+    columns: [0, 446, 708, 1022],
     rows: [0, 320],
     inset: 10,
-    names: ['arm', 'zombie'],
+    names: ['arm', 'zombie', 'ghost'],
     size: [64, 64],
   },
   {
@@ -189,6 +189,43 @@ const SHEETS: Sheet[] = [
     source: 'assets/raw/fondo-mesa2.png.jpeg',
     out: 'assets/sprites/backgrounds/mesa2.png',
     size: [640, 360],
+  },
+  {
+    // Mesa 3: las 6 caras planas (arriba) y el dado en 3/4 (para el giro al tirar).
+    kind: 'boxes',
+    source: 'assets/raw/dados.png.jpeg',
+    outDir: 'assets/sprites/dice',
+    boxes: [
+      { name: 'face-1', x: 24, y: 16, width: 222, height: 222, size: [32, 32] },
+      { name: 'face-2', x: 250, y: 16, width: 224, height: 222, size: [32, 32] },
+      { name: 'face-3', x: 480, y: 16, width: 222, height: 222, size: [32, 32] },
+      { name: 'face-4', x: 706, y: 16, width: 224, height: 222, size: [32, 32] },
+      { name: 'face-5', x: 934, y: 16, width: 226, height: 222, size: [32, 32] },
+      { name: 'face-6', x: 1164, y: 16, width: 222, height: 222, size: [32, 32] },
+      { name: 'tumble', x: 500, y: 288, width: 410, height: 440, size: [32, 32] },
+    ],
+  },
+  {
+    // Prestamista de la mesa 3, a tamaño de escena (detrás de la barra).
+    kind: 'blocks',
+    source: 'assets/raw/barman.png.jpeg',
+    outDir: 'assets/sprites/lender3-scene',
+    names: ['calm', 'uneasy', 'deformed'],
+    size: [96, 96],
+  },
+  {
+    kind: 'background',
+    source: 'assets/raw/fondo-mesa3.png.jpeg',
+    out: 'assets/sprites/backgrounds/mesa3.png',
+    size: [640, 360],
+  },
+  {
+    // Trastienda de la mesa 3: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.
+    kind: 'background',
+    source: 'assets/raw/trastienda3.*',
+    out: 'assets/sprites/backgrounds/trastienda3.png',
+    size: [640, 360],
+    optional: true,
   },
   {
     // Trastienda de la mesa 2: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.

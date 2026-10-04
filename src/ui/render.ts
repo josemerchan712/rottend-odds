@@ -36,6 +36,7 @@ export const TABS_HTML = `
       <div class="table-tabs" data-ref="tabs" hidden>
         <button class="tab small" data-table="1" title="Mesa 1: la ruleta">MESA 1</button>
         <button class="tab small" data-table="2" title="Mesa 2: la tragaperras">MESA 2</button>
+        <button class="tab small" data-table="3" title="Mesa 3: los dados">MESA 3</button>
       </div>`;
 
 export interface Ui {

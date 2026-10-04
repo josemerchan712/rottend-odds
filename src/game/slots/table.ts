@@ -241,8 +241,3 @@ export function slotsLenderPhase(slots: SlotsState): LenderPhase {
   if (progress >= uneasyFrom) return 'uneasy';
   return 'calm';
 }
-
-/** ¿Se puede pasar a esa mesa? La 2 solo con la deuda de la 1 saldada. */
-export function canSwitchTable(state: GameState, to: 1 | 2): boolean {
-  return state.activeTable !== to && (to === 1 || isSlotsUnlocked(state));
-}

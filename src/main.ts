@@ -36,7 +36,6 @@ import { DIALOGUE2_ES } from './content/dialogue2.es';
 import { playerSpin, selectSlotChip, slotCeiling, slotChips, toggleHold } from './game/slots/machine';
 import {
   buySlotUpgrade,
-  canSwitchTable,
   collectNearestSlotItem,
   collectSlotItem,
   paySlotsDebt,
@@ -45,7 +44,8 @@ import {
 } from './game/slots/table';
 import { updateGame } from './game/update';
 import { SLOT_UPGRADE_IDS, UPGRADE_IDS } from './game/config';
-import { createInitialState } from './game/state';
+import { createInitialState, type TableId } from './game/state';
+import { canSwitchTo } from './game/dice/table';
 import { payDebt } from './game/debt';
 import { closeDrawers2, mountUi2, render2, toggleDrawer2 } from './ui/render2';
 import { SlotsScene } from './ui/slotsScene';
@@ -135,10 +135,10 @@ const rankingUi = mountRanking(screens.ranking);
 const sprites = loadSprites();
 const scene = new Scene(sceneCanvas, sprites);
 const slotsScene = new SlotsScene(sceneCanvas, sprites);
-const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE' } as const;
+const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE', 3: 'EL BARMAN' } as const;
 const speech = new Speech(screens.game, SPEAKERS[1]);
 /** Cuándo habla el prestamista de cada mesa (se crean al entrar en la partida). */
-const watches: Record<1 | 2, DialogueWatch | null> = { 1: null, 2: null };
+const watches: Record<TableId, DialogueWatch | null> = { 1: null, 2: null, 3: null };
 
 function snapshot(current: GameState): WatchSnapshot {
   return { balance: current.balance, phase: lenderPhase(current), helperBought: current.upgrades.crupier > 0, debtPaid: current.debtPaid };
@@ -150,7 +150,7 @@ function snapshot2(current: GameState): WatchSnapshot {
 }
 
 /** Mesa que se ve ahora. */
-function activeTable(): 1 | 2 {
+function activeTable(): TableId {
   return state?.activeTable ?? 1;
 }
 
@@ -208,11 +208,11 @@ function renderHud(current: GameState): void {
 // Cambio de mesa: fundido a negro con un rótulo; a mitad cambia la mesa y se vuelve al salón.
 
 const TABLE_FADE_SECONDS = 0.55;
-const TABLE_CAPTIONS = { 1: 'MESA 1 · LA RULETA', 2: 'MESA 2 · LAS TRAGAPERRAS' } as const;
-let tableFade: { to: 1 | 2; elapsed: number; switched: boolean } | null = null;
+const TABLE_CAPTIONS = { 1: 'MESA 1 · LA RULETA', 2: 'MESA 2 · LAS TRAGAPERRAS', 3: 'MESA 3 · LOS DADOS' } as const;
+let tableFade: { to: TableId; elapsed: number; switched: boolean } | null = null;
 
-function switchTable(to: 1 | 2): void {
-  if (!state || tableFade || !canSwitchTable(state, to)) return;
+function switchTable(to: TableId): void {
+  if (!state || tableFade || !canSwitchTo(state, to)) return;
   tableFade = { to, elapsed: 0, switched: false };
   tableFadeEl.textContent = TABLE_CAPTIONS[to];
   banner.root.hidden = true;
@@ -250,7 +250,7 @@ function updateTableFade(current: GameState, dt: number): void {
 }
 
 for (const ui of [gameUi, slotsUi]) {
-  ui.tabButtons.forEach((b) => b.addEventListener('click', () => switchTable(Number(b.dataset.table) as 1 | 2)));
+  ui.tabButtons.forEach((b) => b.addEventListener('click', () => switchTable(Number(b.dataset.table) as TableId)));
 }
 
 let bannerAction: (() => void) | null = null;

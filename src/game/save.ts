@@ -1,6 +1,7 @@
 import shared from '../../shared/config.json';
-import { CONFIG, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
+import { CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
 import { sanitizeWorkSlot } from './workCore';
+import { createDiceState } from './dice/state';
 import { createSlotsState } from './slots/state';
 import { createInitialState, type GameState } from './state';
 
@@ -36,6 +37,8 @@ const migrations: Record<number, (state: Json) => Json> = {
   3: (state) => ({ ...state, work: { lastItem: (state.work as Json | undefined)?.lastItem ?? null } }),
   // v5: mesa 2 (tragaperras) y mesa activa. La mesa 2 empieza de cero; se abre si la deuda ya estaba pagada.
   4: (state) => ({ ...state, activeTable: 1, slots: createSlotsState() }),
+  // v6: mesa 3 (dados). Empieza de cero.
+  5: (state) => ({ ...state, dice: createDiceState() }),
 };
 
 export function serialize(state: GameState, now: number): string {
@@ -178,7 +181,39 @@ function sanitizeSlots(state: GameState): void {
   slots.passiveCarry = Math.min(nonNegative(slots.passiveCarry), 1);
   slots.pot = Math.min(Math.max(nonNegative(slots.pot), S.jackpot.potSeed), S.debt.amount * S.jackpot.payoutCapDebtFraction);
   slots.recentSpins = slots.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof slots.recentSpins;
-  state.activeTable = state.activeTable === 2 && state.debtPaid ? 2 : 1;
+  sanitizeDice(state);
+  const allowed = state.activeTable === 3 ? state.debtPaid && slots.debtPaid : state.activeTable === 2 ? state.debtPaid : true;
+  state.activeTable = allowed && [1, 2, 3].includes(state.activeTable) ? state.activeTable : 1;
+}
+
+function isDie(v: unknown): boolean {
+  return Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 6;
+}
+
+/** Mesa 3: lo mismo que las otras. */
+function sanitizeDice(state: GameState): void {
+  const dice = state.dice;
+  const C = CONFIG.dice;
+  dice.balance = nonNegative(dice.balance);
+  dice.playTime = nonNegative(dice.playTime);
+  for (const id of DICE_UPGRADE_IDS) {
+    dice.upgrades[id] = Math.min(Math.floor(nonNegative(dice.upgrades[id])), C.upgrades[id].maxLevel);
+  }
+  dice.betFractionIndex = clampIndex(dice.betFractionIndex, CONFIG.bet.quickFractions.length);
+  if (!DICE_TARGETS.includes(dice.target)) dice.target = 'par';
+  if (!Array.isArray(dice.dice) || dice.dice.length !== 2 || !dice.dice.every(isDie)) dice.dice = [3, 4];
+  dice.streak = Math.min(Math.floor(nonNegative(dice.streak)), C.jackpot.streak - 1);
+  dice.helper.streak = Math.min(Math.floor(nonNegative(dice.helper.streak)), C.jackpot.streak - 1);
+  dice.helper.timer = nonNegative(dice.helper.timer);
+  dice.helper.profile = Math.min(clampIndex(dice.helper.profile, C.helper.profiles.length), dice.upgrades.helperProfile);
+  const maxCharges = C.rerolls.base + Math.floor(dice.upgrades.luck / C.rerolls.perLevels);
+  dice.rerolls.charges = Math.min(Math.floor(nonNegative(dice.rerolls.charges)), maxCharges);
+  dice.rerolls.timer = nonNegative(dice.rerolls.timer);
+  sanitizeWorkSlot(C.work, dice.work);
+  dice.passiveCarry = Math.min(nonNegative(dice.passiveCarry), 1);
+  dice.pot = Math.min(Math.max(nonNegative(dice.pot), C.jackpot.potSeed), C.debt.amount * C.jackpot.payoutCapDebtFraction);
+  // Las tiradas guardadas se dan por cerradas (no se puede relanzar tras cargar).
+  dice.recentRolls = dice.recentRolls.filter(isRecord).slice(0, CONFIG.tech.recentSpins).map((r) => ({ ...r, final: true })) as typeof dice.recentRolls;
 }
 
 function clampIndex(value: number, length: number): number {

@@ -32,9 +32,38 @@ simulaciones largas si no han cambiado los números.
       Commit 24efc7a.
 - [x] B1.4 Resumen de la mesa 2 (abajo).
 
-## Pendiente
+## Pendiente (mesa 3, en este orden; marcar al terminar cada uno)
 
-- Bloque 2: mesa 3 completa (ver plan abajo cuando empiece).
+- [x] M3.1 config (`shared/config.json` → `dice`, `config.ts` → `dice`) y estado (`src/game/dice/`)
+- [x] M3.2 lógica: dados, objetivos, relanzamientos, penalización, jackpot con racha y pozo; tests
+- [x] M3.3 mesa: mejoras, ayudante (camarero fantasma), trabajo, conversión desde la mesa 2, deuda; tests
+- [x] M3.4 guardado v6 + migración; activeTable 1|2|3; tests (plausibility.json pendiente de regenerar al final: su test falla hasta entonces)
+- [ ] M3.5 simulación (`npm run simulate:dice`) y calibración
+- [ ] M3.6 assets (barman, dados, fondo-mesa3, camarero) + provisionales (trastienda3, basura3, friegaplatos)
+- [ ] M3.7 escena, HUD/cajones, pestaña 3, transición, cartel "Mesa 2 saldada"
+- [ ] M3.8 diálogo del Barman (pendiente de revisión)
+- [ ] M3.9 servidor v6 (validación estructural de la mesa 3) + `shared/plausibility.json` regenerada
+- [x] M3.10 docs (GAME_DESIGN 4c, README) y resumen final aquí
+
+## Diseño de la mesa 3 (decisiones propias)
+
+- Moneda: **chapas**. Deuda 10M.
+- 2 dados. Objetivos (como los tipos de apuesta de la ruleta: mismo VE base, distinto riesgo):
+  `p = p_par · r · m(L)`, pago neto `2/r − 1`:
+  par (r 1, 1:1), más de 7 (r 15/18, 1,4:1), más de 9 (r 1/3, 5:1), doble (r 1/3, 5:1),
+  doble seis (r 1/18, 35:1). m sube con la suerte más en los arriesgados. Par y más de 7 desde el
+  principio; más de 9 y doble con una mejora; doble seis con otra.
+- p_par: 0,486 → 0,97 (curva 1,6); penalización por fracción del techo como siempre.
+- Relanzamientos: cargas que da la suerte (máximo 1 + nivel/4) y se recargan con el tiempo (cada
+  24 s × 0,93^nivel); tras una tirada perdida se puede relanzar un dado (honrado). Reserva común con
+  el ayudante, que relanza si la probabilidad de convertir es ≥ 1/3.
+- Jackpot: tres dobles seises seguidos (racha visible). Los dados del Barman están cargados: el doble
+  seis sale con probabilidad `j^(1/3)` (siempre dentro de las tiradas ganadoras), con j la
+  probabilidad de jackpot de siempre (0,1% → 1,5%). Paga min(apuesta × 500, pozo, 25% deuda); pozo
+  progresivo como en la mesa 2.
+- Trabajo: servir copas (vaso sucio, servilleta, botella vacía, copa rota, propina, dentadura de oro).
+- Ayudante: camarero fantasma (tercer panel de la hoja de ayudantes).
+- Duración objetivo: ~14 min con la mejor estrategia (el mensaje se cortó antes de dar una cifra).
 
 ---
 

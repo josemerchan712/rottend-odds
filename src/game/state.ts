@@ -1,4 +1,5 @@
 import { CONFIG, UPGRADE_IDS, type UpgradeId } from './config';
+import { createDiceState, type DiceState } from './dice/state';
 import { createSlotsState, type SlotsState } from './slots/state';
 
 export type BetColor = 'negro' | 'blanco';
@@ -36,6 +37,8 @@ export interface SpinResult {
   jackpotCapped: boolean;
 }
 
+export type TableId = 1 | 2 | 3;
+
 /** Estado completo de la partida. Datos planos, serializables a JSON. */
 export interface GameState {
   /** Fichas de la mesa 1. Nunca baja de 0. */
@@ -69,10 +72,12 @@ export interface GameState {
   /** Tiradas más recientes, la última primero. */
   recentSpins: SpinResult[];
   debtPaid: boolean;
-  /** Mesa que se está viendo (1 ruleta, 2 tragaperras). La 2 solo con la deuda de la 1 saldada. */
-  activeTable: 1 | 2;
+  /** Mesa que se está viendo (1 ruleta, 2 tragaperras, 3 dados). Cada una requiere saldar la anterior. */
+  activeTable: TableId;
   /** Mesa 2: la tragaperras. Existe siempre; se juega al saldar la deuda de la mesa 1. */
   slots: SlotsState;
+  /** Mesa 3: los dados del Barman. Se juega al saldar la deuda de la mesa 2. */
+  dice: DiceState;
   stats: {
     bets: number;
     wins: number;
@@ -100,6 +105,7 @@ export function createInitialState(): GameState {
     debtPaid: false,
     activeTable: 1,
     slots: createSlotsState(),
+    dice: createDiceState(),
     stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0 },
   };
 }

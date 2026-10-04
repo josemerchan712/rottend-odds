@@ -299,6 +299,94 @@ export const CONFIG = {
     },
   },
 
+  /**
+   * Mesa 3: los dados del Barman. Se desbloquea al saldar la deuda de la mesa 2. Moneda: chapas.
+   * Dos dados y un objetivo elegido antes de tirar; los objetivos funcionan como los tipos de apuesta
+   * de la ruleta: p = p_par · r · m(L) y pago neto 2/r − 1, así que el valor esperado base es el
+   * mismo y cambia el riesgo. m sube con la suerte (más en los arriesgados).
+   */
+  dice: {
+    targets: {
+      par: { name: 'Par', short: 'PAR', ratio: 1, payout: 1, luckMin: 1, luckMax: 1, unlock: null },
+      over7: { name: 'Más de 7', short: '>7', ratio: 15 / 18, payout: 1.4, luckMin: 0.97, luckMax: 1.15, unlock: null },
+      over9: { name: 'Más de 9', short: '>9', ratio: 1 / 3, payout: 5, luckMin: 0.9, luckMax: 1.4, unlock: 'hardTargets' },
+      double: { name: 'Doble', short: 'DOBLE', ratio: 1 / 3, payout: 5, luckMin: 0.85, luckMax: 1.5, unlock: 'hardTargets' },
+      boxcars: { name: 'Doble seis', short: '6·6', ratio: 1 / 18, payout: 35, luckMin: 0.8, luckMax: 1.8, unlock: 'boxcars' },
+    } as Record<string, { name: string; short: string; ratio: number; payout: number; luckMin: number; luckMax: number; unlock: string | null }>,
+    /** Probabilidad de acertar "par" sin suerte (la casa gana algo) y tope. */
+    luck: { base: 0.486, cap: 0.97, curveExponent: 1.6 },
+    risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
+    /**
+     * Relanzamientos: cargas que da la suerte. Máximo 1 + nivel / perLevels; se recarga una cada
+     * rechargeSeconds × rechargeFactor^nivel. Tras una tirada perdida se puede gastar una para
+     * volver a tirar un dado (honrado). La reserva es común con el ayudante.
+     */
+    rerolls: { base: 1, perLevels: 4, rechargeSeconds: 24, rechargeFactor: 0.93, helperThreshold: 1 / 3 },
+    /**
+     * Jackpot: tres dobles seises seguidos. Los dados están cargados: el doble seis sale con
+     * probabilidad j^(1/3) (dentro de las tiradas ganadoras), con j de 0,1% a 1,5% como en las otras
+     * mesas, así que tres seguidos salen con probabilidad ~j. Paga min(apuesta × 500, pozo, 25% deuda).
+     */
+    jackpot: {
+      baseChance: 0.001,
+      luckBonusMax: 0.007,
+      upgradeBonusPerLevel: 0.0007,
+      maxChance: 0.015,
+      streak: 3,
+      payoutMultiplier: 500,
+      payoutCapDebtFraction: 0.25,
+      potSeed: 50,
+      potContribution: 0.15,
+    },
+    bet: { minBet: 1, baseMaxBet: 20, maxBetMultiplierPerLevel: 2.5 },
+    helper: {
+      baseInterval: 4,
+      speedReductionPerLevel: 0.12,
+      profiles: [
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1 },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3 },
+      ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number }[],
+      luckPerLevel: 0.005,
+    },
+    /** Conversión: chapas/s = k * (ingreso/s de la mesa 2)^0,5. */
+    conversion: { k: 0.3 },
+    work: {
+      maxItems: shared.dice.work.maxItems,
+      respawnInterval: shared.dice.work.respawnSeconds,
+      valuePerLevel: shared.dice.work.cartValuePerLevel,
+      floor: { x: 150, y: 255, width: 280, height: 82 },
+      player: { x: 64, y: 344 },
+      clickRadius: 26,
+      minItemDistance: 34,
+      extraPerLevel: 1,
+      cleaner: { baseInterval: 4, reductionPerLevel: 0.2, start: { x: 520, y: 340 } },
+      items: [
+        { id: 'servilleta', name: 'Servilleta manchada', value: 2, weight: 45 },
+        { id: 'vaso', name: 'Vaso sucio', value: 5, weight: 30 },
+        { id: 'botella', name: 'Botella vacía', value: 9, weight: 14 },
+        { id: 'copa', name: 'Copa rota', value: 30, weight: 7 },
+        { id: 'propina', name: 'Propina', value: 75, weight: 3.5 },
+        { id: 'dentadura', name: 'Dentadura de oro', value: 1000, weight: 0.5 },
+      ] as readonly { id: string; name: string; value: number; weight: number }[],
+    },
+    debt: { amount: shared.dice.debt.amount },
+    upgrades: {
+      luck: { name: 'Suerte', ...shared.dice.upgrades.luck },
+      maxBet: { name: 'Apuesta máxima', ...shared.dice.upgrades.maxBet },
+      ghost: { name: 'Camarero fantasma (ayudante)', ...shared.dice.upgrades.ghost },
+      helperSpeed: { name: 'Velocidad del camarero', ...shared.dice.upgrades.helperSpeed },
+      helperProfile: { name: 'Perfil del camarero', ...shared.dice.upgrades.helperProfile },
+      helperLuck: { name: 'Suerte del camarero', ...shared.dice.upgrades.helperLuck },
+      jackpot: { name: 'Jackpot', ...shared.dice.upgrades.jackpot },
+      hardTargets: { name: 'Más de 9 y doble', ...shared.dice.upgrades.hardTargets },
+      boxcars: { name: 'Doble seis', ...shared.dice.upgrades.boxcars },
+      tray: { name: 'Bandeja', ...shared.dice.upgrades.tray },
+      cart: { name: 'Carrito', ...shared.dice.upgrades.cart },
+      busboy: { name: 'Friegaplatos', ...shared.dice.upgrades.busboy },
+    },
+  },
+
   /** coste(n) = base * crecimiento^n, con n = nivel actual. */
   upgrades: {
     luck: { name: 'Suerte', ...shared.upgrades.luck },
@@ -322,3 +410,7 @@ export type BetType = keyof typeof CONFIG.betTypes;
 export const UPGRADE_IDS = Object.keys(CONFIG.upgrades) as UpgradeId[];
 export type SlotUpgradeId = keyof typeof CONFIG.slots.upgrades;
 export const SLOT_UPGRADE_IDS = Object.keys(CONFIG.slots.upgrades) as SlotUpgradeId[];
+export type DiceUpgradeId = keyof typeof CONFIG.dice.upgrades;
+export const DICE_UPGRADE_IDS = Object.keys(CONFIG.dice.upgrades) as DiceUpgradeId[];
+export type DiceTarget = 'par' | 'over7' | 'over9' | 'double' | 'boxcars';
+export const DICE_TARGETS: DiceTarget[] = ['par', 'over7', 'over9', 'double', 'boxcars'];

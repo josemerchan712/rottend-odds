@@ -53,10 +53,41 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
 - [x] B1.4 `npm run plausibility` (--full): 3,6 s (la mesa 1 no cambió: caché). Cliente 208 y
       servidor 26 tests en verde.
 
-### Pendiente
+### Pendiente (mesa 4, en este orden)
 
-- B2 mesa 4 (blackjack, la Crupier)
-- B3 cierre
+- [x] M4.1 reglas y baraja (`src/game/cards/`): mano, banca a 17, pedir/plantarse, empate devuelve
+- [x] M4.2 suerte = baraja "amañada" con tabla calibrada (`sim/cardsRig.ts`), descartes, jackpot 7-7-7 con pozo
+- [x] M4.3 mesa: mejoras, esqueleto (estrategia básica + Kelly + descartes), trabajo, conversión desde la 3
+- [x] M4.4 guardado v7, activeTable 1-4, tests
+- [ ] M4.5 simulación `npm run simulate:cards` y calibración
+- [ ] M4.6 assets (crupier, cartas, fondo, esqueleto) + provisionales
+- [ ] M4.7 escena (cartas que se reparten y voltean, PEDIR/PLANTARSE en la mesa), HUD, pestaña, ?dev=mesa4
+- [ ] M4.8 diálogo de la Crupier (pendiente de revisión)
+- [ ] M4.9 servidor v7 + plausibility --full + docs
+- [ ] B3 cierre
+
+## Diseño de la mesa 4 (decisiones propias)
+
+- Moneda: **fichas negras**. Deuda 10M.
+- Una baraja de 52 cartas, barajada en cada mano. La banca pide hasta 17 (se planta con 17). Sin doblar
+  ni dividir; blackjack natural paga 1:1 como cualquier victoria; empate devuelve la apuesta.
+  Ventaja de la casa con estrategia básica: ~3%.
+- **Suerte = baraja que favorece**: cada carta se elige entre varias candidatas (más con más suerte) y
+  se queda la que más conviene al jugador (o a la banca, si la suerte efectiva es negativa). La
+  intensidad s sale de una tabla calibrada por simulación (s → probabilidad de ganar con estrategia
+  básica), así que la suerte sigue la misma curva que en las otras mesas: p(ganar) de la honrada
+  (~43%) a 97% con suerte máxima. La penalización por apostar fuerte resta de esa p.
+- **Descartes**: cargas como los relanzamientos de la mesa 3 (máximo 1 + nivel/4, recarga 16 s ×
+  0,93^nivel, reserva común con el ayudante). Tras recibir una carta, se puede descartar la última y
+  recibir otra. Si te pasas y tienes cargas, la mano espera tu decisión.
+- **Jackpot 7-7-7** (21 con tres sietes): con probabilidad j por mano (0,1% → 1,5%) la baraja trae 7-7 al
+  jugador y otro 7 arriba: hay que **pedir con 14** para cobrarlo (el casi-premio se ve). Indicador del
+  pozo y de los sietes en la mesa. Paga min(apuesta × 500, pozo, 25% deuda); pozo progresivo.
+- Esqueleto barajador: estrategia básica, descarta si se pasa, y apuesta lo menor entre su perfil y un
+  múltiplo de la fracción de Kelly (prudente ½, normal 1, agresivo 2): con valor esperado negativo
+  espera; agresivo solo compensa cuando lo limita el techo (suerte alta).
+- Trabajo: barajar y repartir (cartas sueltas, fichas de otros, mazo atascado, cenizas de puro,
+  propina, objeto raro: un dedo con anillo de sello... → "anillo de sello").
 - B2 mesa 4 (blackjack, la Crupier)
 - B3 cierre
 

@@ -390,6 +390,89 @@ export const CONFIG = {
     },
   },
 
+  /**
+   * Mesa 4: blackjack simplificado de la Crupier. Se desbloquea al saldar la deuda de la mesa 3.
+   * Moneda: fichas negras. Una baraja de 52 barajada en cada mano; la banca pide hasta 17; solo pedir
+   * o plantarse; ganar paga 1:1 (también el blackjack natural); el empate devuelve la apuesta.
+   */
+  cards: {
+    /** La banca se planta con esto o más (también con 17 blando). */
+    dealerStands: 17,
+    /**
+     * Suerte: probabilidad de ganar una mano con estrategia básica, de la honrada (rigTable con
+     * intensidad 0) a 97% con suerte máxima (curva 1,6), menos la penalización por apostar fuerte. La
+     * intensidad de la baraja que da esa probabilidad sale de la tabla calibrada (src/game/cards/rigTable.ts).
+     */
+    luck: { cap: 0.97, curveExponent: 1.6 },
+    risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
+    /** Descartes: como los relanzamientos de la mesa 3 (máximo 1 + nivel / perLevels). */
+    discards: { base: 1, perLevels: 4, rechargeSeconds: 16, rechargeFactor: 0.93 },
+    /**
+     * Jackpot: 21 con tres sietes. Con probabilidad j por mano (0,1% → 1,5%) la baraja trae 7-7 al
+     * jugador y otro 7 arriba: hay que pedir con 14. Paga min(apuesta × 500, pozo, 25% de la deuda).
+     */
+    jackpot: {
+      baseChance: 0.001,
+      luckBonusMax: 0.007,
+      upgradeBonusPerLevel: 0.0007,
+      maxChance: 0.015,
+      payoutMultiplier: 500,
+      payoutCapDebtFraction: 0.25,
+      potSeed: 50,
+      potContribution: 0.15,
+    },
+    bet: { minBet: 1, baseMaxBet: 20, maxBetMultiplierPerLevel: 2.5 },
+    helper: {
+      baseInterval: 4,
+      speedReductionPerLevel: 0.12,
+      /**
+       * Además de su fracción del techo y su máximo del saldo, cada perfil apuesta como mucho
+       * `kelly` veces la fracción de Kelly del saldo (criterio de crecimiento): con valor esperado
+       * negativo espera. Agresivo (2× Kelly) solo compensa cuando lo limita el techo (suerte alta).
+       */
+      profiles: [
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1 },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.6, maxBalanceFraction: 0.4, kelly: 2 },
+      ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number; kelly: number }[],
+      luckPerLevel: 0.005,
+    },
+    /** Conversión: fichas negras/s = k * (ingreso/s de la mesa 3)^0,5. */
+    conversion: { k: 0.3 },
+    work: {
+      maxItems: shared.cards.work.maxItems,
+      respawnInterval: shared.cards.work.respawnSeconds,
+      valuePerLevel: shared.cards.work.satchelValuePerLevel,
+      floor: { x: 150, y: 255, width: 280, height: 82 },
+      player: { x: 64, y: 344 },
+      clickRadius: 26,
+      minItemDistance: 34,
+      extraPerLevel: 1,
+      cleaner: { baseInterval: 4, reductionPerLevel: 0.2, start: { x: 520, y: 340 } },
+      items: [
+        { id: 'ceniza', name: 'Cenizas de puro', value: 2, weight: 45 },
+        { id: 'carta', name: 'Carta suelta', value: 6, weight: 30 },
+        { id: 'ficha', name: 'Ficha de otro', value: 11, weight: 14 },
+        { id: 'mazo', name: 'Mazo atascado', value: 36, weight: 7 },
+        { id: 'propina', name: 'Propina', value: 90, weight: 3.5 },
+        { id: 'anillo', name: 'Anillo de sello', value: 1200, weight: 0.5 },
+      ] as readonly { id: string; name: string; value: number; weight: number }[],
+    },
+    debt: { amount: shared.cards.debt.amount },
+    upgrades: {
+      luck: { name: 'Suerte', ...shared.cards.upgrades.luck },
+      maxBet: { name: 'Apuesta máxima', ...shared.cards.upgrades.maxBet },
+      skeleton: { name: 'Esqueleto barajador (ayudante)', ...shared.cards.upgrades.skeleton },
+      helperSpeed: { name: 'Velocidad del esqueleto', ...shared.cards.upgrades.helperSpeed },
+      helperProfile: { name: 'Perfil del esqueleto', ...shared.cards.upgrades.helperProfile },
+      helperLuck: { name: 'Suerte del esqueleto', ...shared.cards.upgrades.helperLuck },
+      jackpot: { name: 'Jackpot', ...shared.cards.upgrades.jackpot },
+      sleeve: { name: 'Manga ancha', ...shared.cards.upgrades.sleeve },
+      satchel: { name: 'Faltriquera', ...shared.cards.upgrades.satchel },
+      dealer: { name: 'Repartidor', ...shared.cards.upgrades.dealer },
+    },
+  },
+
   /** coste(n) = base * crecimiento^n, con n = nivel actual. */
   upgrades: {
     luck: { name: 'Suerte', ...shared.upgrades.luck },
@@ -417,3 +500,5 @@ export type DiceUpgradeId = keyof typeof CONFIG.dice.upgrades;
 export const DICE_UPGRADE_IDS = Object.keys(CONFIG.dice.upgrades) as DiceUpgradeId[];
 export type DiceTarget = 'par' | 'over7' | 'over9' | 'double' | 'boxcars';
 export const DICE_TARGETS: DiceTarget[] = ['par', 'over7', 'over9', 'double', 'boxcars'];
+export type CardUpgradeId = keyof typeof CONFIG.cards.upgrades;
+export const CARD_UPGRADE_IDS = Object.keys(CONFIG.cards.upgrades) as CardUpgradeId[];

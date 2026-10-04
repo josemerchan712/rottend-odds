@@ -264,11 +264,3 @@ export function updateDice(state: GameState, dt: number, rng: Rng): DiceTick {
   const ghost = updateGhost(dice, dt, rng);
   return { ghost, cleaned };
 }
-
-/** ¿Se puede pasar a esa mesa? La 2 con la 1 saldada; la 3 con la 2 saldada. */
-export function canSwitchTo(state: GameState, to: 1 | 2 | 3): boolean {
-  if (state.activeTable === to) return false;
-  if (to === 1) return true;
-  if (to === 2) return state.debtPaid;
-  return isDiceUnlocked(state);
-}

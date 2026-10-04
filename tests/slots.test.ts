@@ -35,7 +35,7 @@ import {
 } from '../src/game/slots/table';
 import { createInitialState } from '../src/game/state';
 import { updateGame } from '../src/game/update';
-import { canSwitchTo as canSwitchTable } from '../src/game/dice/table';
+import { canSwitchTo as canSwitchTable } from '../src/game/tables';
 import { sequenceRng, stateWith } from './helpers';
 
 const S = CONFIG.slots;

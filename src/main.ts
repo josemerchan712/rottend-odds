@@ -45,7 +45,7 @@ import {
 import { updateGame } from './game/update';
 import { SLOT_UPGRADE_IDS, UPGRADE_IDS } from './game/config';
 import { createInitialState, type TableId } from './game/state';
-import { canSwitchTo } from './game/dice/table';
+import { canSwitchTo } from './game/tables';
 import { payDebt } from './game/debt';
 import { closeDrawers2, mountUi2, render2, toggleDrawer2 } from './ui/render2';
 import { SlotsScene } from './ui/slotsScene';
@@ -154,10 +154,10 @@ const sprites = loadSprites();
 const scene = new Scene(sceneCanvas, sprites);
 const slotsScene = new SlotsScene(sceneCanvas, sprites);
 const diceScene = new DiceScene(sceneCanvas, sprites);
-const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE', 3: 'EL BARMAN' } as const;
+const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE', 3: 'EL BARMAN', 4: 'LA CRUPIER' } as const;
 const speech = new Speech(screens.game, SPEAKERS[1]);
 /** Cuándo habla el prestamista de cada mesa (se crean al entrar en la partida). */
-const watches: Record<TableId, DialogueWatch | null> = { 1: null, 2: null, 3: null };
+const watches: Record<TableId, DialogueWatch | null> = { 1: null, 2: null, 3: null, 4: null };
 
 function snapshot(current: GameState): WatchSnapshot {
   return { balance: current.balance, phase: lenderPhase(current), helperBought: current.upgrades.crupier > 0, debtPaid: current.debtPaid };
@@ -245,7 +245,7 @@ function renderHud(current: GameState): void {
 // Cambio de mesa: fundido a negro con un rótulo; a mitad cambia la mesa y se vuelve al salón.
 
 const TABLE_FADE_SECONDS = 0.55;
-const TABLE_CAPTIONS = { 1: 'MESA 1 · LA RULETA', 2: 'MESA 2 · LAS TRAGAPERRAS', 3: 'MESA 3 · LOS DADOS' } as const;
+const TABLE_CAPTIONS = { 1: 'MESA 1 · LA RULETA', 2: 'MESA 2 · LAS TRAGAPERRAS', 3: 'MESA 3 · LOS DADOS', 4: 'MESA 4 · EL BLACKJACK' } as const;
 let tableFade: { to: TableId; elapsed: number; switched: boolean } | null = null;
 
 function switchTable(to: TableId): void {

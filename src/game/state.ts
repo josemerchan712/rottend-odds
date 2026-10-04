@@ -1,4 +1,5 @@
 import { CONFIG, UPGRADE_IDS, type UpgradeId } from './config';
+import { createCardsState, type CardsState } from './cards/state';
 import { createDiceState, type DiceState } from './dice/state';
 import { createSlotsState, type SlotsState } from './slots/state';
 
@@ -37,7 +38,7 @@ export interface SpinResult {
   jackpotCapped: boolean;
 }
 
-export type TableId = 1 | 2 | 3;
+export type TableId = 1 | 2 | 3 | 4;
 
 /** Estado completo de la partida. Datos planos, serializables a JSON. */
 export interface GameState {
@@ -72,12 +73,14 @@ export interface GameState {
   /** Tiradas más recientes, la última primero. */
   recentSpins: SpinResult[];
   debtPaid: boolean;
-  /** Mesa que se está viendo (1 ruleta, 2 tragaperras, 3 dados). Cada una requiere saldar la anterior. */
+  /** Mesa que se está viendo (1 ruleta, 2 tragaperras, 3 dados, 4 blackjack). Cada una requiere saldar la anterior. */
   activeTable: TableId;
   /** Mesa 2: la tragaperras. Existe siempre; se juega al saldar la deuda de la mesa 1. */
   slots: SlotsState;
   /** Mesa 3: los dados del Barman. Se juega al saldar la deuda de la mesa 2. */
   dice: DiceState;
+  /** Mesa 4: el blackjack de la Crupier. Se juega al saldar la deuda de la mesa 3. */
+  cards: CardsState;
   stats: {
     bets: number;
     wins: number;
@@ -106,6 +109,7 @@ export function createInitialState(): GameState {
     activeTable: 1,
     slots: createSlotsState(),
     dice: createDiceState(),
+    cards: createCardsState(),
     stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0 },
   };
 }

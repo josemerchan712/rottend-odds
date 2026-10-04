@@ -1,6 +1,7 @@
 import shared from '../../shared/config.json';
-import { CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
+import { CARD_UPGRADE_IDS, CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
 import { sanitizeWorkSlot } from './workCore';
+import { createCardsState } from './cards/state';
 import { createDiceState } from './dice/state';
 import { createSlotsState } from './slots/state';
 import { createInitialState, type GameState } from './state';
@@ -39,6 +40,8 @@ const migrations: Record<number, (state: Json) => Json> = {
   4: (state) => ({ ...state, activeTable: 1, slots: createSlotsState() }),
   // v6: mesa 3 (dados). Empieza de cero.
   5: (state) => ({ ...state, dice: createDiceState() }),
+  // v7: mesa 4 (blackjack). Empieza de cero.
+  6: (state) => ({ ...state, cards: createCardsState() }),
 };
 
 export function serialize(state: GameState, now: number): string {
@@ -182,8 +185,44 @@ function sanitizeSlots(state: GameState): void {
   slots.pot = Math.min(Math.max(nonNegative(slots.pot), S.jackpot.potSeed), S.debt.amount * S.jackpot.payoutCapDebtFraction);
   slots.recentSpins = slots.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof slots.recentSpins;
   sanitizeDice(state);
-  const allowed = state.activeTable === 3 ? state.debtPaid && slots.debtPaid : state.activeTable === 2 ? state.debtPaid : true;
-  state.activeTable = allowed && [1, 2, 3].includes(state.activeTable) ? state.activeTable : 1;
+  sanitizeCards(state);
+  const paid = [true, state.debtPaid, state.debtPaid && slots.debtPaid, state.debtPaid && slots.debtPaid && state.dice.debtPaid];
+  state.activeTable = [1, 2, 3, 4].includes(state.activeTable) && paid[state.activeTable - 1] ? state.activeTable : 1;
+}
+
+function isCard(v: unknown): boolean {
+  return Number.isInteger(v) && (v as number) >= 0 && (v as number) < 52;
+}
+
+/** Mesa 4: lo mismo que las otras. Una mano a medias no sobrevive a cargar la partida (se descarta). */
+function sanitizeCards(state: GameState): void {
+  const cards = state.cards;
+  const C = CONFIG.cards;
+  cards.balance = nonNegative(cards.balance);
+  cards.playTime = nonNegative(cards.playTime);
+  for (const id of CARD_UPGRADE_IDS) {
+    cards.upgrades[id] = Math.min(Math.floor(nonNegative(cards.upgrades[id])), C.upgrades[id].maxLevel);
+  }
+  cards.betFractionIndex = clampIndex(cards.betFractionIndex, CONFIG.bet.quickFractions.length);
+  cards.helper.timer = nonNegative(cards.helper.timer);
+  cards.helper.profile = Math.min(clampIndex(cards.helper.profile, C.helper.profiles.length), cards.upgrades.helperProfile);
+  const maxCharges = C.discards.base + Math.floor(cards.upgrades.luck / C.discards.perLevels);
+  cards.discards.charges = Math.min(Math.floor(nonNegative(cards.discards.charges)), maxCharges);
+  cards.discards.timer = nonNegative(cards.discards.timer);
+  sanitizeWorkSlot(C.work, cards.work);
+  cards.passiveCarry = Math.min(nonNegative(cards.passiveCarry), 1);
+  cards.pot = Math.min(Math.max(nonNegative(cards.pot), C.jackpot.potSeed), C.debt.amount * C.jackpot.payoutCapDebtFraction);
+  const hand = cards.hand as unknown;
+  const validHand =
+    isRecord(hand) &&
+    Array.isArray(hand.player) &&
+    Array.isArray(hand.dealer) &&
+    (hand.player as unknown[]).every(isCard) &&
+    (hand.dealer as unknown[]).every(isCard);
+  // Una mano sin terminar se pierde al cargar (la apuesta ya estaba cobrada): se enseña como perdida.
+  if (!validHand) cards.hand = null;
+  else if (cards.hand!.status !== 'fin') cards.hand = null;
+  cards.recentHands = cards.recentHands.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof cards.recentHands;
 }
 
 function isDie(v: unknown): boolean {

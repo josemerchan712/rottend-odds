@@ -27,7 +27,6 @@ import { createDiceState, type DiceState } from '../src/game/dice/state';
 import {
   buyDiceUpgrade,
   canPayDiceDebt,
-  canSwitchTo,
   dicePassiveRate,
   isDiceUnlocked,
   payDiceDebt,
@@ -36,6 +35,7 @@ import {
   updateGhost,
 } from '../src/game/dice/table';
 import { createInitialState } from '../src/game/state';
+import { canSwitchTo } from '../src/game/tables';
 import { sequenceRng } from './helpers';
 
 const C = CONFIG.dice;

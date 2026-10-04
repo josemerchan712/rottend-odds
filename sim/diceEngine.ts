@@ -63,6 +63,8 @@ export interface DiceRunResult {
   targets: Record<DiceTarget, number>;
   helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number }>;
   passive: { start: number; end: number };
+  /** Estado al terminar (para empezar la mesa 4 desde ahí). */
+  finalState: GameState;
 }
 
 const SIDE: readonly DiceUpgradeId[] = ['helperLuck', 'jackpot'];
@@ -105,6 +107,7 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
     targets: Object.fromEntries(DICE_TARGETS.map((t) => [t, 0])) as Record<DiceTarget, number>,
     helper: { inicio: empty(), media: empty(), alta: empty(), final: empty() },
     passive: { start: dicePassiveRate(state), end: 0 },
+    finalState: state,
   };
 
   let actionTimer = 0;

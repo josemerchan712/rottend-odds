@@ -406,7 +406,12 @@ export const CONFIG = {
     luck: { cap: 0.97, curveExponent: 1.6 },
     risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
     /** Descartes: como los relanzamientos de la mesa 3 (máximo 1 + nivel / perLevels). */
-    discards: { base: 1, perLevels: 4, rechargeSeconds: 16, rechargeFactor: 0.93 },
+    /**
+     * Descartes: como los relanzamientos de la mesa 3 pero más frecuentes (máximo 1 + nivel / 3, una
+     * cada 6 s × 0,93^nivel): en el blackjack la baraja ya favorece y cada descarte vale menos. La carta que
+     * sustituye a la descartada se elige con `extraCandidates` candidatas más (nunca contra el jugador).
+     */
+    discards: { base: 1, perLevels: 3, rechargeSeconds: 6, rechargeFactor: 0.93, extraCandidates: 2 },
     /**
      * Jackpot: 21 con tres sietes. Con probabilidad j por mano (0,1% → 1,5%) la baraja trae 7-7 al
      * jugador y otro 7 arriba: hay que pedir con 14. Paga min(apuesta × 500, pozo, 25% de la deuda).
@@ -419,9 +424,9 @@ export const CONFIG = {
       payoutMultiplier: 500,
       payoutCapDebtFraction: 0.25,
       potSeed: 50,
-      potContribution: 0.15,
+      potContribution: 0.08,
     },
-    bet: { minBet: 1, baseMaxBet: 20, maxBetMultiplierPerLevel: 2.5 },
+    bet: { minBet: 1, baseMaxBet: 15, maxBetMultiplierPerLevel: 2.5 },
     helper: {
       baseInterval: 4,
       speedReductionPerLevel: 0.12,

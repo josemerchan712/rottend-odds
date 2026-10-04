@@ -59,7 +59,12 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
 - [x] M4.2 suerte = baraja "amañada" con tabla calibrada (`sim/cardsRig.ts`), descartes, jackpot 7-7-7 con pozo
 - [x] M4.3 mesa: mejoras, esqueleto (estrategia básica + Kelly + descartes), trabajo, conversión desde la 3
 - [x] M4.4 guardado v7, activeTable 1-4, tests
-- [ ] M4.5 simulación `npm run simulate:cards` y calibración
+- [x] M4.5 simulación `npm run simulate:cards` y calibración (30 partidas): mejor estrategia (d) 12:42,
+      tramo final 1:02, mesas 1-4 ≈ 48 min; triviales peores; descartes −6,4%; jackpot 5-6%; sin quiebras;
+      sin conversión 33 min. Esqueleto: normal gana la fase media, agresivo solo la alta.
+      Ajustes respecto al diseño inicial: suerte base 550 → 150; techo máx. nivel 10 con base 15 (143K);
+      descartes cada 6 s y 1 + nivel/3, la sustituta con 2 candidatas más; pozo 8% de cada apuesta; el
+      esqueleto solo descarta si se pasa y quedan 2+ cargas.
 - [ ] M4.6 assets (crupier, cartas, fondo, esqueleto) + provisionales
 - [ ] M4.7 escena (cartas que se reparten y voltean, PEDIR/PLANTARSE en la mesa), HUD, pestaña, ?dev=mesa4
 - [ ] M4.8 diálogo de la Crupier (pendiente de revisión)

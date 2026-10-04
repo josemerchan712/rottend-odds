@@ -154,13 +154,13 @@ export function handInPlay(cards: CardsState): boolean {
   return cards.hand !== null && cards.hand.status !== 'fin';
 }
 
-function playerDraw(hand: CardHand, rng: Rng): Card {
+function playerDraw(hand: CardHand, rng: Rng, rig = hand.rig): Card {
   if (hand.stackedSeven !== null) {
     const seven = hand.stackedSeven;
     hand.stackedSeven = null;
     return seven;
   }
-  return drawCard(hand.deck, 'jugador', hand.player, hand.dealer, hand.rig, K.dealerStands, rng);
+  return drawCard(hand.deck, 'jugador', hand.player, hand.dealer, rig, K.dealerStands, rng);
 }
 
 /**
@@ -243,7 +243,8 @@ export function discard(cards: CardsState, hand: CardHand, rng: Rng): boolean {
   hand.discards++;
   hand.player.pop();
   hand.status = 'jugando';
-  hand.player.push(playerDraw(hand, rng));
+  // La sustituta se elige con una candidata más, y nunca a favor de la banca.
+  hand.player.push(playerDraw(hand, rng, Math.max(hand.rig, 0) + K.discards.extraCandidates));
   hand.canDiscard = true;
   afterPlayerCard(cards, hand, rng);
   return true;
@@ -315,20 +316,26 @@ export function simpleHit(hand: CardHand): boolean {
   return basicHit(hand.player, cardValue(hand.dealer[0]));
 }
 
-/** ¿Descartar la última carta? Si me ha pasado; o si, con 12-16, la banca enseña 7 o más y sobran cargas. */
+/**
+ * ¿Descartar la última carta? Si me ha pasado; o si me deja en 12-16 duro y la banca enseña 7 o más
+ * (o tengo todas las cargas: no tiene sentido desperdiciar la recarga).
+ */
 export function simpleDiscard(hand: CardHand, charges: number, maxCharges: number): boolean {
   if (!hand.canDiscard || charges <= 0) return false;
   if (isBust(hand.player)) return true;
   const { total, soft } = handTotal(hand.player);
   const up = cardValue(hand.dealer[0]);
-  return !soft && total >= 12 && total <= 16 && (up >= 7 || up === 1) && charges >= maxCharges;
+  return !soft && total >= 12 && total <= 16 && (up >= 7 || up === 1 || charges >= maxCharges);
 }
 
-/** Juega una mano entera con las decisiones sencillas (el ayudante). */
+/**
+ * Juega una mano entera con las decisiones sencillas (el ayudante): estrategia básica, y descarta
+ * solo si se ha pasado y quedan al menos 2 cargas (deja una para el jugador).
+ */
 export function playHandAuto(cards: CardsState, hand: CardHand, rng: Rng): void {
   let guard = 0;
   while (hand.status !== 'fin' && guard++ < 30) {
-    if (simpleDiscard(hand, cards.discards.charges, maxDiscards(cards.upgrades.luck)) && discard(cards, hand, rng)) continue;
+    if (hand.status === 'pasado' && cards.discards.charges >= 2 && discard(cards, hand, rng)) continue;
     if (hand.status === 'pasado') {
       acceptBust(cards, hand);
       break;

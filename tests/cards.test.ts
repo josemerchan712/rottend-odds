@@ -158,13 +158,13 @@ describe('blackjack: mano, descartes y jackpot', () => {
       if (hand.status !== 'jugando') continue;
       const rng = seededRng(seed * 13);
       while (hand.status === 'jugando' && handTotal(hand.player).total < 21) hit(c, hand, rng);
-      if (hand.status !== 'pasado') continue;
+      if ((hand.status as CardHand['status']) !== 'pasado') continue;
       const before = hand.player.length;
       expect(discard(c, hand, rng)).toBe(true);
       expect(hand.player.length).toBe(before);
       expect(c.discards.charges).toBe(0);
-      if (hand.status === 'pasado') acceptBust(c, hand);
-      if (hand.status === 'jugando') stand(c, hand, rng);
+      if ((hand.status as CardHand['status']) === 'pasado') acceptBust(c, hand);
+      if ((hand.status as CardHand['status']) === 'jugando') stand(c, hand, rng);
       expect(hand.status).toBe('fin');
       return;
     }
@@ -178,7 +178,7 @@ describe('blackjack: mano, descartes y jackpot', () => {
     c.upgrades.luck = 8;
     updateDiscards(c, 10_000);
     expect(c.discards.charges).toBe(maxDiscards(8));
-    expect(maxDiscards(MAX)).toBe(6);
+    expect(maxDiscards(MAX)).toBe(1 + Math.floor(MAX / K.discards.perLevels));
   });
 
   it('jackpot: la baraja trae 7-7 y otro 7 arriba; pidiendo con 14 se cobra el pozo', () => {
@@ -214,10 +214,10 @@ describe('blackjack: mano, descartes y jackpot', () => {
 
   it('el selector usa cantidades reales', () => {
     const c = fresh({ balance: 1000 });
-    c.upgrades.maxBet = 2;
-    expect(cardsChips(c).map((x) => x.amount)).toEqual([1, 10, 50, 125]);
+    c.upgrades.maxBet = 2; // techo 15 * 2,5^2 = 93
+    expect(cardsChips(c).map((x) => x.amount)).toEqual([1, 5, 20, 93]);
     c.betFractionIndex = 2;
-    expect(playerDeal(c, seededRng(3))?.bet).toBe(50);
+    expect(playerDeal(c, seededRng(3))?.bet).toBe(20);
   });
 });
 

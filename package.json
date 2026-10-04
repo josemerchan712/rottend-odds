@@ -13,6 +13,7 @@
     "simulate": "tsx sim/simulate.ts",
     "simulate:slots": "tsx sim/slotsSimulate.ts",
     "simulate:dice": "tsx sim/diceSimulate.ts",
+    "simulate:cards": "tsx sim/cardsSimulate.ts",
     "plausibility": "tsx sim/plausibility.ts --full",
     "plausibility:quick": "tsx sim/plausibility.ts --quick",
     "assets": "tsx scripts/assets.ts"

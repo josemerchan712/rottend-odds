@@ -57,8 +57,8 @@
   "cards": {
     "debt": { "amount": 10000000 },
     "upgrades": {
-      "luck": { "baseCost": 550, "growth": 1.5, "maxLevel": 20 },
-      "maxBet": { "baseCost": 350, "growth": 2, "maxLevel": 8 },
+      "luck": { "baseCost": 150, "growth": 1.5, "maxLevel": 20 },
+      "maxBet": { "baseCost": 350, "growth": 2, "maxLevel": 10 },
       "skeleton": { "baseCost": 1200, "growth": 1, "maxLevel": 1 },
       "helperSpeed": { "baseCost": 700, "growth": 1.6, "maxLevel": 15 },
       "helperProfile": { "baseCost": 2500, "growth": 4, "maxLevel": 2 },

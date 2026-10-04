@@ -1,3 +1,4 @@
+import '@fontsource/vt323';
 import './ui/style.css';
 import { createApi, type CloudSave, type TokenResponse } from './api/client';
 import { loadSession, saveSession, type Session } from './api/session';
@@ -23,6 +24,7 @@ import {
 } from './ui/online';
 import { mountUi, render, setText } from './ui/render';
 import { Scene } from './ui/scene';
+import { enterFullscreen, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
 import { loadSprites } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
 
@@ -30,21 +32,36 @@ const { saveKey, settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFI
 
 type Screen = 'menu' | 'settings' | 'game' | 'auth' | 'sync' | 'ranking';
 
+// Contenedor raíz (toda la ventana; es lo que va a pantalla completa) con el escenario de 640x360
+// dentro: la escena de fondo, las pantallas HTML encima y el filtro CRT sobre todo.
 const app = document.querySelector<HTMLElement>('#app')!;
 app.innerHTML = `
-  <div data-screen="menu"></div>
-  <div data-screen="settings" hidden></div>
-  <div data-screen="game" hidden></div>
-  <div data-screen="auth" hidden></div>
-  <div data-screen="sync" hidden></div>
-  <div data-screen="ranking" hidden></div>
+  <div class="root" data-ref="root">
+    <div class="stage" data-ref="stage">
+      <canvas class="scene" data-ref="scene" aria-label="Mesa 1: el casino"></canvas>
+      <div class="screen game" data-screen="game" hidden></div>
+      <div class="screen" data-screen="menu"></div>
+      <div class="screen" data-screen="settings" hidden></div>
+      <div class="screen" data-screen="auth" hidden></div>
+      <div class="screen" data-screen="sync" hidden></div>
+      <div class="screen" data-screen="ranking" hidden></div>
+    </div>
+  </div>
 `;
+const root = app.querySelector<HTMLElement>('[data-ref="root"]')!;
+const stage = app.querySelector<HTMLElement>('[data-ref="stage"]')!;
+const sceneCanvas = app.querySelector<HTMLCanvasElement>('[data-ref="scene"]')!;
 const screens = Object.fromEntries(
   (['menu', 'settings', 'game', 'auth', 'sync', 'ranking'] as Screen[]).map((name) => [
     name,
     app.querySelector<HTMLElement>(`[data-screen="${name}"]`)!,
   ]),
 ) as Record<Screen, HTMLElement>;
+const crt = mountCrt(stage);
+const relayout = () => layoutStage(root, stage);
+window.addEventListener('resize', relayout);
+document.addEventListener('fullscreenchange', relayout);
+relayout();
 
 const menuUi = mountMenu(screens.menu);
 const settingsUi = mountSettings(screens.settings);
@@ -53,7 +70,7 @@ const authUi = mountAuth(screens.auth);
 const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
 
-const scene = new Scene(gameUi.sceneCanvas, loadSprites());
+const scene = new Scene(sceneCanvas, loadSprites());
 
 const api = createApi();
 let session: Session | null = loadSession(localStorage, sessionKey, Date.now());
@@ -68,19 +85,11 @@ function show(next: Screen): void {
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
   if (next === 'menu') renderMenu(menuUi, continueInfo(localStorage, saveKey), currentSession()?.displayName ?? null);
   if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
-  if (next === 'game' && state) {
-    fitScene();
-    render(gameUi, state, scene.revealedBets);
-  }
+  if (next === 'game' && state) render(gameUi, state, scene.revealedBets);
 }
-
-function fitScene(): void {
-  scene.fit(gameUi.sceneWrap.clientWidth || window.innerWidth - 32, window.innerHeight * 0.7);
-}
-window.addEventListener('resize', fitScene);
 
 // Escena: clic en la basura (zona generosa), resaltado al pasar por encima y tecla E.
-gameUi.sceneCanvas.addEventListener('click', (event) => {
+sceneCanvas.addEventListener('click', (event) => {
   if (!state) return;
   const point = scene.toScene(event.clientX, event.clientY);
   const item = itemAt(state.work.items, point.x, point.y);
@@ -88,18 +97,25 @@ gameUi.sceneCanvas.addEventListener('click', (event) => {
   scene.playerCollected(collectItem(state, item.id));
   render(gameUi, state, scene.revealedBets);
 });
-gameUi.sceneCanvas.addEventListener('mousemove', (event) => scene.setHover(scene.toScene(event.clientX, event.clientY)));
-gameUi.sceneCanvas.addEventListener('mouseleave', () => scene.setHover(null));
+sceneCanvas.addEventListener('mousemove', (event) => scene.setHover(scene.toScene(event.clientX, event.clientY)));
+sceneCanvas.addEventListener('mouseleave', () => scene.setHover(null));
 window.addEventListener('keydown', (event) => {
-  if (screen !== 'game' || !state || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+  if (event.key === 'f' || event.key === 'F') {
+    void toggleFullscreen(root);
+    return;
+  }
+  if (screen !== 'game' || !state) return;
   if (event.key !== 'e' && event.key !== 'E') return;
   scene.playerCollected(collectNearest(state));
   render(gameUi, state, scene.revealedBets);
 });
 
 function enterGame(loaded: GameState): void {
+  // El clic de Continuar o Nueva partida es el gesto que permite el audio y la pantalla completa.
   unlockAudio();
+  if (settings.startFullscreen) void enterFullscreen(root);
   state = loaded;
   scene.reset(loaded);
   show('game');
@@ -114,6 +130,7 @@ function save(): void {
 
 function applySettings(): void {
   document.documentElement.dataset.crt = settings.crtEnabled ? 'on' : 'off';
+  crt.setEnabled(settings.crtEnabled);
   setVolume(settings.volume);
   scene.setEffectsEnabled(settings.crtEnabled);
   saveSettings(localStorage, settingsKey, settings);
@@ -160,6 +177,10 @@ settingsUi.crt.addEventListener('change', () => {
   settings.crtEnabled = settingsUi.crt.checked;
   applySettings();
 });
+settingsUi.fullscreen.addEventListener('change', () => {
+  settings.startFullscreen = settingsUi.fullscreen.checked;
+  applySettings();
+});
 settingsUi.volume.addEventListener('input', () => {
   settings.volume = Number(settingsUi.volume.value) / 100;
   applySettings();
@@ -173,6 +194,10 @@ settingsUi.deleteSave.addEventListener('click', () => {
 settingsUi.back.addEventListener('click', () => show('menu'));
 
 // Juego
+gameUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
+gameUi.panelToggle.addEventListener('click', () => {
+  gameUi.panel.hidden = !gameUi.panel.hidden;
+});
 bindControls(
   gameUi,
   () => state!,
@@ -349,6 +374,7 @@ startLoop(
       lastDt = dt;
     },
     render: () => {
+      crt.tick();
       if (screen === 'game' && state) {
         render(gameUi, state, scene.revealedBets);
         scene.render(state, lastDt);

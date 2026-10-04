@@ -1,126 +1,213 @@
+/*
+ * Todo vive dentro del "escenario" de 640x360 unidades, escalado en entero (src/ui/stage.ts):
+ * los tamaños de aquí son píxeles del juego, no de la pantalla.
+ */
 :root {
-  --bg: #0b0a09;
-  --panel: #15130f;
-  --line: #2a2620;
-  --text: #e8e2d0;
-  --muted: #8a8370;
+  --bg: #050403;
+  --panel: #15110d;
+  --panel-2: #1c1712;
+  --line: #2e261c;
+  --text: #e3dcc6;
+  --muted: #8d846d;
+  --dim: #5a5243;
   --green: #6f8f3a;
   --blood: #9a2a22;
   --rust: #b0602a;
   --gold: #c9a443;
+  --bone: #cfc5a6;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 
-body {
+html, body {
   margin: 0;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.5 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
 }
 
-#app { max-width: 1100px; margin: 0 auto; padding: 16px; }
+body {
+  color: var(--text);
+  font: 11px/1.15 'VT323', ui-monospace, monospace;
+  -webkit-font-smoothing: none;
+}
 
-.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 24px; margin-bottom: 12px; }
-h1 { font-size: 18px; margin: 0; color: var(--gold); }
-h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.balance { font-size: 20px; }
-.balance strong { color: var(--gold); }
+#app { position: fixed; inset: 0; }
 
-.layout { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 860px) { .layout { grid-template-columns: 1.2fr 1fr; } }
-.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* Contenedor raíz: toda la ventana (y lo que va a pantalla completa). */
+.root {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
 
-.panel { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; }
-.panel p { margin: 4px 0; }
-.muted { color: var(--muted); }
-.note { color: var(--green); min-height: 0; }
-.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
-.spread { justify-content: space-between; }
+/* El escenario: 640x360 escalado y centrado por transform. */
+.stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 640px;
+  height: 360px;
+  transform-origin: 0 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 640px;
+  height: 360px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 [hidden] { display: none !important; }
+
+/* Pantallas de menú superpuestas al escenario. */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 4, 3, 0.92);
+  z-index: 20;
+}
+.screen.game { background: none; display: block; z-index: 5; pointer-events: none; }
+.screen.game > * { pointer-events: auto; }
+
+/* Marco pixel hecho en CSS: capas escalonadas, sin imágenes. */
+.pixel-frame,
+.panel {
+  background: var(--panel);
+  box-shadow:
+    0 0 0 1px #0b0908,
+    0 0 0 2px #6b5428,
+    0 0 0 3px #0b0908,
+    inset 0 0 0 1px #2a2219;
+}
+
+.panel { padding: 8px 10px; }
+.panel p { margin: 3px 0; }
+.menu { width: 300px; max-height: 340px; overflow: auto; padding: 10px 12px; }
+.menu.wide { width: 360px; }
+.menu h1 { font-size: 22px; margin: 0 0 2px; color: var(--gold); font-weight: normal; letter-spacing: 1px; }
+h2 { font-size: 12px; margin: 0 0 4px; color: var(--muted); font-weight: normal; text-transform: uppercase; letter-spacing: 1px; }
+.menu-section { margin-top: 8px; }
+.menu-options { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.menu-options button { padding: 3px 6px; text-align: left; font-size: 13px; }
+.menu-sub { display: block; font-size: 10px; color: var(--muted); }
+.muted { color: var(--muted); }
+.note { color: var(--green); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
+.spread { justify-content: space-between; }
 
 button {
   font: inherit;
+  font-size: 11px;
   color: var(--text);
-  background: #221f19;
-  border: 1px solid #3a352b;
-  padding: 6px 12px;
+  background: var(--panel-2);
+  border: 1px solid #3a3022;
+  padding: 1px 5px;
   cursor: pointer;
+  line-height: 1.1;
 }
-button:hover:not(:disabled) { border-color: var(--green); }
+button:hover:not(:disabled) { border-color: var(--gold); color: #fff; }
 button:disabled { opacity: 0.35; cursor: not-allowed; }
-button.small { padding: 2px 8px; font-size: 12px; }
+button.small { font-size: 10px; padding: 0 4px; }
 button.danger:hover:not(:disabled) { border-color: var(--blood); }
 button.gold:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 button.chip.active { background: #3a3220; border-color: var(--gold); color: var(--gold); }
-button.bet { flex: 1; padding: 10px; font-weight: bold; }
-button.bet.black { background: #050505; }
-button.bet.white { background: #d9d2bf; color: #111; }
+:focus-visible { outline: 1px solid var(--gold); outline-offset: 1px; }
 
-.debt-bar { height: 14px; background: #0a0908; border: 1px solid var(--line); }
+.setting { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.setting input[type='range'] { flex: 1; accent-color: var(--gold); height: 8px; }
+.setting input[type='checkbox'] { accent-color: var(--gold); width: 9px; height: 9px; margin: 0; }
+
+.form { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.form label { display: flex; flex-direction: column; gap: 1px; font-size: 10px; color: var(--muted); }
+.form input {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: #0f0c09;
+  border: 1px solid #3a3022;
+  padding: 1px 4px;
+}
+
+.ranking { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 11px; }
+.ranking th, .ranking td { text-align: left; padding: 1px 4px; border-top: 1px solid var(--line); }
+.ranking th { color: var(--muted); font-weight: normal; }
+
+kbd {
+  font: inherit;
+  padding: 0 2px;
+  border: 1px solid #3a3022;
+  color: var(--gold);
+}
+
+/* HUD del juego: siempre visible arriba, en las dos salas. */
+.hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  background: linear-gradient(to bottom, rgba(5, 4, 3, 0.92), rgba(5, 4, 3, 0.6));
+  border-bottom: 1px solid #2a2219;
+  font-size: 13px;
+}
+.hud-balance strong { color: var(--gold); font-weight: normal; font-size: 15px; }
+.hud-debt { display: flex; align-items: center; gap: 4px; flex: 1; max-width: 220px; margin: 0 auto; }
+.hud-debt .debt-bar { flex: 1; }
+.hud-buttons { display: flex; gap: 3px; }
+.debt-bar { height: 5px; background: #0a0908; border: 1px solid var(--line); }
 .debt-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--blood), var(--rust)); }
 
-.last-spin { margin-top: 8px; padding: 8px; border: 1px solid var(--line); background: #0f0e0b; }
+/* Panel provisional con los controles antiguos (lo sustituyen el tapete y los cajones). */
+.temp-toggle { position: absolute; right: 6px; top: 24px; }
+.temp-panel {
+  position: absolute;
+  right: 6px;
+  top: 40px;
+  bottom: 6px;
+  width: 300px;
+  overflow: auto;
+  padding: 6px;
+  font-size: 11px;
+}
+.temp-panel .panel { margin-bottom: 6px; }
+.temp-panel table { width: 100%; border-collapse: collapse; }
+.temp-panel td { padding: 1px 2px; border-top: 1px solid var(--line); }
+.temp-panel .effect { font-size: 10px; }
+.temp-panel .level { color: var(--muted); white-space: nowrap; text-align: center; }
+.last-spin { padding: 2px 4px; border: 1px solid var(--line); background: #0f0e0b; }
 .last-spin[data-outcome='gana'] { border-color: var(--green); }
 .last-spin[data-outcome='pierde'] { border-color: var(--blood); }
 .last-spin[data-outcome='jackpot'] { border-color: var(--gold); color: var(--gold); }
-.spin-log { margin: 6px 0 0; padding-left: 20px; font-size: 12px; color: var(--muted); }
+.spin-log { margin: 2px 0 0; padding-left: 14px; font-size: 10px; color: var(--muted); }
 .spin-log .gana { color: #8fa86a; }
 .spin-log .pierde { color: #a86a62; }
 .spin-log .jackpot { color: var(--gold); }
+.bet.black { background: #050505; }
+.bet.white { background: var(--bone); color: #111; }
+.temp-panel input[type='number'] { width: 36px; font: inherit; background: #0f0c09; color: var(--text); border: 1px solid #3a3022; }
 
-.shop { width: 100%; border-collapse: collapse; }
-.shop td { padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: middle; }
-.shop tr:first-child td { border-top: 0; }
-.shop .name { font-weight: bold; }
-.shop .effect { font-size: 12px; }
-.shop .level { text-align: center; color: var(--muted); white-space: nowrap; }
-.shop .buy { min-width: 76px; }
-.shop tr.locked .name { color: var(--muted); }
-
-.push-right { margin-left: auto; }
-
-.menu { max-width: 420px; margin: 48px auto; padding: 24px; }
-.menu h1 { font-size: 22px; margin-bottom: 4px; }
-.menu-options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-.menu-options button { padding: 12px; text-align: left; font-size: 15px; }
-.menu-sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
-.setting { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
-.setting input[type='range'] { flex: 1; accent-color: var(--gold); }
-.setting input[type='checkbox'] { accent-color: var(--gold); width: 16px; height: 16px; }
-
-.menu.wide { max-width: 560px; }
-.menu-section { margin-top: 24px; }
-.form { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-.form input {
-  font: inherit;
-  color: var(--text);
-  background: #0f0e0b;
-  border: 1px solid #3a352b;
-  padding: 6px 8px;
+/* Filtro CRT sobre todo el escenario. Las unidades son píxeles del juego: 1 scanline cada 2. */
+.crt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
 }
-.form input:focus { outline: 1px solid var(--gold); }
-.ranking { width: 100%; border-collapse: collapse; margin: 8px 0; }
-.ranking th, .ranking td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); }
-.ranking th { color: var(--muted); font-weight: normal; }
-
-.scene-wrap { display: flex; justify-content: center; margin-bottom: 12px; overflow-x: auto; }
-.scene {
-  display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  background: #100e0b;
-  border: 1px solid var(--line);
-  touch-action: manipulation;
-}
-kbd {
-  font: inherit;
-  font-size: 12px;
-  padding: 0 4px;
-  border: 1px solid #3a352b;
-  border-bottom-width: 2px;
-  color: var(--gold);
-}
+.crt > div { position: absolute; inset: 0; }
+.crt-scan { background: repeating-linear-gradient(to bottom, transparent 0, transparent 1px, rgba(0, 0, 0, 0.22) 1px, rgba(0, 0, 0, 0.22) 2px); }
+.crt-vignette { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%); }
+.crt-grain { opacity: 0.6; image-rendering: pixelated; }

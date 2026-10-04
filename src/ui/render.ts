@@ -10,7 +10,6 @@ import { bagMultiplier, cleanerInterval } from '../game/work';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 
 const FRACTION_LABELS = ['1%', '10%', '50%', 'TODO'];
-const DEBT_TEXT = CONFIG.debt.amount.toLocaleString('es-ES');
 
 export interface ShopRow {
   row: HTMLElement;
@@ -42,8 +41,9 @@ export interface Ui {
   betNumber: HTMLButtonElement;
   lastSpin: HTMLElement;
   spinLog: HTMLElement;
-  sceneCanvas: HTMLCanvasElement;
-  sceneWrap: HTMLElement;
+  fullscreen: HTMLButtonElement;
+  panelToggle: HTMLButtonElement;
+  panel: HTMLElement;
   workInfo: HTMLElement;
   helperLocked: HTMLElement;
   helperPanel: HTMLElement;
@@ -57,26 +57,24 @@ export interface Ui {
 /** Monta la interfaz provisional y devuelve las referencias que se repintan. */
 export function mountUi(root: HTMLElement): Ui {
   root.innerHTML = `
-    <header class="top">
-      <h1>Mesa 1 · Ruleta</h1>
-      <div class="balance">Fichas <strong data-ref="balance">0</strong></div>
-      <div class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></div>
-      <button data-ref="toMenu" class="small push-right">Menú</button>
-    </header>
-
-    <div class="scene-wrap" data-ref="sceneWrap">
-      <canvas class="scene" data-ref="sceneCanvas" aria-label="Suelo del casino: haz clic en la basura para recogerla"></canvas>
+    <div class="hud">
+      <div class="hud-balance">FICHAS <strong data-ref="balance">0</strong></div>
+      <div class="hud-debt" title="Deuda con el Encargado">
+        <span class="muted">DEUDA</span>
+        <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
+        <span data-ref="debtText"></span>
+      </div>
+      <div class="hud-buttons">
+        <button data-ref="payDebt" class="gold small">Pagar deuda</button>
+        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
+        <button data-ref="toMenu" class="small">Menú</button>
+      </div>
     </div>
 
-    <div class="layout">
-      <div class="col">
+    <button class="temp-toggle small" data-ref="panelToggle">Controles</button>
+    <div class="temp-panel pixel-frame" data-ref="panel" hidden>
         <section class="panel">
-          <h2>Deuda con el Encargado</h2>
-          <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
-          <div class="row spread">
-            <span data-ref="debtText"></span>
-            <button data-ref="payDebt" class="gold">Pagar deuda</button>
-          </div>
+          <p class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></p>
           <p class="note" data-ref="debtNote"></p>
           <p class="muted" data-ref="debtOnline" role="status"></p>
         </section>
@@ -125,9 +123,6 @@ export function mountUi(root: HTMLElement): Ui {
             <p data-ref="helperInfo"></p>
           </div>
         </section>
-      </div>
-
-      <div class="col">
         <section class="panel">
           <h2>Tienda</h2>
           <table class="shop">
@@ -144,7 +139,6 @@ export function mountUi(root: HTMLElement): Ui {
           </table>
         </section>
         <p class="muted" data-ref="saveStatus"></p>
-      </div>
     </div>
   `;
 
@@ -182,8 +176,9 @@ export function mountUi(root: HTMLElement): Ui {
     betNumber: ref('betNumber'),
     lastSpin: ref('lastSpin'),
     spinLog: ref('spinLog'),
-    sceneCanvas: ref<HTMLCanvasElement>('sceneCanvas'),
-    sceneWrap: ref('sceneWrap'),
+    fullscreen: ref<HTMLButtonElement>('fullscreen'),
+    panelToggle: ref<HTMLButtonElement>('panelToggle'),
+    panel: ref('panel'),
     workInfo: ref('workInfo'),
     helperLocked: ref('helperLocked'),
     helperPanel: ref('helperPanel'),
@@ -212,7 +207,7 @@ export function render(ui: Ui, state: GameState, revealedBets = Infinity): void 
 
   // Deuda
   ui.debtFill.style.width = `${debtProgress(state) * 100}%`;
-  setText(ui.debtText, state.debtPaid ? 'Saldada' : `${formatNumber(state.balance)} / ${DEBT_TEXT}`);
+  setText(ui.debtText, state.debtPaid ? 'SALDADA' : `${formatPercent(debtProgress(state), 0)}`);
   ui.payDebt.disabled = !canPayDebt(state);
   ui.payDebt.hidden = state.debtPaid;
   setText(ui.debtNote, state.debtPaid ? 'Deuda saldada. La mesa 2 llegará en un hito posterior.' : '');

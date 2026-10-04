@@ -16,6 +16,7 @@ export interface MenuUi {
 
 export interface SettingsUi {
   crt: HTMLInputElement;
+  fullscreen: HTMLInputElement;
   volume: HTMLInputElement;
   volumeValue: HTMLElement;
   deleteSave: HTMLButtonElement;
@@ -75,7 +76,11 @@ export function mountSettings(root: HTMLElement): SettingsUi {
       <h1>Ajustes</h1>
       <label class="setting">
         <input type="checkbox" data-ref="crt" />
-        Filtro CRT <span class="muted">(llegará con el arte)</span>
+        Filtro CRT
+      </label>
+      <label class="setting">
+        <input type="checkbox" data-ref="fullscreen" />
+        Iniciar en pantalla completa <span class="muted">(tecla F)</span>
       </label>
       <label class="setting">
         Volumen
@@ -92,6 +97,7 @@ export function mountSettings(root: HTMLElement): SettingsUi {
   const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
   return {
     crt: ref('crt'),
+    fullscreen: ref('fullscreen'),
     volume: ref('volume'),
     volumeValue: ref('volumeValue'),
     deleteSave: ref('deleteSave'),
@@ -102,6 +108,7 @@ export function mountSettings(root: HTMLElement): SettingsUi {
 
 export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: boolean): void {
   ui.crt.checked = settings.crtEnabled;
+  ui.fullscreen.checked = settings.startFullscreen;
   ui.volume.value = String(Math.round(settings.volume * 100));
   setText(ui.volumeValue, `${Math.round(settings.volume * 100)}%`);
   ui.deleteSave.disabled = !hasSave;

@@ -57,26 +57,36 @@ describe('pantalla de inicio', () => {
 describe('ajustes', () => {
   it('sobreviven a borrar la partida', () => {
     const storage = memoryStorage();
-    saveSettings(storage, SETTINGS, { crtEnabled: false, volume: 0.25 });
+    saveSettings(storage, SETTINGS, { crtEnabled: false, volume: 0.25, startFullscreen: true });
     saveGame(storage, GAME, stateWith({ balance: 5 }), 0);
     clearSave(storage, GAME);
     expect(continueInfo(storage, GAME)).toBeNull();
-    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.25 });
+    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.25, startFullscreen: true });
   });
 
   it('también sobreviven a empezar una partida nueva', () => {
     const storage = memoryStorage();
-    saveSettings(storage, SETTINGS, { crtEnabled: false, volume: 0.1 });
+    saveSettings(storage, SETTINGS, { crtEnabled: false, volume: 0.1, startFullscreen: false });
     saveGame(storage, GAME, stateWith(), 0);
     startNewGame(storage, GAME, () => true, 0);
-    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.1 });
+    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.1, startFullscreen: false });
+  });
+
+  it('"Iniciar en pantalla completa" está desactivado por defecto y se guarda', () => {
+    const storage = memoryStorage();
+    expect(loadSettings(storage, SETTINGS).startFullscreen).toBe(false);
+    // Un guardado de ajustes antiguo, sin el campo, sigue cargando.
+    storage.setItem(SETTINGS, JSON.stringify({ version: 1, settings: { crtEnabled: false, volume: 0.5 } }));
+    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.5, startFullscreen: false });
+    saveSettings(storage, SETTINGS, { ...defaultSettings(), startFullscreen: true });
+    expect(loadSettings(storage, SETTINGS).startFullscreen).toBe(true);
   });
 
   it('valores ausentes o inválidos vuelven al defecto', () => {
     const storage = memoryStorage();
     expect(loadSettings(storage, SETTINGS)).toEqual(defaultSettings());
     storage.setItem(SETTINGS, JSON.stringify({ version: 1, settings: { crtEnabled: 'sí', volume: 7 } }));
-    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: true, volume: 1 });
+    expect(loadSettings(storage, SETTINGS)).toEqual({ ...defaultSettings(), volume: 1 });
     storage.setItem(SETTINGS, 'no es json');
     expect(loadSettings(storage, SETTINGS)).toEqual(defaultSettings());
   });

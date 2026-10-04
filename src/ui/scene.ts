@@ -71,7 +71,6 @@ export class Scene {
   private floats: FloatingText[] = [];
   private cleanerShown: { x: number; y: number; facing: 1 | -1; walk: number } | null = null;
   private armReach = 0;
-  private scale = 1;
   private seenBets: number | null = null;
   /** Número de la última apuesta cuyo resultado ya se ha mostrado. */
   revealedBets = 0;
@@ -90,19 +89,6 @@ export class Scene {
   /** Activa o desactiva todos los efectos de pantalla (ajuste "Filtro CRT"). */
   setEffectsEnabled(enabled: boolean): void {
     this.effects.enabled = enabled;
-  }
-
-  /**
-   * Escalado entero en píxeles físicos (con devicePixelRatio 1,5, un x1 en CSS serían 1,5 píxeles
-   * físicos por píxel y el pixel art se deformaría). Elige el mayor entero que cabe, mínimo 1.
-   */
-  fit(availableWidth: number, availableHeight: number, dpr = window.devicePixelRatio || 1): void {
-    const k = Math.max(1, Math.floor(Math.min((availableWidth * dpr) / SCENE_WIDTH, (availableHeight * dpr) / SCENE_HEIGHT)));
-    const key = k / dpr;
-    if (key === this.scale && this.canvas.style.width) return;
-    this.scale = key;
-    this.canvas.style.width = `${(SCENE_WIDTH * k) / dpr}px`;
-    this.canvas.style.height = `${(SCENE_HEIGHT * k) / dpr}px`;
   }
 
   /** Coordenadas de la escena para un punto de la pantalla. */
@@ -186,7 +172,6 @@ export class Scene {
     ctx.restore();
 
     this.drawPortrait(state);
-    this.effects.drawOverlay(ctx);
   }
 
   /** Detecta tiradas nuevas en el estado y lanza la animación de la última. */

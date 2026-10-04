@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "simulate": "tsx sim/simulate.ts",
+    "simulate:slots": "tsx sim/slotsSimulate.ts",
     "plausibility": "tsx sim/plausibility.ts",
     "assets": "tsx scripts/assets.ts"
   },

@@ -46,6 +46,14 @@ interface GridSheet {
   size: [number, number];
 }
 
+/** Hoja con cajas a mano: cada caja se recorta desde sus propios bordes (sprites de tamaños distintos). */
+interface BoxSheet {
+  kind: 'boxes';
+  source: string;
+  outDir: string;
+  boxes: { name: string; x: number; y: number; width: number; height: number; size: [number, number] }[];
+}
+
 /** Fondo de escena: sin recorte; se ajusta a la proporción y se escala al tamaño final. */
 interface Background {
   kind: 'background';
@@ -57,7 +65,7 @@ interface Background {
   optional?: boolean;
 }
 
-type Sheet = BlockSheet | GridSheet | Background;
+type Sheet = BlockSheet | GridSheet | BoxSheet | Background;
 
 const SHEETS: Sheet[] = [
   {
@@ -117,16 +125,53 @@ const SHEETS: Sheet[] = [
     size: [32, 32],
   },
   {
-    // 5 ayudantes en paneles; en la mesa 1 solo hace falta el brazo mecánico del crupier.
+    // 5 ayudantes en paneles: el brazo mecánico del crupier (mesa 1) y el empleado zombi (mesa 2).
     kind: 'grid',
     source: 'assets/raw/ayudantes.png.jpeg',
     outDir: 'assets/sprites/helpers',
-    // Los paneles no miden lo mismo: el del brazo llega hasta x≈445.
-    columns: [0, 446],
+    // Los paneles no miden lo mismo: el del brazo llega hasta x≈445 y el del zombi hasta x≈707.
+    columns: [0, 446, 708],
     rows: [0, 320],
     inset: 10,
-    names: ['arm'],
+    names: ['arm', 'zombie'],
     size: [64, 64],
+  },
+  {
+    // Mesa 2: la máquina (con su palanca) a la izquierda y los 6 símbolos en dos filas de tres.
+    kind: 'boxes',
+    source: 'assets/raw/tragaperras.png.jpeg',
+    outDir: 'assets/sprites/slots',
+    boxes: [
+      { name: 'machine', x: 90, y: 50, width: 540, height: 660, size: [150, 184] },
+      { name: 'cereza', x: 676, y: 146, width: 224, height: 222, size: [32, 32] },
+      { name: 'calavera', x: 918, y: 146, width: 212, height: 222, size: [32, 32] },
+      { name: 'diamante', x: 1148, y: 146, width: 222, height: 222, size: [32, 32] },
+      { name: 'limon', x: 676, y: 398, width: 224, height: 222, size: [32, 32] },
+      { name: 'siete', x: 918, y: 398, width: 212, height: 222, size: [32, 32] },
+      { name: 'ojo', x: 1148, y: 398, width: 222, height: 222, size: [32, 32] },
+    ],
+  },
+  {
+    // Prestamista de la mesa 2, a tamaño de escena (detrás de la máquina central).
+    kind: 'blocks',
+    source: 'assets/raw/tragaperras-viviente.png.jpeg',
+    outDir: 'assets/sprites/lender2-scene',
+    names: ['calm', 'uneasy', 'deformed'],
+    size: [96, 96],
+  },
+  {
+    kind: 'background',
+    source: 'assets/raw/fondo-mesa2.png.jpeg',
+    out: 'assets/sprites/backgrounds/mesa2.png',
+    size: [640, 360],
+  },
+  {
+    // Trastienda de la mesa 2: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.
+    kind: 'background',
+    source: 'assets/raw/trastienda2.*',
+    out: 'assets/sprites/backgrounds/trastienda2.png',
+    size: [640, 360],
+    optional: true,
   },
   {
     kind: 'background',
@@ -197,6 +242,15 @@ for (const sheet of SHEETS) {
   }
 
   mkdirSync(sheet.outDir, { recursive: true });
+  if (sheet.kind === 'boxes') {
+    for (const { name, size, ...box } of sheet.boxes) {
+      const out = `${sheet.outDir}/${name}.png`;
+      const sprite = cutOut(crop(img, box));
+      await save(fitNearest(sprite, ...size), out);
+      console.log(`${out}  (${sprite.width}x${sprite.height})`);
+    }
+    continue;
+  }
   if (sheet.kind === 'blocks') {
     const clean = removeSpecks(removeBackground(img), 40);
     const blocks = findBlocks(clean, 12);

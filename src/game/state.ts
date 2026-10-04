@@ -1,4 +1,5 @@
 import { CONFIG, UPGRADE_IDS, type UpgradeId } from './config';
+import { createSlotsState, type SlotsState } from './slots/state';
 
 export type BetColor = 'negro' | 'blanco';
 
@@ -68,6 +69,10 @@ export interface GameState {
   /** Tiradas más recientes, la última primero. */
   recentSpins: SpinResult[];
   debtPaid: boolean;
+  /** Mesa que se está viendo (1 ruleta, 2 tragaperras). La 2 solo con la deuda de la 1 saldada. */
+  activeTable: 1 | 2;
+  /** Mesa 2: la tragaperras. Existe siempre; se juega al saldar la deuda de la mesa 1. */
+  slots: SlotsState;
   stats: {
     bets: number;
     wins: number;
@@ -93,6 +98,8 @@ export function createInitialState(): GameState {
     },
     recentSpins: [],
     debtPaid: false,
+    activeTable: 1,
+    slots: createSlotsState(),
     stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0 },
   };
 }

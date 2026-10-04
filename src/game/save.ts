@@ -1,5 +1,7 @@
 import shared from '../../shared/config.json';
-import { CONFIG, UPGRADE_IDS } from './config';
+import { CONFIG, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
+import { sanitizeWorkSlot } from './workCore';
+import { createSlotsState } from './slots/state';
 import { createInitialState, type GameState } from './state';
 
 /**
@@ -32,6 +34,8 @@ const migrations: Record<number, (state: Json) => Json> = {
   2: (state) => ({ ...state, recentSpins: [] }),
   // v4: la basura pasa de contador a objetos con posición; el suelo se vuelve a sembrar.
   3: (state) => ({ ...state, work: { lastItem: (state.work as Json | undefined)?.lastItem ?? null } }),
+  // v5: mesa 2 (tragaperras) y mesa activa. La mesa 2 empieza de cero; se abre si la deuda ya estaba pagada.
+  4: (state) => ({ ...state, activeTable: 1, slots: createSlotsState() }),
 };
 
 export function serialize(state: GameState, now: number): string {
@@ -96,7 +100,7 @@ export function clearSave(storage: KeyValueStorage, key: string): void {
 /**
  * Copia de `saved` lo que tenga el mismo tipo que en `defaults`, recursivamente.
  * Lo que falte o tenga un tipo incorrecto se queda con el valor por defecto.
- * Los campos que son null por defecto (lastItem) aceptan string.
+ * Los campos que son null por defecto (lastItem, hold) aceptan string o número.
  */
 function mergeDefaults(defaults: Json, saved: Json): Json {
   const out: Json = {};
@@ -104,7 +108,7 @@ function mergeDefaults(defaults: Json, saved: Json): Json {
     const value = saved[key];
     if (isRecord(def)) out[key] = isRecord(value) ? mergeDefaults(def, value) : def;
     else if (Array.isArray(def)) out[key] = Array.isArray(value) ? value : def;
-    else if (def === null) out[key] = typeof value === 'string' ? value : null;
+    else if (def === null) out[key] = typeof value === 'string' || typeof value === 'number' ? value : null;
     else out[key] = typeof value === typeof def ? value : def;
   }
   return out;
@@ -143,7 +147,38 @@ function sanitize(state: GameState): GameState {
     state.work.cleaner.y = CONFIG.work.cleaner.start.y;
   }
   state.recentSpins = state.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as GameState['recentSpins'];
+  sanitizeSlots(state);
   return state;
+}
+
+function isReels(value: unknown): value is [number, number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    value.every((s) => Number.isInteger(s) && s >= 0 && s < CONFIG.slots.symbols.length)
+  );
+}
+
+/** Mesa 2: lo mismo que la mesa 1, y la mesa activa solo puede ser la 2 si la deuda de la 1 está pagada. */
+function sanitizeSlots(state: GameState): void {
+  const slots = state.slots;
+  const S = CONFIG.slots;
+  slots.balance = nonNegative(slots.balance);
+  slots.playTime = nonNegative(slots.playTime);
+  for (const id of SLOT_UPGRADE_IDS) {
+    slots.upgrades[id] = Math.min(Math.floor(nonNegative(slots.upgrades[id])), S.upgrades[id].maxLevel);
+  }
+  slots.betFractionIndex = clampIndex(slots.betFractionIndex, CONFIG.bet.quickFractions.length);
+  if (!isReels(slots.reels)) slots.reels = [0, 1, 3];
+  if (!isReels(slots.helper.reels)) slots.helper.reels = [4, 5, 0];
+  slots.hold = Number.isInteger(slots.hold) && (slots.hold as number) >= 0 && (slots.hold as number) <= 2 ? slots.hold : null;
+  slots.helper.timer = nonNegative(slots.helper.timer);
+  slots.helper.profile = Math.min(clampIndex(slots.helper.profile, S.helper.profiles.length), slots.upgrades.helperProfile);
+  sanitizeWorkSlot(S.work, slots.work);
+  slots.passiveCarry = Math.min(nonNegative(slots.passiveCarry), 1);
+  slots.pot = Math.min(Math.max(nonNegative(slots.pot), S.jackpot.potSeed), S.debt.amount * S.jackpot.payoutCapDebtFraction);
+  slots.recentSpins = slots.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof slots.recentSpins;
+  state.activeTable = state.activeTable === 2 && state.debtPaid ? 2 : 1;
 }
 
 function clampIndex(value: number, length: number): number {

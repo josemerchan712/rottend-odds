@@ -187,6 +187,118 @@ export const CONFIG = {
     phaseThresholds: [1 / 3, 2 / 3] as readonly [number, number],
   },
 
+  /**
+   * Mesa 2: la tragaperras. Se desbloquea al saldar la deuda de la mesa 1. Tiene su moneda, su
+   * suerte, sus mejoras, su ayudante (el empleado zombi), su trabajo y su prestamista.
+   */
+  slots: {
+    /** Los 6 símbolos de cada carrete. El diamante solo sale tres veces en el jackpot. */
+    symbols: [
+      { id: 'cereza', name: 'Cereza' },
+      { id: 'calavera', name: 'Calavera' },
+      { id: 'diamante', name: 'Diamante' },
+      { id: 'limon', name: 'Limón podrido' },
+      { id: 'siete', name: 'Siete' },
+      { id: 'ojo', name: 'Ojo' },
+    ] as readonly { id: string; name: string }[],
+    /** Índice del diamante en `symbols`. */
+    diamond: 2,
+    /** Pago bruto (lo que devuelve la máquina, apuesta incluida): dos iguales y tres iguales. */
+    pairPayout: 1.5,
+    triplePayout: 10,
+    /**
+     * De las tiradas con premio, la parte que son tres iguales (con carretes honrados es 6/96 = 1/16).
+     * Premio bruto medio de una tirada ganadora: 15/16 * 1,5 + 1/16 * 10 ≈ 2,03 veces la apuesta.
+     */
+    tripleShare: 1 / 16,
+    luck: {
+      /** Probabilidad de premio sin mejoras: la de unos carretes honrados (96/216). VE ≈ -10%. */
+      base: 96 / 216,
+      /** Tope: el 97% de las tiradas con premio. */
+      cap: 0.97,
+      curveExponent: 1.6,
+    },
+    /** Penalización por apostar fuerte: igual que en la ruleta. */
+    risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
+    jackpot: {
+      /** Tres diamantes: probabilidad base, aporte de la suerte (curva L), por nivel de mejora y tope. */
+      baseChance: 0.001,
+      luckBonusMax: 0.007,
+      upgradeBonusPerLevel: 0.0007,
+      maxChance: 0.015,
+      /**
+       * Ganancia neta = apuesta × 1000, pero nunca más que el pozo ni que el 25% de la deuda.
+       * El pozo (progresivo) empieza en `potSeed` y crece con una fracción de cada apuesta de la
+       * mesa; al salir el jackpot vuelve a `potSeed`. Sin pozo, x1000 con un 0,1% ya daría +100% de
+       * valor esperado por tirada y el jackpot sería casi todo el dinero de la mesa.
+       */
+      payoutMultiplier: 1000,
+      payoutCapDebtFraction: 0.25,
+      potSeed: 50,
+      potContribution: 0.15,
+    },
+    /**
+     * Retener carrete: el carrete elegido conserva su símbolo en la siguiente tirada. Cuesta un
+     * extra (fracción de la apuesta) y convierte en premio una parte de las tiradas que perderían:
+     *   p_retenida = p + (1 - p) * parte,   parte = base + porNivel * (nivel - 1)
+     * Compensa con poca suerte o apostando fuerte; con mucha suerte, no. Una tirada con un
+     * carrete retenido no puede dar el jackpot, y un diamante no se deja retener.
+     */
+    hold: { feeFraction: 0.25, shareBase: 0.35, sharePerLevel: 0.06 },
+    bet: { minBet: 1, baseMaxBet: 15, maxBetMultiplierPerLevel: 2.5 },
+    helper: {
+      baseInterval: 4,
+      speedReductionPerLevel: 0.12,
+      /** Prudente: siempre seguro. Agresivo: solo compensa con suerte alta. */
+      profiles: [
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1 },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3 },
+      ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number }[],
+      luckPerLevel: 0.005,
+    },
+    /**
+     * Conversión: la mesa 2 recibe monedas por segundo = k * (ingreso por segundo de la mesa 1)^0,5.
+     * El ingreso de la mesa 1 es el esperado de su ayudante y su limpiador (lo que gana sola).
+     */
+    conversion: { k: 0.3 },
+    work: {
+      maxItems: shared.slots.work.maxItems,
+      respawnInterval: shared.slots.work.respawnSeconds,
+      /** Cada nivel de "Caja de herramientas" suma esta fracción al valor de cada objeto. */
+      valuePerLevel: shared.slots.work.toolboxValuePerLevel,
+      floor: { x: 150, y: 255, width: 280, height: 82 },
+      player: { x: 64, y: 344 },
+      clickRadius: 26,
+      minItemDistance: 34,
+      /** Objetos extra que limpia el trapo en cada clic, por nivel. */
+      extraPerLevel: 1,
+      cleaner: { baseInterval: 4, reductionPerLevel: 0.2, start: { x: 520, y: 340 } },
+      items: [
+        { id: 'chicle', name: 'Chicle pegado', value: 2, weight: 45 },
+        { id: 'moneda', name: 'Moneda atascada', value: 5, weight: 30 },
+        { id: 'bombilla', name: 'Bombilla rota', value: 8, weight: 14 },
+        { id: 'cable', name: 'Cable pelado', value: 25, weight: 7 },
+        { id: 'oxidada', name: 'Ficha oxidada', value: 60, weight: 3.5 },
+        { id: 'diente', name: 'Diente de oro', value: 800, weight: 0.5 },
+      ] as readonly { id: string; name: string; value: number; weight: number }[],
+    },
+    debt: { amount: shared.slots.debt.amount },
+    upgrades: {
+      luck: { name: 'Suerte', ...shared.slots.upgrades.luck },
+      maxBet: { name: 'Apuesta máxima', ...shared.slots.upgrades.maxBet },
+      zombie: { name: 'Empleado zombi (ayudante)', ...shared.slots.upgrades.zombie },
+      helperSpeed: { name: 'Velocidad del zombi', ...shared.slots.upgrades.helperSpeed },
+      helperProfile: { name: 'Perfil del zombi', ...shared.slots.upgrades.helperProfile },
+      helperLuck: { name: 'Suerte del zombi', ...shared.slots.upgrades.helperLuck },
+      jackpot: { name: 'Jackpot', ...shared.slots.upgrades.jackpot },
+      hold: { name: 'Retener carrete', ...shared.slots.upgrades.hold },
+      rag: { name: 'Trapo', ...shared.slots.upgrades.rag },
+      toolbox: { name: 'Caja de herramientas', ...shared.slots.upgrades.toolbox },
+      apprentice: { name: 'Aprendiz de limpieza', ...shared.slots.upgrades.apprentice },
+    },
+  },
+
   /** coste(n) = base * crecimiento^n, con n = nivel actual. */
   upgrades: {
     luck: { name: 'Suerte', ...shared.upgrades.luck },
@@ -208,3 +320,5 @@ export type Config = typeof CONFIG;
 export type UpgradeId = keyof typeof CONFIG.upgrades;
 export type BetType = keyof typeof CONFIG.betTypes;
 export const UPGRADE_IDS = Object.keys(CONFIG.upgrades) as UpgradeId[];
+export type SlotUpgradeId = keyof typeof CONFIG.slots.upgrades;
+export const SLOT_UPGRADE_IDS = Object.keys(CONFIG.slots.upgrades) as SlotUpgradeId[];

@@ -115,6 +115,8 @@ export interface RunResult {
   earnedCurve: number[];
   /** Veces que cambia de sala (ida o vuelta). */
   roomSwitches: number;
+  /** Estado al terminar (para empezar la mesa 2 desde ahí). */
+  finalState: GameState;
   /** Apuestas del ayudante por fase: cuántas, suma de cambios de saldo y de fichas apostadas. */
   helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number; drawdowns: number }>;
 }
@@ -139,6 +141,7 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     debtTime: null,
     earnedCurve: [],
     roomSwitches: 0,
+    finalState: state,
     helper: {
       inicio: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
       media: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },

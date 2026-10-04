@@ -25,6 +25,7 @@ import { createSlotsState } from '../src/game/slots/state';
 import {
   buySlotUpgrade,
   canPaySlotsDebt,
+  canSwitchTable,
   isSlotsUnlocked,
   passiveRate,
   paySlotsDebt,
@@ -34,6 +35,7 @@ import {
   zombieBet,
 } from '../src/game/slots/table';
 import { createInitialState } from '../src/game/state';
+import { updateGame } from '../src/game/update';
 import { sequenceRng, stateWith } from './helpers';
 
 const S = CONFIG.slots;
@@ -209,6 +211,25 @@ describe('tragaperras: selector, mejoras y zombi', () => {
 });
 
 describe('mesa 2: desbloqueo, deuda y conversión', () => {
+  it('pestañas: a la mesa 2 solo con la 1 saldada; a la 1 siempre se puede volver', () => {
+    const state = createInitialState();
+    expect(canSwitchTable(state, 2)).toBe(false);
+    state.debtPaid = true;
+    expect(canSwitchTable(state, 2)).toBe(true);
+    state.activeTable = 2;
+    expect(canSwitchTable(state, 2)).toBe(false);
+    expect(canSwitchTable(state, 1)).toBe(true);
+  });
+
+  it('la mesa 1 sigue jugando sola (su ayudante) mientras se está en la mesa 2', () => {
+    const state = stateWith({ debtPaid: true, balance: 10_000, activeTable: 2 });
+    state.upgrades.crupier = 1;
+    state.upgrades.luck = 20;
+    const before = state.stats.bets;
+    updateGame(state, 30, seededRng(4));
+    expect(state.stats.bets).toBeGreaterThan(before);
+  });
+
   it('se abre al saldar la deuda de la mesa 1', () => {
     expect(isSlotsUnlocked(createInitialState())).toBe(false);
     expect(isSlotsUnlocked(stateWith({ debtPaid: true }))).toBe(true);

@@ -3,6 +3,7 @@ import { CONFIG, type SlotUpgradeId } from '../config';
 import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus } from '../helper';
 import { expectedValue } from '../luck';
 import type { Rng } from '../rng';
+import type { LenderPhase } from '../lender';
 import type { GameState } from '../state';
 import { WORK_DEF, bagMultiplier } from '../work';
 import {
@@ -229,4 +230,19 @@ export function updateSlots(state: GameState, dt: number, rng: Rng): SlotsTick {
   const cleaned = updateWorkHost(slotsWorkHost(slots), dt, rng);
   const zombie = updateZombie(slots, dt, rng);
   return { zombie, cleaned };
+}
+
+/** Fase de la Tragaperras viviente, como la del Encargado: por el % de la deuda de la mesa 2 reunido. */
+export function slotsLenderPhase(slots: SlotsState): LenderPhase {
+  if (slots.debtPaid) return 'calm';
+  const progress = slotsDebtProgress(slots);
+  const [uneasyFrom, deformedFrom] = CONFIG.lender.phaseThresholds;
+  if (progress >= deformedFrom) return 'deformed';
+  if (progress >= uneasyFrom) return 'uneasy';
+  return 'calm';
+}
+
+/** ¿Se puede pasar a esa mesa? La 2 solo con la deuda de la 1 saldada. */
+export function canSwitchTable(state: GameState, to: 1 | 2): boolean {
+  return state.activeTable !== to && (to === 1 || isSlotsUnlocked(state));
 }

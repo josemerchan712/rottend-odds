@@ -142,7 +142,7 @@ const SHEETS: Sheet[] = [
     source: 'assets/raw/tragaperras.png.jpeg',
     outDir: 'assets/sprites/slots',
     boxes: [
-      { name: 'machine', x: 90, y: 50, width: 540, height: 660, size: [150, 184] },
+      { name: 'machine', x: 90, y: 50, width: 540, height: 660, size: [200, 252] },
       { name: 'cereza', x: 676, y: 146, width: 224, height: 222, size: [32, 32] },
       { name: 'calavera', x: 918, y: 146, width: 212, height: 222, size: [32, 32] },
       { name: 'diamante', x: 1148, y: 146, width: 222, height: 222, size: [32, 32] },

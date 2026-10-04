@@ -132,10 +132,21 @@ function chipLabel(chip: SelectorChip): string {
 /** Columna de fichas del selector: cantidad en la cara, la elegida resaltada, las que no alcanzan apagadas. */
 export function drawChips(ctx: CanvasRenderingContext2D, state: GameState, sprites: Sprites, hoveredIndex: number | null): SelectorChip[] {
   const chips = stateChips(state);
-  const selected = selectedChip(state);
+  drawChipColumn(ctx, chips, selectedChip(state).index, sprites, hoveredIndex);
+  return chips;
+}
+
+/** La columna de fichas para cualquier mesa: las fichas, la elegida (índice de fracción) y la del ratón. */
+export function drawChipColumn(
+  ctx: CanvasRenderingContext2D,
+  chips: SelectorChip[],
+  selectedIndex: number,
+  sprites: Sprites,
+  hoveredIndex: number | null,
+): void {
   chips.forEach((chip, i) => {
     const base = chipBase(i);
-    const isSelected = chip.index === selected.index;
+    const isSelected = chip.index === selectedIndex;
     const lift = isSelected ? 2 : 0;
     ctx.globalAlpha = chip.affordable ? 1 : 0.35;
     if (isSelected) {
@@ -157,7 +168,6 @@ export function drawChips(ctx: CanvasRenderingContext2D, state: GameState, sprit
     }
     ctx.globalAlpha = 1;
   });
-  return chips;
 }
 
 /** Tira de los últimos resultados junto a la rueda: puntos de color, el más reciente arriba. */

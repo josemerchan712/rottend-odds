@@ -70,8 +70,11 @@ export function noteSessionStart(watch: DialogueWatch, kind: 'new' | 'resume', a
   else if (absenceSeconds >= CONFIG.dialogue.resumeMinAbsenceSeconds) push(watch, 'sessionResume', absenceSeconds);
 }
 
+/** Lo mínimo de una tirada (de cualquier mesa) que importa al diálogo. */
+export type ShownSpin = Pick<SpinResult, 'bettor' | 'bet' | 'outcome'>;
+
 /** Una tirada que el jugador acaba de ver resolverse (la bola cae, o el aviso fuera del casino). */
-export function noteSpinShown(watch: DialogueWatch, spin: SpinResult, ceiling: number): void {
+export function noteSpinShown(watch: DialogueWatch, spin: ShownSpin, ceiling: number): void {
   noteBet(watch.dialogue);
   if (spin.outcome === 'jackpot') {
     push(watch, 'jackpot');

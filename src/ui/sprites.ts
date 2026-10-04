@@ -13,6 +13,9 @@ const urls = {
   chips: import.meta.glob<string>('../../assets/sprites/chips/*.png', { eager: true, query: '?url', import: 'default' }),
   helpers: import.meta.glob<string>('../../assets/sprites/helpers/*.png', { eager: true, query: '?url', import: 'default' }),
   backgrounds: import.meta.glob<string>('../../assets/sprites/backgrounds/*.png', { eager: true, query: '?url', import: 'default' }),
+  slots: import.meta.glob<string>('../../assets/sprites/slots/*.png', { eager: true, query: '?url', import: 'default' }),
+  lender2Scene: import.meta.glob<string>('../../assets/sprites/lender2-scene/*.png', { eager: true, query: '?url', import: 'default' }),
+  trash2: import.meta.glob<string>('../../assets/sprites/trash2/*.png', { eager: true, query: '?url', import: 'default' }),
 };
 
 export type PlayerFrame = 'walk-1' | 'walk-2' | 'crouch' | 'lift';

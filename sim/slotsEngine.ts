@@ -355,15 +355,8 @@ export const SLOT_STRATEGIES: SlotStrategy[] = [
     buys: smartBuys(true),
     reserve: smartReserve,
   },
-  {
-    id: 'd1',
-    label: '(d) e invierte las fichas de la mesa 1 en ella',
-    chooseSpin: (s) => bestSpin(s, true),
-    zombieProfile: bestZombieProfile,
-    buys: smartBuys(true),
-    reserve: smartReserve,
-    investTable1: true,
-  },
+  // Una (d) que además gaste las fichas de la mesa 1 en ella sale igual: el jugador simulado llega
+  // a pagar la mesa 1 con todo comprado, así que el pasivo solo sube por el saldo que rehace su ayudante.
 ];
 
 /** Zombi con perfil fijo: el jugador juega como (d) y compra el zombi en cuanto puede. */

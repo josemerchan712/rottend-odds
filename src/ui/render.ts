@@ -31,8 +31,17 @@ export interface Drawer {
   dot: HTMLElement;
 }
 
+/** Pestañas de mesa del HUD (aparecen al desbloquear la mesa 2). */
+export const TABS_HTML = `
+      <div class="table-tabs" data-ref="tabs" hidden>
+        <button class="tab small" data-table="1" title="Mesa 1: la ruleta">MESA 1</button>
+        <button class="tab small" data-table="2" title="Mesa 2: la tragaperras">MESA 2</button>
+      </div>`;
+
 export interface Ui {
   balance: HTMLElement;
+  tabs: HTMLElement;
+  tabButtons: HTMLButtonElement[];
   debtText: HTMLElement;
   debtFill: HTMLElement;
   payDebt: HTMLButtonElement;
@@ -70,7 +79,7 @@ function shopRows(ids: readonly UpgradeId[]): string {
 export function mountUi(root: HTMLElement): Ui {
   root.innerHTML = `
     <div class="hud">
-      <div class="hud-balance">FICHAS <strong data-ref="balance">0</strong></div>
+      <div class="hud-balance">FICHAS <strong data-ref="balance">0</strong></div>${TABS_HTML}
       <div class="hud-debt" title="Deuda con el Encargado">
         <span class="muted">DEUDA</span>
         <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
@@ -131,6 +140,8 @@ export function mountUi(root: HTMLElement): Ui {
 
   return {
     balance: ref('balance'),
+    tabs: ref('tabs'),
+    tabButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-table]')],
     debtText: ref('debtText'),
     debtFill: ref('debtFill'),
     payDebt: ref('payDebt'),

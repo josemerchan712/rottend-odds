@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DIALOGUE_ES } from '../src/content/dialogue.es';
+import { DIALOGUE2_ES } from '../src/content/dialogue2.es';
 import { CONFIG } from '../src/game/config';
 import {
   canSpeak,
@@ -19,6 +20,27 @@ import { seededRng } from '../src/game/rng';
 const { cooldownSeconds, minBetsBetweenLines, silenceSeconds } = CONFIG.dialogue;
 const PHASED: DialogueTrigger[] = ['sessionResume', 'bigLoss', 'bigWin', 'jackpot', 'broke', 'enterBackroom', 'returnCasino', 'silence'];
 const SINGLE: DialogueTrigger[] = ['newGame', 'buyCrupier', 'phaseUneasy', 'phaseDeformed', 'debtPaid'];
+
+describe('contenido del diálogo de la mesa 2 (Tragaperras viviente)', () => {
+  it('al menos 5 líneas por disparador y por fase, de 90 caracteres como mucho, distintas de las del Encargado', () => {
+    for (const t of PHASED) {
+      for (const phase of ['calm', 'uneasy', 'deformed'] as const) {
+        expect(DIALOGUE2_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
+      }
+    }
+    for (const t of SINGLE) expect(DIALOGUE2_ES[t].any!.length, t).toBeGreaterThanOrEqual(5);
+    const first = JSON.stringify(DIALOGUE_ES);
+    for (const byPhase of Object.values(DIALOGUE2_ES)) {
+      for (const list of Object.values(byPhase)) {
+        for (const entry of list!) {
+          const text = typeof entry === 'string' ? entry : entry.text;
+          expect(text.length, text).toBeLessThanOrEqual(90);
+          expect(first.includes(`"${text}"`), text).toBe(false);
+        }
+      }
+    }
+  });
+});
 
 describe('contenido del diálogo', () => {
   it('al menos 5 líneas por disparador y por fase, de 90 caracteres como mucho', () => {

@@ -11,7 +11,7 @@ import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../src/game/config';
 import { effectiveWinChance } from '../src/game/luck';
 import { formatNumber, formatTime } from '../src/util/format';
 import { DEFAULT_PLAYER, PHASES, runOne, type RunResult, type Strategy } from './engine';
-import { HELPER_STUDY, STRATEGIES } from './strategies';
+import { HELPER_ONLY, HELPER_STUDY, STRATEGIES } from './strategies';
 
 const args = process.argv.slice(2);
 const arg = (name: string) => {
@@ -33,7 +33,9 @@ console.log(`\nSimulación mesa 1 · ${runs} partidas por estrategia · límite 
 console.log(overridePath ? `Con cambios de ${overridePath} (config.ts sin tocar)` : 'Con config.ts tal cual');
 console.log(
   `Jugador: una acción cada ${DEFAULT_PLAYER.actionInterval} s, una apuesta como mucho cada ${DEFAULT_PLAYER.betInterval} s, ` +
-    `recoge basura si hay ${DEFAULT_PLAYER.collectAtItems}+ en el suelo o si no quiere apostar. Compra la mejora principal más barata; las secundarias (suerte del ayudante, jackpot, docena, número) solo si cuestan ≤25% del saldo.`,
+    `apuesta solo en el casino y recoge solo en la trastienda (cambiar de sala: ${DEFAULT_PLAYER.roomSwitchSeconds} s cada sentido); ` +
+    `va a recoger con ${DEFAULT_PLAYER.collectAtItems}+ objetos en el suelo o si no quiere apostar, y vuelve con el suelo limpio. ` +
+    `Apuesta las cantidades redondeadas del selector. Compra la mejora principal más barata; las secundarias (suerte del ayudante, jackpot, docena, número) solo si cuestan ≤25% del saldo.`,
 );
 
 const started = Date.now();
@@ -120,6 +122,29 @@ table(
     ];
   }),
 );
+
+section('Activo frente a solo ayudante, y cuánto importa la basura');
+{
+  const c = STRATEGIES.find((s) => s.id === 'c')!;
+  const variants: { label: string; r: RunResult[] }[] = [
+    { label: '(c) activo', r: results.get(c) ?? Array.from({ length: runs }, (_, i) => runOne(c, i + 1)) },
+    { label: HELPER_ONLY.label, r: Array.from({ length: runs }, (_, i) => runOne(HELPER_ONLY, i + 1)) },
+    {
+      label: '(c) sin basura en cuanto puede apostar',
+      r: Array.from({ length: runs }, (_, i) => runOne(c, i + 1, { ...DEFAULT_PLAYER, ignoreTrashAboveCeiling: 0 })),
+    },
+  ];
+  table(
+    ['Variante', 'Terminan', 'Media', 'p50', 'p90', 'Trabajo %', 'Cambios de sala'],
+    variants.map(({ label, r }) => {
+      const times = r.map((x) => x.time);
+      const work = sum(r.map((x) => x.earned.work));
+      const total = work + sum(r.map((x) => x.earned.roulette + x.earned.jackpot));
+      return [label, pct(r.filter((x) => x.finished).length / r.length), t(mean(times)), t(q(times, 0.5)), t(q(times, 0.9)), pct(work / total), mean(r.map((x) => x.roomSwitches)).toFixed(0)];
+    }),
+  );
+  console.log('  "sin basura": solo recoge cuando no puede o no quiere apostar.');
+}
 
 section('Momento mediano de cada compra (solo partidas que la hacen)');
 const milestones: [UpgradeId, number][] = [

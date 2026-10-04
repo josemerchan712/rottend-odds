@@ -34,7 +34,7 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 
 ### 3.1 Selector de apuesta y penalización por riesgo
 
-- El jugador elige la apuesta con botones rápidos: **1%, 10%, 50%, TODO** **del techo de apuesta** (el máximo que se mejora comprando). Si el saldo es menor, la apuesta se limita al saldo.
+- El jugador elige la apuesta con **fichas de cantidades reales**. Por debajo siguen siendo el **1%, 10% y 50% del techo de apuesta** (el máximo que se mejora comprando), redondeados hacia abajo a un número redondo de la serie 1, 2, 5, 10, 20, 50…; si dos coinciden tras redondear, la repetida desaparece. La cuarta es **TODO** = lo menor entre el saldo y el techo. Se apuesta exactamente la cantidad que se ve; una ficha que el saldo no cubre sale apagada. Teclas 1-4: las fichas visibles.
 - **Penalización por apostar fuerte**: la probabilidad efectiva baja según la fracción del techo apostada, y la penalización se suaviza con la suerte:
   `p_efectiva = p_suerte - factor * fraccion^1.5`, con `factor = 0,20 - 0,16 * L` (fraccion = apuesta / techo, entre 0 y 1).
   El factor vale 0,20 sin suerte, ~0,15 con suerte 10 y 0,04 con suerte máxima. Con suerte máxima, apostar el techo da 97% - 4% = **93% de acierto**: al final casi nunca pierdes.
@@ -47,6 +47,11 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 | Prudente | 5% | 3% | Siempre seguro; crece desde suerte ~3 |
 | Normal | 20% | 10% | Desde suerte ~6 |
 | Agresivo | 50% | 30% | Solo con suerte alta (~12+); antes hunde el saldo a la larga |
+
+- **Las apuestas manuales se hacen solo en el casino y la basura se recoge solo en la trastienda.** Cambiar de sala cuesta 0,3 s de fundido por mitad en el juego; la simulación cuenta 1,5 s por sentido (lo que tarda una persona en decidir, pulsar y ubicarse).
+- **Simulación con salas** (200 partidas, jugador con una acción cada 0,5 s, va a la trastienda con el suelo lleno o si no quiere apostar, apuesta las cantidades redondeadas): (c) óptima de color **8:18** de media (p10 6:02, p90 10:47); (d) con docena y número **7:51**. Dentro del objetivo de ~8 min ±45 s: no hizo falta tocar números.
+  - **Basura:** menos del 1% de las fichas de una partida, pero decisiva al principio: es el capital con el que se compran los primeros niveles de suerte. Si el jugador solo recoge cuando no puede apostar, la mesa pasa de ~8 a ~35 min (de suerte 5 a 10 tarda 7-19 min en vez de 0,5-3).
+  - **Activo frente a solo ayudante:** jugar como (c) hasta comprar el Crupier y desde ahí solo comprar mejoras tarda 22:49 de mediana y el 19% de las partidas no termina en una hora. Jugar activo es ~3 veces más rápido.
 
   Simulación (200 partidas por perfil): ningún perfil deja el saldo a 0 en ninguna fase, ni provoca caídas fuertes en las fases inicial y media. Con agresivo, el 38% de las partidas sufre en la fase alta una racha que se lleva la mitad del saldo, pero aun así termina la mesa antes (8:42 frente a 9:19 con prudente).
 
@@ -234,28 +239,23 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 
 ### 9.2 Pantalla de la mesa 1
 
-- **Fondo**: cuarto del casino (fijo).
-- **Centro**: ruleta con apuesta y resultado.
-- **Esquina**: retrato del Encargado y barra de deuda (X / 10.000.000).
-- **Suelo, abajo a la izquierda**: jugador pequeño, de lado. Basura que aparece en el suelo.
-- **Panel lateral**: saldo, selector de apuesta (1%, 10%, 50%, TODO), tienda de mejoras.
-- **Pestañas** para volver a mesas anteriores cuando se desbloqueen.
-- Al desbloquear el ayudante, aparece su sprite junto a la mesa apostando solo.
+Rediseño en 8 pasos (hecho). Todo vive en un escenario de 640x360 escalado por un factor entero de píxeles físicos, con los menús HTML dentro del escenario y el CRT encima de todo.
 
-Implementado (hito 6), sobre el canvas de 640x360:
+- **Pantalla completa** (botón y tecla F; ajuste para pedirla al empezar).
+- **Dos salas**: el **casino** (ruleta, tapete y Encargado) y la **trastienda** (basura, jugador y limpiador). Se cambia con las puertas o con Tab, con un fundido de 0,3 s por mitad. La sala no se guarda: siempre se empieza en el casino. Las tiradas del ayudante fuera del casino se avisan en el HUD.
+- **Ruleta** en el centro del casino, con anillo de casillas propio (0, Cero Dorado y 1-36 en negro y blanco hueso). La rueda se para recta y la bola cae en la casilla del resultado lógico (`src/ui/wheelMath.ts`, con tests). Debajo, la tira de las últimas tiradas.
+- **Tapete de apuestas** con zonas clicables (negro, blanco, docenas y la rejilla de números; candados en lo bloqueado) y un tooltip con pago, probabilidad y valor esperado. Al lado, la columna de **fichas** con cantidades reales (3.1).
+- **El Encargado detrás de la mesa** (96 px), con respiración y un giro de cabeza hacia la rueda en cada tirada; su sprite según la fase (0-33% calmado, 33-66% inquieto, 66-100% deformado).
+- **HUD** arriba: fichas, barra de deuda con %, pagar deuda, pantalla completa y menú.
+- **Cajones laterales** colapsados en una pestaña de 20 px: **Mesa** (M, izquierda: suerte, techo, jackpot, docena, número y estadísticas) y **Ayuda** (A, derecha: crupier, perfiles, velocidad, suerte del ayudante y trabajo). Abiertos ocupan ≤140 px. Un punto avisa de que hay algo comprable. Esc los cierra.
+- **Brazo mecánico** del crupier junto a la mesa cuando el ayudante está comprado.
 
-- **Fondo y luces:** el fondo real de la mesa 1; las lámparas parpadean si el filtro CRT está activado.
-- **Ruleta en el centro**, en el cono de luz. Gira en cada tirada y la bola se dibuja aparte:
-  - La rueda del arte trae la bola y el marcador pintados y casillas rojas y negras. Encima se dibuja un anillo de casillas propio que los tapa: 0 verde, Cero Dorado y del 1 al 36 alternando negro y blanco hueso. Arriba hay un indicador fijo.
-  - La rueda gira en sentido horario y se para recta; la bola gira al revés y cae en la casilla del resultado. El resultado visual coincide siempre con el lógico (`src/ui/wheelMath.ts`, con tests).
-  - Las tiradas del jugador duran 1,1 s y las del ayudante 0,55 s. Una tirada nueva interrumpe la anterior.
-  - El texto de la última tirada aparece cuando cae la bola. El saldo cambia en el momento de apostar.
-  - Al saldar la deuda se usa la versión rota de la ruleta.
-- **Retrato del Encargado** arriba a la derecha, con una mini barra de deuda. Frame según el % reunido: 0-33% calmado, 33-66% inquieto, 66-100% deformado; calmado otra vez con la deuda pagada.
-- **Sobre la mesa,** una ficha o una pila según el botón de apuesta (1%, 10%, 50%, TODO).
-- **Brazo mecánico** del crupier junto a la mesa cuando el ayudante está comprado; se estira al apostar.
-- **Jugador y basura** en el suelo, como en el hito 4.
-- **Escalado entero** en píxeles físicos. La interfaz HTML (deuda, ruleta, trabajo, ayudante y tienda) sigue debajo de la escena.
+### 9.3 Diálogo del prestamista
+
+- Una línea cada vez, en un **bocadillo** sobre su cabeza en el casino (a la derecha de la rueda, para no taparla) y en una **caja abajo con su nombre** en la trastienda. Se escribe letra a letra, se queda 4 s y se desvanece. Un clic completa el texto; otro lo cierra. Se puede desactivar en Ajustes.
+- **Reglas** (`src/game/dialogue.ts` y `src/game/dialogueWatch.ts`): 25 s mínimo entre líneas (salvo el pago de la deuda); como mucho una línea cada 3 apuestas para lo que disparan las apuestas; nunca durante un cambio de sala ni con una tirada girando a la vista (el motivo espera, y caduca a los 6 s); sin repetir las 8 últimas; si coinciden varios motivos, gana la prioridad (deuda pagada > bienvenida > jackpot > fases > crupier > sin fichas > perder grande > ganar grande > salas > silencio).
+- **Disparadores:** partida nueva; volver a la partida (solo si han pasado ≥5 min reales desde el último guardado, con líneas para ausencias cortas, <1 h, o largas, ≥1 h); perder o ganar grande (solo apuestas **manuales** de ≥50% del techo y ≥20 fichas); Cero Dorado (también del ayudante); quedarse sin fichas (solo cuando el saldo pasa de >0 a 0 jugando, nunca al cargar); entrar en la trastienda y volver al casino; comprar el crupier; pasar a inquieto y a deformado; pagar la deuda; silencio largo (75 s sin clics ni teclas, como mucho 2 líneas hasta la siguiente acción).
+- **Texto** en `src/content/` (≥5 líneas por disparador y fase, ≤90 caracteres).
 
 ## 10. Técnico
 
@@ -292,6 +292,7 @@ Estado: ✅ hecho · 🔲 pendiente.
 4. ✅ **Trabajo manual**: basura clicable, animación del jugador, ayudante de limpieza. Hecho: escena en canvas 640x360 con escalado entero en píxeles físicos, pipeline de assets para basura y jugador, mejoras del trabajo (costes calibrados) y guardado v4.
 5. ✅ **Ayudante de apuestas** con perfiles. Se implementó dentro del hito 2: Crupier, velocidad, perfiles prudente/normal/agresivo con límite por saldo, suerte propia y bloqueo de 5 s; calibrado en el hito 3.
 6. ✅ **Arte y escena**: pipeline de assets, fondo, ruleta, retrato del Encargado con 3 fases. Hecho para la mesa 1 (ver 8.1 y 9.2). Falta el arte limpio de la ruleta y el idle del jugador.
+   - ✅ **Rediseño de la interfaz en 8 pasos**: pantalla completa, dos salas, tapete y selector con cantidades reales, cajones laterales, el Encargado detrás de la mesa, diálogo conectado a la escena, simulación con coste de cambiar de sala (mesa 1 ≈ 8:18 con (c), sin tocar números) y documentación (3.1, 9.2, 9.3).
 7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
 8. 🔲 **Deuda y paso a la mesa 2**: pago, pestañas, conversión de monedas.
 9. 🔲 Mesas 3 a 5, una por una, reutilizando el sistema de suerte, mejoras y prestamistas.

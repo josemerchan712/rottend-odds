@@ -23,6 +23,8 @@ export interface Strategy {
   reserve(state: GameState): number;
   /** Mejoras que compra antes que nada en cuanto puede pagarlas, sin respetar la reserva. */
   priority?: readonly UpgradeId[];
+  /** Con el ayudante comprado deja de apostar y de recoger: solo compra (jugar "solo con ayudante"). */
+  idleAfterHelper?: boolean;
 }
 
 /** Ritmo del jugador activo simulado. */
@@ -31,8 +33,10 @@ export interface PlayerModel {
   actionInterval: number;
   /** Segundos mínimos entre dos apuestas del jugador (lo que tarda en girar la ruleta). */
   betInterval: number;
-  /** Con esta basura o más en el suelo, recoge antes de apostar para no desperdiciar apariciones. */
+  /** Con esta basura o más en el suelo, va a la trastienda a recogerla (y vuelve cuando la limpia). */
   collectAtItems: number;
+  /** Lo que tarda en cambiar de sala, en cada sentido (s). Apuesta en el casino; recoge en la trastienda. */
+  roomSwitchSeconds: number;
   /** Con un techo de apuesta mayor que esto, la basura ya no compensa el clic y solo apuesta. */
   ignoreTrashAboveCeiling: number;
   /** Paso de simulación (s). */
@@ -60,7 +64,8 @@ export function minimumEarned(state: GameState): number {
 export const DEFAULT_PLAYER: PlayerModel = {
   actionInterval: 0.5,
   betInterval: 1.0,
-  collectAtItems: 4,
+  collectAtItems: 6,
+  roomSwitchSeconds: 1.5,
   ignoreTrashAboveCeiling: 1000,
   dt: 0.1,
   timeLimit: 3600,
@@ -108,6 +113,8 @@ export interface RunResult {
   debtTime: number | null;
   /** minimumEarned() cada `sampleEvery` segundos. */
   earnedCurve: number[];
+  /** Veces que cambia de sala (ida o vuelta). */
+  roomSwitches: number;
   /** Apuestas del ayudante por fase: cuántas, suma de cambios de saldo y de fichas apostadas. */
   helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number; drawdowns: number }>;
 }
@@ -131,6 +138,7 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     purchases: [],
     debtTime: null,
     earnedCurve: [],
+    roomSwitches: 0,
     helper: {
       inicio: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
       media: { bets: 0, delta: 0, staked: 0, bankruptcies: 0, drawdowns: 0 },
@@ -141,6 +149,14 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
 
   let actionTimer = 0;
   let betTimer = player.betInterval;
+  /** Sala en la que está y, si está cambiando, segundos que le quedan. */
+  let room: 'casino' | 'trastienda' = 'casino';
+  let switchLeft = 0;
+  const goTo = (next: 'casino' | 'trastienda') => {
+    room = next;
+    switchLeft = player.roomSwitchSeconds;
+    result.roomSwitches++;
+  };
   let spinsSeen = 0;
   /** Racha de pérdidas del ayudante: saldo al empezarla y fichas perdidas en ella. */
   let helperStreakStart: number | null = null;
@@ -234,21 +250,38 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     }
     selectHelperProfile(state, Math.min(strategy.helperProfile(state), state.upgrades.helperProfile));
 
-    // 3. El jugador actúa: recoger o apostar.
-    actionTimer += player.dt;
+    // 3. El jugador actúa: apostar (solo en el casino) o recoger (solo en la trastienda).
     betTimer += player.dt;
+    if (switchLeft > 0) {
+      // Cambiando de sala: ni apuesta ni recoge.
+      switchLeft -= player.dt;
+      continue;
+    }
+    if (strategy.idleAfterHelper && state.upgrades.crupier > 0) continue;
+    actionTimer += player.dt;
     if (actionTimer < player.actionInterval) continue;
     actionTimer -= player.actionInterval;
 
     // Sin saldo para la apuesta mínima no puede apostar: le toca recoger basura.
-    const wanted = betTimer >= player.betInterval ? strategy.chooseBet(state) : null;
+    const wanted = strategy.chooseBet(state);
     const bet = wanted && state.balance >= CONFIG.bet.minBet ? wanted : null;
+    const items = state.work.items.length;
     const trashWorthIt = currentMaxBet(state) <= player.ignoreTrashAboveCeiling;
-    if ((trashWorthIt && state.work.items.length >= player.collectAtItems) || (!bet && state.work.items.length > 0)) {
-      // Ve el suelo: recoge primero lo que más vale.
-      const best = state.work.items.reduce((a, b) => (itemValue(state, b.kind) > itemValue(state, a.kind) ? b : a));
-      for (const item of collectItem(state, best.id)) result.earned.work += item.value;
-    } else if (bet) {
+    if (room === 'casino') {
+      // Va a la trastienda con el suelo lleno, o si no quiere (o no puede) apostar y hay algo que recoger.
+      if ((trashWorthIt && items >= player.collectAtItems) || (!bet && items > 0)) {
+        goTo('trastienda');
+        continue;
+      }
+    } else {
+      // En la trastienda recoge hasta dejar el suelo limpio; si no puede apostar, se queda esperando basura.
+      if (items > 0 && (trashWorthIt || !bet)) {
+        const best = state.work.items.reduce((a, b) => (itemValue(state, b.kind) > itemValue(state, a.kind) ? b : a));
+        for (const item of collectItem(state, best.id)) result.earned.work += item.value;
+      } else if (bet) goTo('casino');
+      continue;
+    }
+    if (bet && betTimer >= player.betInterval) {
       selectBetFraction(state, bet.fractionIndex);
       if (playerBet(state, bet.choice, rng)) {
         betTimer = 0;

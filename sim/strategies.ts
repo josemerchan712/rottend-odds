@@ -1,4 +1,4 @@
-import { betAmount, currentMaxBet, isBetTypeUnlocked } from '../src/game/betting';
+import { currentMaxBet, isBetTypeUnlocked, stateChips } from '../src/game/betting';
 import { CONFIG, type BetType, type UpgradeId } from '../src/game/config';
 import { helperLuckBonus } from '../src/game/helper';
 import { betWinChance } from '../src/game/luck';
@@ -12,7 +12,6 @@ const CHOICES: Record<BetType, BetChoice> = {
   dozen: { type: 'dozen', dozen: 2 },
   number: { type: 'number', number: 17 },
 };
-const ALL_FRACTIONS = CONFIG.bet.quickFractions.map((_, i) => i);
 const TODO = CONFIG.bet.quickFractions.length - 1;
 
 const noSpecialBets = (id: UpgradeId) => id !== 'dozenBet' && id !== 'numberBet';
@@ -38,9 +37,8 @@ const smartBuys = (specialBets: boolean) => (id: UpgradeId, state: GameState) =>
  * Maximizarlo es la forma de llegar antes a una meta (criterio de Kelly): castiga la varianza
  * y nunca apuesta todo el saldo.
  */
-function logGrowth(state: GameState, type: BetType, fraction: number): number {
+function logGrowth(state: GameState, type: BetType, bet: number): number {
   const ceiling = currentMaxBet(state);
-  const bet = betAmount(state.balance, fraction, ceiling);
   if (bet <= 0 || bet >= state.balance) return -Infinity;
   const p = betWinChance(type, state.upgrades.luck, bet / ceiling);
   const x = bet / state.balance;
@@ -52,18 +50,20 @@ function bestFraction(state: GameState): number | null {
   return bestButton(state, 'color')?.index ?? null;
 }
 
-function bestButton(state: GameState, type: BetType): { index: number; growth: number } | null {
-  let best: { index: number; growth: number } | null = null;
-  for (const i of ALL_FRACTIONS) {
-    const growth = logGrowth(state, type, CONFIG.bet.quickFractions[i]);
-    if (growth > (best?.growth ?? 0)) best = { index: i, growth };
+/** Ficha del selector (con su cantidad redondeada real) de mayor crecimiento. */
+function bestButton(state: GameState, type: BetType): { index: number; amount: number; growth: number } | null {
+  let best: { index: number; amount: number; growth: number } | null = null;
+  for (const chip of stateChips(state)) {
+    if (!chip.affordable) continue;
+    const growth = logGrowth(state, type, chip.amount);
+    if (growth > (best?.growth ?? 0)) best = { index: chip.index, amount: chip.amount, growth };
   }
   return best;
 }
 
 /** Mejor combinación de tipo de apuesta y botón entre los desbloqueados. */
 function bestBet(state: GameState): { choice: BetChoice; fractionIndex: number } | null {
-  let best: { type: BetType; index: number; growth: number } | null = null;
+  let best: { type: BetType; index: number; amount: number; growth: number } | null = null;
   for (const type of BET_TYPES) {
     if (!isBetTypeUnlocked(state, type)) continue;
     const button = bestButton(state, type);
@@ -96,8 +96,7 @@ function bestHelperProfile(state: GameState): number {
 
 /** Guarda para una apuesta con el botón óptimo (nada si aún no compensa apostar). */
 function smartReserve(state: GameState): number {
-  const i = bestFraction(state);
-  return i === null ? 0 : Math.floor(currentMaxBet(state) * CONFIG.bet.quickFractions[i]);
+  return bestButton(state, 'color')?.amount ?? 0;
 }
 
 export const STRATEGIES: Strategy[] = [
@@ -137,6 +136,15 @@ export const STRATEGIES: Strategy[] = [
     reserve: smartReserve,
   },
 ];
+
+/** Solo con ayudante: juega como (c) hasta comprar el Crupier y desde entonces solo compra mejoras. */
+export const HELPER_ONLY: Strategy = {
+  ...STRATEGIES[2],
+  id: 'h',
+  label: '(h) Solo ayudante tras comprarlo (como c)',
+  priority: ['crupier'],
+  idleAfterHelper: true,
+};
 
 /**
  * Estudio del ayudante: el jugador juega como (c), pero compra el Crupier (y el perfil que haga

@@ -1,4 +1,33 @@
-# Progreso de la sesión
+# Progreso
+
+Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
+Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
+no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDrive).
+
+## Sesión actual (bloques 0-3: comprobaciones y push, regeneración rápida y mesa 3, mesa 4, cierre)
+
+### Hecho
+
+- [x] B0.1 Rutas absolutas: ninguna en el código, la configuración, los scripts ni los tests.
+- [x] B0.2 Tests en la ruta nueva: cliente 208 en verde, servidor 26 en verde.
+- [x] B0.3 Seguridad: `.env` no está en git ni en su historial; `.env.example` sin valores reales. Sin
+      secretos en el árbol ni en el historial; el único "secreto" es el de prueba del perfil `test`
+      (`test-secret-only-for-automated-tests-...`, solo H2 y tests). `.gitignore` ampliado: `.env.*`
+      (salvo `.env.example`), `*.pem`, `*.key`, `server/target/`.
+- [x] B0.4 **Push pendiente: falta remoto** (no hay `git remote` y `gh` no está instalado).
+- [x] B0.5 README: "Cómo arrancar el proyecto desde cero en otra máquina", comprobado con un clon
+      limpio (npm ci, tests, build y servidor respondiendo en ~28 s).
+
+### Pendiente
+
+- B1 regeneración rápida (workers, caché por mesa, --quick/--full), camarero agresivo, tramo final de la mesa 3
+- B2 mesa 4 (blackjack, la Crupier)
+- B3 cierre
+
+---
+
+## Sesión anterior
+
 
 Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, sin push ni despliegue, actualizar este archivo tras cada commit, no repetir

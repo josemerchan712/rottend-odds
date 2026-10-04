@@ -54,6 +54,36 @@ scripts/     pipeline de assets (recorte del fondo, troceado, reescalado nearest
 assets/      hojas originales (raw/) y sprites generados (sprites/)
 ```
 
+## Cómo arrancar el proyecto desde cero en otra máquina
+
+Comprobado con un clon limpio (Windows, Git Bash, Node 24, JDK 21+):
+
+```bash
+git clone <url-del-repositorio> casino-incremental
+cd casino-incremental
+npm ci
+cp .env.example .env
+```
+
+Rellena `.env` (solo hace falta para el backend con Docker: `DB_PASSWORD` y un `JWT_SECRET` de 32+
+caracteres, por ejemplo con `openssl rand -base64 48`). Después:
+
+```bash
+npm test
+npm run dev
+```
+
+El juego queda en http://localhost:5173 y funciona sin servidor. Para el servidor opcional sin Docker
+(H2 en memoria y el secreto de prueba del perfil `test`, solo para desarrollo), en otra terminal:
+
+```bash
+cd server
+./mvnw spring-boot:test-run -Dspring-boot.run.profiles=test
+```
+
+Tarda ~30 s en responder en http://localhost:8080 (`/api/ranking`). Tests del servidor:
+`cd server && ./mvnw test`.
+
 ## Cómo arrancarlo
 
 ### Frontend (el juego)

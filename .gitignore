@@ -3,3 +3,8 @@ dist
 *.log
 .vite
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+server/target/

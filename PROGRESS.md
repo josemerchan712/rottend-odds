@@ -45,9 +45,18 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
       saldo (por encima del Kelly de media suerte): prudente gana la fase inicial (1:48), normal la media
       (9:50 frente a 10:21 de agresivo) y agresivo solo la alta (1:07). Sin quiebras en ninguna fase.
 
+- [x] B1.3 Tramo final de la mesa 3: de ~6 s a **1:00**, con la duración total en 13:57 (40 partidas).
+      Cambios en `shared/config.json` → `dice`: techo máximo nivel 11 → **8** (238K → 30.517) y suerte
+      base 420 → **550** con crecimiento 1,6 → **1,5** (el último nivel costaba 3,2M y se compraba casi al
+      final; ahora la suerte 20 llega antes y el techo acotado marca el ritmo del final). Los
+      relanzamientos ganan peso (−12% de tiempo).
+- [x] B1.4 `npm run plausibility` (--full): 3,6 s (la mesa 1 no cambió: caché). Cliente 208 y
+      servidor 26 tests en verde.
+
 ### Pendiente
 
-- B1.3 tramo final de la mesa 3, B1.4 regenerar --full
+- B2 mesa 4 (blackjack, la Crupier)
+- B3 cierre
 - B2 mesa 4 (blackjack, la Crupier)
 - B3 cierre
 

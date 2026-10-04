@@ -275,8 +275,8 @@ Mejoras: **Bandeja** (2 objetos por clic), **Carrito** (+50% de valor por nivel)
 
 | Mejora | Coste base | Crecimiento | Niveles |
 |---|---|---|---|
-| Suerte (y cargas de relanzamiento) | 420 | 1,6 | 20 |
-| Apuesta máxima | 350 | 2,0 | 11 |
+| Suerte (y cargas de relanzamiento) | 550 | 1,5 | 20 |
+| Apuesta máxima | 350 | 2,0 | 8 (techo máximo 30.517) |
 | Camarero fantasma | 1.000 | - | 1 |
 | Velocidad / perfil / suerte del camarero | 600 / 2.000 / 1.500 | 1,6 / 4 / 1,8 | 15 / 2 / 10 |
 | Jackpot | 4.000 | 1,8 | 10 |
@@ -284,24 +284,26 @@ Mejoras: **Bandeja** (2 objetos por clic), **Carrito** (+50% de valor por nivel)
 | Doble seis | 2.500 | - | 1 |
 | Bandeja / Carrito / Friegaplatos | 100 / 80 / 400 | - / 2,25 / 2 | 1 / 4 / 5 |
 
-### 4c.5 Simulación (`npm run simulate:dice`, 200 partidas por estrategia)
+### 4c.5 Simulación (`npm run simulate:dice`)
 
 Empieza al pagar la deuda de la mesa 2 con el estado real de una partida (d) de la mesa 2 de la misma semilla (que a su vez empieza desde una (c) de la mesa 1). Mismo jugador: una acción cada 0,5 s, una tirada por segundo como mucho, 1,5 s por cambio de sala; decidir un relanzamiento gasta una acción.
 
+Con los números actuales (40 partidas por estrategia):
+
 | Estrategia | Media | p10 | p50 | p90 | Tramo final | Mesas 1+2+3 |
 |---|---|---|---|---|---|---|
-| (a) Par, ficha mínima | 45:51 | 44:35 | 45:51 | 47:11 | 3:10 | 66:31 |
-| (b) Par, siempre TODO | 20:57 | 16:32 | 20:24 | 25:41 | 0:11 | 41:37 |
-| (b2) Siempre doble seis, ficha óptima | 16:19 | 14:36 | 16:14 | 18:02 | 0:09 | 36:59 |
-| (c) Óptima, solo par, sin relanzar | 14:32 | 13:41 | 14:35 | 15:31 | 0:11 | 35:12 |
-| (c2) Óptima, todos los objetivos, sin relanzar | 14:35 | 13:31 | 14:29 | 15:54 | 0:07 | 35:14 |
-| (d) Óptima, todos los objetivos y relanzando | **13:14** | 11:48 | 13:10 | 14:40 | 0:06 | **33:54** |
+| (b) Par, siempre TODO | 19:16 | 16:00 | 18:40 | 24:04 | 1:58 | 40:19 |
+| (b2) Siempre doble seis, ficha óptima | 17:39 | 15:31 | 17:42 | 19:59 | 0:56 | 38:42 |
+| (c) Óptima, solo par, sin relanzar | 16:22 | 15:23 | 16:34 | 17:17 | 1:58 | 37:26 |
+| (c2) Óptima, todos los objetivos, sin relanzar | 15:52 | 15:00 | 15:49 | 17:08 | 1:20 | 36:55 |
+| (d) Óptima, todos los objetivos y relanzando | **13:57** | 12:44 | 13:49 | 15:18 | **1:00** | **35:01** |
 
-- Mesa 3 de ~13 minutos con la mejor estrategia (el objetivo de ~14 min es propio: el encargo se cortó antes de dar una cifra); mesas 1+2+3 ≈ 34 min.
-- Ninguna estrategia trivial gana: siempre TODO quiebra en casi todas las partidas en las fases media y alta; perseguir siempre el doble seis tarda un 23% más.
-- Los relanzamientos dan una ventaja real (−9% de tiempo, ~33 por partida, convierten el 45%); usar todos los objetivos sin relanzar empata con jugar solo a par: los arriesgados compensan con suerte alta, pero esa fase es corta.
-- Sin bancarrotas con las estrategias (c) y (d). El camarero no deja el saldo a 0 con ningún perfil (prudente 15:36, normal 13:46, agresivo 12:52; 40 partidas).
-- Chapas por fuente (d): dados 95%, jackpot 4%, pasivo 1%, trabajo < 1%; ~3,6 jackpots por partida.
+- Mesa 3 de ~14 minutos con la mejor estrategia; mesas 1+2+3 ≈ 35 min.
+- **Tramo final** (de suerte 20 a 10M) de ~1 minuto: el momento de dominar el casino. Antes duraba ~6 s porque el techo llegaba a 238K y el último nivel de suerte costaba 3,2M (se compraba casi al final). Ajuste mínimo: techo máximo en el nivel 8 (30.517) y suerte con crecimiento 1,5 (base 550) para que la suerte 20 llegue antes y la duración total siga en ~14 min.
+- Ninguna estrategia trivial gana: siempre TODO quiebra en casi todas las partidas en las fases media y alta; perseguir siempre el doble seis tarda un 26% más.
+- Los relanzamientos dan una ventaja real (−12% frente a no relanzar) y no son obligatorios.
+- Sin bancarrotas con las estrategias (b2), (c) y (d).
+- **Camarero por fase** (tiempo en cada fase con perfil fijo): prudente gana la inicial, normal la media y agresivo solo la alta (agresivo: todo el techo y hasta el 60% del saldo; con 50% / 30% ganaba en todas las fases por los relanzamientos). Ningún perfil deja el saldo a 0.
 
 ### 4c.6 Escena
 

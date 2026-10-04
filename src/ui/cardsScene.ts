@@ -6,13 +6,11 @@ import { cardsLenderPhase, hasSkeleton } from '../game/cards/table';
 import { fadeAlpha, type Room, type RoomState } from '../game/rooms';
 import type { GameState } from '../game/state';
 import type { SelectorChip } from '../game/betting';
-import { itemAtPoint, type Collected } from '../game/workCore';
 import { formatNumber } from '../util/format';
 import { chipAt } from './casinoLayout';
 import { Effects } from './effects';
-import { provisionalTrash } from './provisional';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
-import { ready, type PlayerFrame, type Sprites } from './sprites';
+import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
 
 /**
@@ -37,17 +35,10 @@ export const ZONES4 = {
   accept: { x: FELT.x + 196, y: FELT.y + 56, width: 70, height: 20, label: 'ACEPTAR' },
 };
 const SKELETON_SPOT = { x: 556, y: 330 };
-const DOORS4: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
-  casino: { x: 6, y: 120, width: 44, height: 150, label: 'TRASTIENDA' },
-  trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'SALA' },
-};
 const DEAL_SECONDS = 0.22;
 const FLIP_SECONDS = 0.14;
 const STAGGER = 0.2;
 const FLOAT_SECONDS = 1.2;
-const CLEANER_SPEED = 220;
-const CROUCH_SECONDS = 0.14;
-const LIFT_SECONDS = 0.3;
 const TEXT = '#c9a443';
 const RED = '#a3261e';
 const INK = '#141110';
@@ -89,7 +80,6 @@ function slot(row: { x: number; y: number }, i: number) {
 export class CardsScene {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly effects: Effects;
-  private readonly trash = provisionalTrash(4);
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
@@ -100,8 +90,6 @@ export class CardsScene {
   private player: ShownCard[] = [];
   private dealer: ShownCard[] = [];
   private notified = false;
-  private playerAnim: { phase: 'idle' | 'crouch' | 'lift'; time: number } = { phase: 'idle', time: 0 };
-  private cleanerShown: { x: number; y: number; facing: 1 | -1; walk: number } | null = null;
   onHandShown: ((hand: CardHand) => void) | null = null;
   onAwayResult: ((hand: CardHand) => void) | null = null;
 
@@ -130,11 +118,6 @@ export class CardsScene {
     this.dealer = this.hand ? all(this.hand.dealer, this.hand.status !== 'fin') : [];
     this.notified = true;
     this.floats = [];
-    this.cleanerShown = null;
-  }
-
-  doorAt(point: { x: number; y: number }, room: Room): boolean {
-    return inside(DOORS4[room], point);
   }
 
   /** ¿Hay cartas moviéndose o volteándose a la vista? */
@@ -165,20 +148,6 @@ export class CardsScene {
     return null;
   }
 
-  trashAt(state: GameState, point: { x: number; y: number }) {
-    return itemAtPoint(state.cards.work.items, point.x, point.y, CONFIG.cards.work.clickRadius);
-  }
-
-  playerCollected(items: Collected[]): void {
-    if (!items.length) return;
-    this.playerAnim = { phase: 'crouch', time: 0 };
-    items.forEach((item, i) => this.addFloat(`+${formatNumber(item.value)}`, item.x, item.y - 24 - i * 10));
-  }
-
-  cleanerCollected(items: Collected[]): void {
-    for (const item of items) this.addFloat(`+${formatNumber(item.value)}`, item.x, item.y - 24);
-  }
-
   private addFloat(text: string, x: number, y: number, color = TEXT): void {
     this.floats.push({ text, x, y, age: 0, color });
   }
@@ -192,9 +161,7 @@ export class CardsScene {
     const shake = this.effects.shakeOffset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
-    if (rooms.current === 'casino') this.drawHall(state);
-    else this.drawBackroom(state);
-    this.drawDoor(rooms);
+    this.drawHall(state);
     this.drawFloats();
     ctx.restore();
     const fade = fadeAlpha(rooms);
@@ -279,27 +246,8 @@ export class CardsScene {
       if (hand.result === 'pierde' && hand.bet >= (state.cards.balance + hand.bet) * 0.25) this.effects.shake();
       this.onHandShown?.(hand);
     }
-    const anim = this.playerAnim;
-    anim.time += dt;
-    if (anim.phase === 'crouch' && anim.time >= CROUCH_SECONDS) this.playerAnim = { phase: 'lift', time: 0 };
-    else if (anim.phase === 'lift' && anim.time >= LIFT_SECONDS) this.playerAnim = { phase: 'idle', time: 0 };
     for (const f of this.floats) f.age += dt;
     this.floats = this.floats.filter((f) => f.age < FLOAT_SECONDS);
-    if (state.cards.upgrades.dealer > 0) {
-      const target = state.cards.work.cleaner;
-      this.cleanerShown ??= { x: target.x, y: target.y, facing: -1, walk: 0 };
-      const c = this.cleanerShown;
-      const dx = target.x - c.x;
-      const dy = target.y - c.y;
-      const d = Math.hypot(dx, dy);
-      if (d > 1) {
-        const step = Math.min(d, CLEANER_SPEED * dt);
-        c.x += (dx / d) * step;
-        c.y += (dy / d) * step;
-        c.facing = dx >= 0 ? 1 : -1;
-        c.walk += dt;
-      } else c.walk = 0;
-    } else this.cleanerShown = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -466,75 +414,6 @@ export class CardsScene {
       ctx.fillRect(x + w / 2 - 1, y + 10, 2, 3);
       ctx.fillRect(x + w / 2 + 3, y + 11, 2, 2);
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Trastienda (provisional)
-
-  private drawBackroom(state: GameState): void {
-    const ctx = this.ctx;
-    const own = this.sprites.backgrounds.get('trastienda4');
-    const fallback = this.sprites.backgrounds.get('trastienda');
-    if (ready(own)) ctx.drawImage(own, 0, 0);
-    else if (ready(fallback)) {
-      // Provisional: la trastienda de la mesa 1 con la luz roja del salón de la Crupier.
-      ctx.drawImage(fallback, 0, 0);
-      ctx.fillStyle = 'rgba(80, 10, 20, 0.33)';
-      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-    }
-    const hovered = this.hover ? this.trashAt(state, this.hover) : null;
-    this.canvas.style.cursor = hovered ? 'pointer' : 'default';
-    const drawables: { y: number; draw: () => void }[] = state.cards.work.items.map((item) => ({
-      y: item.y,
-      draw: () => {
-        if (item.id === hovered?.id) {
-          ctx.fillStyle = 'rgba(201, 164, 67, 0.35)';
-          ctx.beginPath();
-          ctx.ellipse(item.x, item.y - 2, 18, 7, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        const own = this.sprites.trash4.get(item.kind);
-        const art = ready(own) ? own : this.trash.get(item.kind);
-        if (art) ctx.drawImage(art, Math.round(item.x - 16), Math.round(item.y - 32), 32, 32);
-      },
-    }));
-    drawables.push({ y: CONFIG.cards.work.player.y, draw: () => this.drawPlayer() });
-    if (this.cleanerShown) {
-      const c = this.cleanerShown;
-      drawables.push({ y: c.y, draw: () => this.drawCleaner(c) });
-    }
-    drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
-  }
-
-  private drawPlayer(): void {
-    const { phase } = this.playerAnim;
-    const frame: PlayerFrame = phase === 'lift' ? 'lift' : 'crouch';
-    const { player } = CONFIG.cards.work;
-    this.drawSprite(this.sprites.player.get(frame), player.x, player.y, 64, 1, phase === 'crouch' ? 2 : 0);
-  }
-
-  /** El repartidor: su sprite si existe; si no, el del limpiador de la mesa 1 (provisional). */
-  private drawCleaner(c: { x: number; y: number; facing: 1 | -1; walk: number }): void {
-    const frame: PlayerFrame = c.walk > 0 && Math.floor(c.walk * 6) % 2 === 1 ? 'walk-2' : 'walk-1';
-    const own = this.sprites.cardsDealer.get(frame);
-    this.drawSprite(ready(own) ? own : this.sprites.player.get(frame), c.x, c.y, 64, c.facing);
-  }
-
-  private drawDoor(rooms: RoomState): void {
-    const ctx = this.ctx;
-    const d = DOORS4[rooms.current];
-    const hovered = this.hover !== null && this.doorAt(this.hover, rooms.current) && !rooms.transition;
-    if (rooms.current === 'casino' && !hovered) label(ctx, '◂', d.x + 8, d.y + d.height / 2, 'rgba(201, 164, 67, 0.55)', 14);
-    if (!hovered) return;
-    ctx.strokeStyle = TEXT;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 2]);
-    ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.width - 1, d.height - 1);
-    ctx.setLineDash([]);
-    label(ctx, d.label, d.x + d.width / 2 + (rooms.current === 'casino' ? 22 : 0), d.y - 6, TEXT, 12);
-    this.canvas.style.cursor = 'pointer';
   }
 
   private drawFloats(): void {

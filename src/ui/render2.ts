@@ -2,7 +2,6 @@ import { CONFIG, type SlotUpgradeId } from '../game/config';
 import { holdShare, slotJackpotChance, slotLuckChance, slotMaxBet, slotWinChance } from '../game/slots/machine';
 import type { SlotsState } from '../game/slots/state';
 import {
-  apprenticeInterval,
   canBuySlot,
   canPaySlotsDebt,
   hasZombie,
@@ -11,7 +10,6 @@ import {
   passiveRate,
   slotNextCost,
   slotsDebtProgress,
-  toolboxMultiplier,
   zombieBet,
   zombieInterval,
   zombieLuckBonus,
@@ -27,7 +25,7 @@ import { setText, TABS_HTML, type Drawer } from './render';
  */
 export const DRAWERS2 = {
   mesa: { upgrades: ['luck', 'maxBet', 'jackpot', 'hold'] as SlotUpgradeId[] },
-  ayuda: { upgrades: ['zombie', 'helperSpeed', 'helperProfile', 'helperLuck', 'rag', 'toolbox', 'apprentice'] as SlotUpgradeId[] },
+  ayuda: { upgrades: ['zombie', 'helperSpeed', 'helperProfile', 'helperLuck'] as SlotUpgradeId[] },
 } as const;
 export type Drawer2Id = keyof typeof DRAWERS2;
 
@@ -60,7 +58,6 @@ export interface Ui2 {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
-  workInfo: HTMLElement;
 }
 
 function shopRows(ids: readonly SlotUpgradeId[]): string {
@@ -115,10 +112,7 @@ export function mountUi2(root: HTMLElement): Ui2 {
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
         </div>
-        ${shopRows(DRAWERS2.ayuda.upgrades.slice(0, 4))}
-        <h2 class="drawer-sub">Trastienda</h2>
-        <p class="small-text muted" data-ref="workInfo"></p>
-        ${shopRows(DRAWERS2.ayuda.upgrades.slice(4))}
+        ${shopRows(DRAWERS2.ayuda.upgrades)}
       </div>
     </aside>
   `;
@@ -154,7 +148,6 @@ export function mountUi2(root: HTMLElement): Ui2 {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile2]')],
     helperInfo: ref('helperInfo'),
-    workInfo: ref('workInfo'),
   };
 }
 
@@ -173,12 +166,6 @@ export function render2(ui: Ui2, state: GameState): void {
     `Tiempo en la mesa ${formatTime(slots.playTime)} · ${slots.stats.spins} tiradas · ${formatPercent(winRate)} con premio · ${slots.stats.jackpots} jackpots · ${slots.stats.holds} retenidas · ${formatNumber(slots.stats.passiveEarned)} de la mesa 1`,
   );
 
-  const extras = [
-    upgrades.rag > 0 ? 'trapo' : '',
-    upgrades.toolbox > 0 ? `caja x${toolboxMultiplier(slots).toFixed(1).replace('.', ',')}` : '',
-    upgrades.apprentice > 0 ? `aprendiz cada ${formatSeconds(apprenticeInterval(upgrades.apprentice))}` : '',
-  ].filter(Boolean);
-  setText(ui.workInfo, `${slots.work.items.length}/${CONFIG.slots.work.maxItems} en el suelo${extras.length ? ` · ${extras.join(', ')}` : ''}`);
 
   const on = hasZombie(slots);
   ui.helperLocked.hidden = on;
@@ -238,18 +225,9 @@ function describe(slots: SlotsState, id: SlotUpgradeId): string {
     }
     case 'helperLuck':
       return arrow(`+${formatPercent(zombieLuckBonus(lvl))}`, `+${formatPercent(zombieLuckBonus(lvl + 1))}`);
-    case 'rag':
-      return maxed ? '2 objetos por clic' : 'Limpia 2 por clic';
-    case 'toolbox':
-      return arrow(`Valor x${factor(lvl)}`, `x${factor(lvl + 1)}`);
-    case 'apprentice':
-      return lvl === 0 ? `Limpia solo cada ${formatSeconds(apprenticeInterval(1))}` : arrow(`Cada ${formatSeconds(apprenticeInterval(lvl))}`, formatSeconds(apprenticeInterval(lvl + 1)));
   }
 }
 
-function factor(level: number): string {
-  return (1 + CONFIG.slots.work.valuePerLevel * level).toFixed(1).replace('.', ',');
-}
 
 export function isDrawer2Open(ui: Ui2, id: Drawer2Id): boolean {
   return ui.drawers[id].root.dataset.open === 'true';

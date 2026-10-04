@@ -1,6 +1,5 @@
 import { CONFIG, CARD_UPGRADE_IDS, type CardUpgradeId } from '../config';
 import type { Bettor } from '../state';
-import { createWorkSlot, type WorkSlot } from '../workCore';
 
 /**
  * Una carta: 0-51. rango = c % 13 (0 = as, 1-8 = 2-9, 9 = 10, 10 = J, 11 = Q, 12 = K) y
@@ -48,7 +47,6 @@ export interface CardsState {
   /** Cargas de descarte (reserva común con el ayudante) y tiempo hacia la siguiente. */
   discards: { charges: number; timer: number };
   helper: { timer: number; profile: number };
-  work: WorkSlot;
   pot: number;
   passiveCarry: number;
   /** Manos recientes ya resueltas (la última primero). */
@@ -62,7 +60,6 @@ export interface CardsState {
     discards: number;
     jackpots: number;
     jackpotsCapped: number;
-    workEarned: number;
     passiveEarned: number;
   };
 }
@@ -76,12 +73,11 @@ export function createCardsState(): CardsState {
     hand: null,
     discards: { charges: CONFIG.cards.discards.base, timer: 0 },
     helper: { timer: 0, profile: 0 },
-    work: createWorkSlot(CONFIG.cards.work),
     pot: CONFIG.cards.jackpot.potSeed,
     passiveCarry: 0,
     recentHands: [],
     debtPaid: false,
     visited: false,
-    stats: { hands: 0, wins: 0, pushes: 0, discards: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0, passiveEarned: 0 },
+    stats: { hands: 0, wins: 0, pushes: 0, discards: 0, jackpots: 0, jackpotsCapped: 0, passiveEarned: 0 },
   };
 }

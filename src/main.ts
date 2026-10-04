@@ -36,8 +36,6 @@ import { DIALOGUE2_ES } from './content/dialogue2.es';
 import { playerSpin, selectSlotChip, slotCeiling, slotChips, toggleHold } from './game/slots/machine';
 import {
   buySlotUpgrade,
-  collectNearestSlotItem,
-  collectSlotItem,
   paySlotsDebt,
   selectZombieProfile,
   slotsLenderPhase,
@@ -58,8 +56,6 @@ import { acceptBust, cardsCeiling, cardsChips, discard as discardCard, hit as hi
 import {
   buyCardsUpgrade,
   cardsLenderPhase,
-  collectCardsItem,
-  collectNearestCardsItem,
   payCardsDebt,
   selectSkeletonProfile,
 } from './game/cards/table';
@@ -71,8 +67,6 @@ import { DIALOGUE3_ES } from './content/dialogue3.es';
 import { closeOpenRoll, diceCeiling, diceChips, openRoll, playerRoll, reroll, selectDiceChip, selectTarget } from './game/dice/game';
 import {
   buyDiceUpgrade,
-  collectDiceItem,
-  collectNearestDiceItem,
   diceLenderPhase,
   payDiceDebt,
   selectGhostProfile,
@@ -373,30 +367,18 @@ sceneCanvas.addEventListener('click', (event) => {
   scene.playerCollected(collectItem(state, item.id));
   render(gameUi, state);
 });
-/** Clic en la escena de la mesa 2: puerta, ficha, carrete (retener), tirar o basura. */
+/** Clic en la escena de la mesa 2: ficha, carrete (retener) o tirar. Sin trastienda. */
 function clickSlots(current: GameState, point: { x: number; y: number }): void {
   const slots = current.slots;
-  if (!inTransition(rooms) && slotsScene.doorAt(point, rooms.current)) {
-    toggleRoom(rooms);
-    return;
-  }
   const target = slotsScene.target(current, point);
   if (target?.kind === 'chip') selectSlotChip(slots, target.chip.index);
   else if (target?.kind === 'reel') toggleHold(slots, target.reel);
   else if (target?.kind === 'spin') spinSlots();
-  if (target || !canCollectTrash(rooms)) return;
-  const item = slotsScene.trashAt(current, point);
-  if (!item) return;
-  slotsScene.playerCollected(collectSlotItem(slots, item.id));
 }
 
-/** Clic en la escena de la mesa 3: puerta, ficha, objetivo, dado (relanzar), tirar, aceptar o basura. */
+/** Clic en la escena de la mesa 3: ficha, objetivo, dado (relanzar), tirar o aceptar. Sin trastienda. */
 function clickDice(current: GameState, point: { x: number; y: number }): void {
   const dice = current.dice;
-  if (!inTransition(rooms) && diceScene.doorAt(point, rooms.current)) {
-    toggleRoom(rooms);
-    return;
-  }
   const hit = diceScene.target(current, point);
   if (hit?.kind === 'chip') selectDiceChip(dice, hit.chip.index);
   else if (hit?.kind === 'target' && !hit.locked) selectTarget(dice, hit.target);
@@ -405,26 +387,14 @@ function clickDice(current: GameState, point: { x: number; y: number }): void {
     if (roll) reroll(dice, roll, hit.die, defaultRng);
   } else if (hit?.kind === 'accept') closeOpenRoll(dice);
   else if (hit?.kind === 'roll') rollDiceNow();
-  if (hit || !canCollectTrash(rooms)) return;
-  const item = diceScene.trashAt(current, point);
-  if (!item) return;
-  diceScene.playerCollected(collectDiceItem(dice, item.id));
 }
 
-/** Clic en la escena de la mesa 4: puerta, ficha, repartir, pedir, plantarse, aceptar, descartar o basura. */
+/** Clic en la escena de la mesa 4: ficha, repartir, pedir, plantarse, aceptar o descartar. Sin trastienda. */
 function clickCards(current: GameState, point: { x: number; y: number }): void {
   const cards = current.cards;
-  if (!inTransition(rooms) && cardsScene.doorAt(point, rooms.current)) {
-    toggleRoom(rooms);
-    return;
-  }
   const hit = cardsScene.target(current, point);
   if (hit?.kind === 'chip') selectCardsChip(cards, hit.chip.index);
   else if (hit) cardsAction(hit.kind);
-  if (hit || !canCollectTrash(rooms)) return;
-  const item = cardsScene.trashAt(current, point);
-  if (!item) return;
-  cardsScene.playerCollected(collectCardsItem(cards, item.id));
 }
 
 /** Una decisión en la mesa 4 (solo en la sala y sin cartas moviéndose). */
@@ -496,7 +466,8 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.key === 'Tab') {
     event.preventDefault();
-    if (!tableFade) toggleRoom(rooms);
+    // La trastienda solo existe en la mesa 1.
+    if (!tableFade && activeTable() === 1) toggleRoom(rooms);
     return;
   }
   if (table4) {
@@ -513,8 +484,6 @@ window.addEventListener('keydown', (event) => {
       } else if (key === 'p') cardsAction('hit');
       else if (key === 's') cardsAction('stand');
       else if (key === 'd') cardsAction('discard');
-    } else if (key === 'e' && canCollectTrash(rooms)) {
-      cardsScene.playerCollected(collectNearestCardsItem(cards));
     }
     return;
   }
@@ -527,10 +496,8 @@ window.addEventListener('keydown', (event) => {
       const chip = diceChips(dice)[Number(event.key) - 1];
       if (chip) selectDiceChip(dice, chip.index);
     } else if (/^[qwert]$/i.test(event.key) && rooms.current === 'casino') {
-      // Q W E R T: los cinco objetivos, de izquierda a derecha (E también recoge en la trastienda).
+      // Q W E R T: los cinco objetivos, de izquierda a derecha.
       selectTarget(dice, DICE_TARGETS['qwert'.indexOf(event.key.toLowerCase())]);
-    } else if ((event.key === 'e' || event.key === 'E') && canCollectTrash(rooms)) {
-      diceScene.playerCollected(collectNearestDiceItem(dice));
     }
     return;
   }
@@ -541,8 +508,6 @@ window.addEventListener('keydown', (event) => {
     } else if (/^[1-4]$/.test(event.key) && rooms.current === 'casino') {
       const chip = slotChips(state.slots)[Number(event.key) - 1];
       if (chip) selectSlotChip(state.slots, chip.index);
-    } else if ((event.key === 'e' || event.key === 'E') && canCollectTrash(rooms)) {
-      slotsScene.playerCollected(collectNearestSlotItem(state.slots));
     }
     return;
   }
@@ -1017,9 +982,6 @@ startLoop(
         const entered = updateRooms(rooms, dt);
         const tick = updateGame(state, dt, defaultRng);
         if (state.activeTable === 1) scene.cleanerCollected(tick.cleaned);
-        else if (state.activeTable === 2) slotsScene.cleanerCollected(tick.slots.cleaned);
-        else if (state.activeTable === 3) diceScene.cleanerCollected(tick.dice.cleaned);
-        else cardsScene.cleanerCollected(tick.cards.cleaned);
         updateTableFade(state, dt);
         updateDialogue(state, dt, entered);
       }

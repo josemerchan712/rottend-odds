@@ -5,13 +5,11 @@ import { diceLenderPhase, hasGhost } from '../game/dice/table';
 import { fadeAlpha, type Room, type RoomState } from '../game/rooms';
 import type { GameState } from '../game/state';
 import type { SelectorChip } from '../game/betting';
-import { itemAtPoint, type Collected } from '../game/workCore';
 import { formatNumber } from '../util/format';
 import { chipAt } from './casinoLayout';
 import { Effects } from './effects';
-import { provisionalTrash } from './provisional';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
-import { ready, type PlayerFrame, type Sprites } from './sprites';
+import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
 
 /**
@@ -33,16 +31,9 @@ const DIE_REST = [
   { x: TRAY.x + 98, y: TRAY.y + 12 },
 ];
 const GHOST_SPOT = { x: 556, y: 330 };
-const DOORS3: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
-  casino: { x: 6, y: 120, width: 44, height: 150, label: 'TRASTIENDA' },
-  trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'BAR' },
-};
 const ROLL_SECONDS = 0.75;
 const REROLL_SECONDS = 0.5;
 const FLOAT_SECONDS = 1.2;
-const CLEANER_SPEED = 220;
-const CROUCH_SECONDS = 0.14;
-const LIFT_SECONDS = 0.3;
 const TEXT = '#c9a443';
 
 export type DiceTargetHit =
@@ -82,7 +73,6 @@ function dieRect(i: number) {
 export class DiceScene {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly effects: Effects;
-  private readonly trash = provisionalTrash();
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
@@ -93,8 +83,6 @@ export class DiceScene {
   private anims: (DieAnim | null)[] = [null, null];
   /** Tirada del jugador que se está enseñando, si ya se ha avisado de su resultado y si se vio su relanzamiento. */
   private current: { roll: DiceRoll; notified: boolean; rerollSeen: boolean } | null = null;
-  private playerAnim: { phase: 'idle' | 'crouch' | 'lift'; time: number } = { phase: 'idle', time: 0 };
-  private cleanerShown: { x: number; y: number; facing: 1 | -1; walk: number } | null = null;
   private time = 0;
   onRollShown: ((roll: DiceRoll) => void) | null = null;
   onAwayResult: ((roll: DiceRoll) => void) | null = null;
@@ -121,11 +109,6 @@ export class DiceScene {
     this.anims = [null, null];
     this.current = null;
     this.floats = [];
-    this.cleanerShown = null;
-  }
-
-  doorAt(point: { x: number; y: number }, room: Room): boolean {
-    return inside(DOORS3[room], point);
   }
 
   /** ¿Hay dados rodando a la vista? */
@@ -150,20 +133,6 @@ export class DiceScene {
     return null;
   }
 
-  trashAt(state: GameState, point: { x: number; y: number }) {
-    return itemAtPoint(state.dice.work.items, point.x, point.y, CONFIG.dice.work.clickRadius);
-  }
-
-  playerCollected(items: Collected[]): void {
-    if (!items.length) return;
-    this.playerAnim = { phase: 'crouch', time: 0 };
-    items.forEach((item, i) => this.addFloat(`+${formatNumber(item.value)}`, item.x, item.y - 24 - i * 10));
-  }
-
-  cleanerCollected(items: Collected[]): void {
-    for (const item of items) this.addFloat(`+${formatNumber(item.value)}`, item.x, item.y - 24);
-  }
-
   private addFloat(text: string, x: number, y: number, color = TEXT): void {
     this.floats.push({ text, x, y, age: 0, color });
   }
@@ -177,9 +146,7 @@ export class DiceScene {
     const shake = this.effects.shakeOffset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
-    if (rooms.current === 'casino') this.drawBar(state);
-    else this.drawBackroom(state);
-    this.drawDoor(rooms);
+    this.drawBar(state);
     this.drawFloats();
     ctx.restore();
     const fade = fadeAlpha(rooms);
@@ -256,27 +223,8 @@ export class DiceScene {
         this.onRollShown?.(cur.roll);
       }
     }
-    const anim = this.playerAnim;
-    anim.time += dt;
-    if (anim.phase === 'crouch' && anim.time >= CROUCH_SECONDS) this.playerAnim = { phase: 'lift', time: 0 };
-    else if (anim.phase === 'lift' && anim.time >= LIFT_SECONDS) this.playerAnim = { phase: 'idle', time: 0 };
     for (const f of this.floats) f.age += dt;
     this.floats = this.floats.filter((f) => f.age < FLOAT_SECONDS);
-    if (state.dice.upgrades.busboy > 0) {
-      const target = state.dice.work.cleaner;
-      this.cleanerShown ??= { x: target.x, y: target.y, facing: -1, walk: 0 };
-      const c = this.cleanerShown;
-      const dx = target.x - c.x;
-      const dy = target.y - c.y;
-      const d = Math.hypot(dx, dy);
-      if (d > 1) {
-        const step = Math.min(d, CLEANER_SPEED * dt);
-        c.x += (dx / d) * step;
-        c.y += (dy / d) * step;
-        c.facing = dx >= 0 ? 1 : -1;
-        c.walk += dt;
-      } else c.walk = 0;
-    } else this.cleanerShown = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -403,75 +351,6 @@ export class DiceScene {
     };
     button(ROLL_BUTTON, this.rollInFlight() ? '...' : 'TIRAR', hit?.kind === 'roll', '#5e1f1b');
     if (openRoll(state.dice) && !this.rollInFlight()) button(ACCEPT_BUTTON, 'ACEPTAR', hit?.kind === 'accept', '#2e261c');
-  }
-
-  // ---------------------------------------------------------------------------
-  // Trastienda (provisional)
-
-  private drawBackroom(state: GameState): void {
-    const ctx = this.ctx;
-    const own = this.sprites.backgrounds.get('trastienda3');
-    const fallback = this.sprites.backgrounds.get('trastienda');
-    if (ready(own)) ctx.drawImage(own, 0, 0);
-    else if (ready(fallback)) {
-      // Provisional: la trastienda de la mesa 1 con la luz ámbar del bar.
-      ctx.drawImage(fallback, 0, 0);
-      ctx.fillStyle = 'rgba(90, 50, 10, 0.32)';
-      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-    }
-    const hovered = this.hover ? this.trashAt(state, this.hover) : null;
-    this.canvas.style.cursor = hovered ? 'pointer' : 'default';
-    const drawables: { y: number; draw: () => void }[] = state.dice.work.items.map((item) => ({
-      y: item.y,
-      draw: () => {
-        if (item.id === hovered?.id) {
-          ctx.fillStyle = 'rgba(201, 164, 67, 0.35)';
-          ctx.beginPath();
-          ctx.ellipse(item.x, item.y - 2, 18, 7, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        const own = this.sprites.trash3.get(item.kind);
-        const art = ready(own) ? own : this.trash.get(item.kind);
-        if (art) ctx.drawImage(art, Math.round(item.x - 16), Math.round(item.y - 32), 32, 32);
-      },
-    }));
-    drawables.push({ y: CONFIG.dice.work.player.y, draw: () => this.drawPlayer() });
-    if (this.cleanerShown) {
-      const c = this.cleanerShown;
-      drawables.push({ y: c.y, draw: () => this.drawCleaner(c) });
-    }
-    drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
-  }
-
-  private drawPlayer(): void {
-    const { phase } = this.playerAnim;
-    const frame: PlayerFrame = phase === 'lift' ? 'lift' : 'crouch';
-    const { player } = CONFIG.dice.work;
-    this.drawSprite(this.sprites.player.get(frame), player.x, player.y, 64, 1, phase === 'crouch' ? 2 : 0);
-  }
-
-  /** El friegaplatos: su sprite si existe; si no, el del limpiador de la mesa 1 (provisional). */
-  private drawCleaner(c: { x: number; y: number; facing: 1 | -1; walk: number }): void {
-    const frame: PlayerFrame = c.walk > 0 && Math.floor(c.walk * 6) % 2 === 1 ? 'walk-2' : 'walk-1';
-    const own = this.sprites.busboy.get(frame);
-    this.drawSprite(ready(own) ? own : this.sprites.player.get(frame), c.x, c.y, 64, c.facing);
-  }
-
-  private drawDoor(rooms: RoomState): void {
-    const ctx = this.ctx;
-    const d = DOORS3[rooms.current];
-    const hovered = this.hover !== null && this.doorAt(this.hover, rooms.current) && !rooms.transition;
-    if (rooms.current === 'casino' && !hovered) label(ctx, '◂', d.x + 8, d.y + d.height / 2, 'rgba(201, 164, 67, 0.55)', 14);
-    if (!hovered) return;
-    ctx.strokeStyle = TEXT;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 2]);
-    ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.width - 1, d.height - 1);
-    ctx.setLineDash([]);
-    label(ctx, d.label, d.x + d.width / 2 + (rooms.current === 'casino' ? 22 : 0), d.y - 6, TEXT, 12);
-    this.canvas.style.cursor = 'pointer';
   }
 
   private drawFloats(): void {

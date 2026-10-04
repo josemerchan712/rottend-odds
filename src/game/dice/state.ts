@@ -1,6 +1,5 @@
 import { CONFIG, DICE_UPGRADE_IDS, type DiceTarget, type DiceUpgradeId } from '../config';
 import type { Bettor } from '../state';
-import { createWorkSlot, type WorkSlot } from '../workCore';
 
 /** Dos dados, de 1 a 6. */
 export type Dice = [number, number];
@@ -41,7 +40,6 @@ export interface DiceState {
   /** Cargas de relanzamiento (reserva común con el ayudante) y tiempo hacia la siguiente. */
   rerolls: { charges: number; timer: number };
   helper: { timer: number; profile: number; streak: number };
-  work: WorkSlot;
   pot: number;
   passiveCarry: number;
   recentRolls: DiceRoll[];
@@ -54,7 +52,6 @@ export interface DiceState {
     rerollWins: number;
     jackpots: number;
     jackpotsCapped: number;
-    workEarned: number;
     passiveEarned: number;
   };
 }
@@ -70,12 +67,11 @@ export function createDiceState(): DiceState {
     streak: 0,
     rerolls: { charges: CONFIG.dice.rerolls.base, timer: 0 },
     helper: { timer: 0, profile: 0, streak: 0 },
-    work: createWorkSlot(CONFIG.dice.work),
     pot: CONFIG.dice.jackpot.potSeed,
     passiveCarry: 0,
     recentRolls: [],
     debtPaid: false,
     visited: false,
-    stats: { rolls: 0, wins: 0, rerolls: 0, rerollWins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0, passiveEarned: 0 },
+    stats: { rolls: 0, wins: 0, rerolls: 0, rerollWins: 0, jackpots: 0, jackpotsCapped: 0, passiveEarned: 0 },
   };
 }

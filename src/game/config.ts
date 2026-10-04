@@ -258,31 +258,11 @@ export const CONFIG = {
       luckPerLevel: 0.005,
     },
     /**
-     * Conversión: la mesa 2 recibe monedas por segundo = k * (ingreso por segundo de la mesa 1)^0,5.
-     * El ingreso de la mesa 1 es el esperado de su ayudante y su limpiador (lo que gana sola).
+     * Conversión: la mesa 2 recibe monedas por segundo = max(suelo, k * (ingreso/s de la mesa 1)^0,5).
+     * El ingreso de la mesa 1 es el esperado de su ayudante y su limpiador (lo que gana sola). El suelo
+     * es la red de seguridad de las mesas sin trastienda: nunca hay bloqueo (1 moneda/s).
      */
-    conversion: { k: 0.3 },
-    work: {
-      maxItems: shared.slots.work.maxItems,
-      respawnInterval: shared.slots.work.respawnSeconds,
-      /** Cada nivel de "Caja de herramientas" suma esta fracción al valor de cada objeto. */
-      valuePerLevel: shared.slots.work.toolboxValuePerLevel,
-      floor: { x: 150, y: 255, width: 280, height: 82 },
-      player: { x: 64, y: 344 },
-      clickRadius: 26,
-      minItemDistance: 34,
-      /** Objetos extra que limpia el trapo en cada clic, por nivel. */
-      extraPerLevel: 1,
-      cleaner: { baseInterval: 4, reductionPerLevel: 0.2, start: { x: 520, y: 340 } },
-      items: [
-        { id: 'chicle', name: 'Chicle pegado', value: 2, weight: 45 },
-        { id: 'moneda', name: 'Moneda atascada', value: 5, weight: 30 },
-        { id: 'bombilla', name: 'Bombilla rota', value: 8, weight: 14 },
-        { id: 'cable', name: 'Cable pelado', value: 25, weight: 7 },
-        { id: 'oxidada', name: 'Ficha oxidada', value: 60, weight: 3.5 },
-        { id: 'llave', name: 'Llave dorada', value: 800, weight: 0.5 },
-      ] as readonly { id: string; name: string; value: number; weight: number }[],
-    },
+    conversion: { k: 0.3, floor: 1 },
     debt: { amount: shared.slots.debt.amount },
     upgrades: {
       luck: { name: 'Suerte', ...shared.slots.upgrades.luck },
@@ -293,9 +273,6 @@ export const CONFIG = {
       helperLuck: { name: 'Suerte del zombi', ...shared.slots.upgrades.helperLuck },
       jackpot: { name: 'Jackpot', ...shared.slots.upgrades.jackpot },
       hold: { name: 'Retener carrete', ...shared.slots.upgrades.hold },
-      rag: { name: 'Trapo', ...shared.slots.upgrades.rag },
-      toolbox: { name: 'Caja de herramientas', ...shared.slots.upgrades.toolbox },
-      apprentice: { name: 'Aprendiz de limpieza', ...shared.slots.upgrades.apprentice },
     },
   },
 
@@ -353,26 +330,7 @@ export const CONFIG = {
       luckPerLevel: 0.005,
     },
     /** Conversión: chapas/s = k * (ingreso/s de la mesa 2)^0,5. */
-    conversion: { k: 0.3 },
-    work: {
-      maxItems: shared.dice.work.maxItems,
-      respawnInterval: shared.dice.work.respawnSeconds,
-      valuePerLevel: shared.dice.work.cartValuePerLevel,
-      floor: { x: 150, y: 255, width: 280, height: 82 },
-      player: { x: 64, y: 344 },
-      clickRadius: 26,
-      minItemDistance: 34,
-      extraPerLevel: 1,
-      cleaner: { baseInterval: 4, reductionPerLevel: 0.2, start: { x: 520, y: 340 } },
-      items: [
-        { id: 'servilleta', name: 'Servilleta manchada', value: 2, weight: 45 },
-        { id: 'vaso', name: 'Vaso sucio', value: 5, weight: 30 },
-        { id: 'botella', name: 'Botella vacía', value: 9, weight: 14 },
-        { id: 'copa', name: 'Copa rota', value: 30, weight: 7 },
-        { id: 'propina', name: 'Propina', value: 75, weight: 3.5 },
-        { id: 'dentadura', name: 'Dentadura de oro', value: 1000, weight: 0.5 },
-      ] as readonly { id: string; name: string; value: number; weight: number }[],
-    },
+    conversion: { k: 0.3, floor: 1 },
     debt: { amount: shared.dice.debt.amount },
     upgrades: {
       luck: { name: 'Suerte', ...shared.dice.upgrades.luck },
@@ -384,9 +342,6 @@ export const CONFIG = {
       jackpot: { name: 'Jackpot', ...shared.dice.upgrades.jackpot },
       hardTargets: { name: 'Más de 9 y doble', ...shared.dice.upgrades.hardTargets },
       boxcars: { name: 'Doble seis', ...shared.dice.upgrades.boxcars },
-      tray: { name: 'Bandeja', ...shared.dice.upgrades.tray },
-      cart: { name: 'Carrito', ...shared.dice.upgrades.cart },
-      busboy: { name: 'Friegaplatos', ...shared.dice.upgrades.busboy },
     },
   },
 
@@ -443,26 +398,7 @@ export const CONFIG = {
       luckPerLevel: 0.005,
     },
     /** Conversión: fichas negras/s = k * (ingreso/s de la mesa 3)^0,5. */
-    conversion: { k: 0.3 },
-    work: {
-      maxItems: shared.cards.work.maxItems,
-      respawnInterval: shared.cards.work.respawnSeconds,
-      valuePerLevel: shared.cards.work.satchelValuePerLevel,
-      floor: { x: 150, y: 255, width: 280, height: 82 },
-      player: { x: 64, y: 344 },
-      clickRadius: 26,
-      minItemDistance: 34,
-      extraPerLevel: 1,
-      cleaner: { baseInterval: 4, reductionPerLevel: 0.2, start: { x: 520, y: 340 } },
-      items: [
-        { id: 'ceniza', name: 'Cenizas de puro', value: 2, weight: 45 },
-        { id: 'carta', name: 'Carta suelta', value: 6, weight: 30 },
-        { id: 'ficha', name: 'Ficha de otro', value: 11, weight: 14 },
-        { id: 'mazo', name: 'Mazo atascado', value: 36, weight: 7 },
-        { id: 'propina', name: 'Propina', value: 90, weight: 3.5 },
-        { id: 'anillo', name: 'Anillo de sello', value: 1200, weight: 0.5 },
-      ] as readonly { id: string; name: string; value: number; weight: number }[],
-    },
+    conversion: { k: 0.3, floor: 1 },
     debt: { amount: shared.cards.debt.amount },
     upgrades: {
       luck: { name: 'Suerte', ...shared.cards.upgrades.luck },
@@ -472,9 +408,6 @@ export const CONFIG = {
       helperProfile: { name: 'Perfil del esqueleto', ...shared.cards.upgrades.helperProfile },
       helperLuck: { name: 'Suerte del esqueleto', ...shared.cards.upgrades.helperLuck },
       jackpot: { name: 'Jackpot', ...shared.cards.upgrades.jackpot },
-      sleeve: { name: 'Manga ancha', ...shared.cards.upgrades.sleeve },
-      satchel: { name: 'Faltriquera', ...shared.cards.upgrades.satchel },
-      dealer: { name: 'Repartidor', ...shared.cards.upgrades.dealer },
     },
   },
 

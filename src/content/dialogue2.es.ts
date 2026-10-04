@@ -136,52 +136,10 @@ export const DIALOGUE2_ES: DialogueLines = {
       'Agotado. Te desmontaré despacio.',
     ],
   },
-  enterBackroom: {
-    calm: [
-      'Limpia bien. Las máquinas sucias pagan peor.',
-      'Ve. Hay monedas atascadas que te esperan.',
-      'Mantenimiento. Alguien tiene que hacerlo.',
-      'Rasca el chicle. Recoge las monedas. Vuelve.',
-      'La trastienda también produce. Despacio.',
-    ],
-    uneasy: [
-      'Ve atrás. Los cables pelados no perdonan.',
-      'Limpia. No toques lo que se mueve.',
-      'Ahí detrás también cuento.',
-      'Cada moneda del suelo es mía. Tráemela.',
-      'Agáchate. Las máquinas se ven mejor desde abajo.',
-    ],
-    deformed: [
-      'Ahí atrás hay piezas de otros jugadores.',
-      'Recoge. Recoge. No mires dentro de las carcasas.',
-      'Los cables respiran. No los pises.',
-      'Baja más. Más cerca del suelo. Así.',
-      'La trastienda tiene dientes de oro. Algunos aún muerden.',
-    ],
-  },
-  returnCasino: {
-    calm: [
-      'De vuelta. La palanca te esperaba.',
-      'Manos limpias. Tira.',
-      'Has vuelto con monedas. Mételas.',
-      'Mantenimiento completado. Reanudamos.',
-      'Tu máquina sigue encendida. Siempre lo está.',
-    ],
-    uneasy: [
-      'Traes poco. Siempre traes poco.',
-      '¿Eso es todo? La ranura tiene hambre.',
-      'Los carretes no han parado mientras no estabas.',
-      'Siéntate. La cuenta ha seguido corriendo.',
-      'Vuelves a mí. Como todos.',
-    ],
-    deformed: [
-      'Vuelves con grasa en las manos. Bien.',
-      'Te esperaba. Clic. Te esperaba. Clic.',
-      'Mis carretes han dicho tu nombre.',
-      'Cada vuelta te deja más ligero.',
-      'Más cerca. Pega la cara al cristal.',
-    ],
-  },
+  // Sin trastienda en esta mesa: estos motivos solo existen en la mesa 1.
+  enterBackroom: {},
+  // Sin trastienda en esta mesa: estos motivos solo existen en la mesa 1.
+  returnCasino: {},
   buyCrupier: {
     any: [
       'Un empleado. No cobra. No duerme. No se queja.',

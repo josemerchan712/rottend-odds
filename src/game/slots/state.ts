@@ -1,6 +1,5 @@
 import { CONFIG, SLOT_UPGRADE_IDS, type SlotUpgradeId } from '../config';
 import type { Bettor } from '../state';
-import { createWorkSlot, type WorkSlot } from '../workCore';
 
 /** Tres carretes: índices en CONFIG.slots.symbols. */
 export type Reels = [number, number, number];
@@ -38,7 +37,6 @@ export interface SlotsState {
   /** Carrete que el jugador quiere retener en la siguiente tirada, o null. */
   hold: number | null;
   helper: { timer: number; profile: number; reels: Reels };
-  work: WorkSlot;
   /** Pozo del jackpot: lo máximo que puede pagar ahora (además del x1000 y del tope). */
   pot: number;
   /** Fracción de moneda pendiente de la conversión (se suma entera al saldo). */
@@ -53,7 +51,6 @@ export interface SlotsState {
     jackpots: number;
     jackpotsCapped: number;
     holds: number;
-    workEarned: number;
     passiveEarned: number;
   };
 }
@@ -67,12 +64,11 @@ export function createSlotsState(): SlotsState {
     reels: [0, 1, 3],
     hold: null,
     helper: { timer: 0, profile: 0, reels: [4, 5, 0] },
-    work: createWorkSlot(CONFIG.slots.work),
     pot: CONFIG.slots.jackpot.potSeed,
     passiveCarry: 0,
     recentSpins: [],
     debtPaid: false,
     visited: false,
-    stats: { spins: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, holds: 0, workEarned: 0, passiveEarned: 0 },
+    stats: { spins: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, holds: 0, passiveEarned: 0 },
   };
 }

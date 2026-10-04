@@ -1,5 +1,5 @@
 {
-  "saveVersion": 7,
+  "saveVersion": 8,
   "debt": { "amount": 10000000 },
   "upgrades": {
     "luck": { "baseCost": 3, "growth": 1.55, "maxLevel": 20 },
@@ -21,19 +21,15 @@
     "debt": { "amount": 10000000 },
     "upgrades": {
       "luck": { "baseCost": 140, "growth": 1.6, "maxLevel": 20 },
-      "maxBet": { "baseCost": 130, "growth": 2, "maxLevel": 11 },
+      "maxBet": { "baseCost": 130, "growth": 2, "maxLevel": 10 },
       "zombie": { "baseCost": 800, "growth": 1, "maxLevel": 1 },
       "helperSpeed": { "baseCost": 500, "growth": 1.6, "maxLevel": 15 },
       "helperProfile": { "baseCost": 1500, "growth": 4, "maxLevel": 2 },
       "helperLuck": { "baseCost": 1200, "growth": 1.8, "maxLevel": 10 },
       "jackpot": { "baseCost": 3000, "growth": 1.8, "maxLevel": 10 },
-      "hold": { "baseCost": 300, "growth": 2.2, "maxLevel": 5 },
-      "rag": { "baseCost": 80, "growth": 1, "maxLevel": 1 },
-      "toolbox": { "baseCost": 60, "growth": 2.25, "maxLevel": 4 },
-      "apprentice": { "baseCost": 300, "growth": 2, "maxLevel": 5 }
+      "hold": { "baseCost": 300, "growth": 2.2, "maxLevel": 5 }
     },
-    "helperProfiles": 3,
-    "work": { "maxItems": 6, "respawnSeconds": 2, "maxItemValue": 800, "toolboxValuePerLevel": 0.5 }
+    "helperProfiles": 3
   },
   "dice": {
     "debt": { "amount": 10000000 },
@@ -46,13 +42,9 @@
       "helperLuck": { "baseCost": 1500, "growth": 1.8, "maxLevel": 10 },
       "jackpot": { "baseCost": 4000, "growth": 1.8, "maxLevel": 10 },
       "hardTargets": { "baseCost": 300, "growth": 1, "maxLevel": 1 },
-      "boxcars": { "baseCost": 2500, "growth": 1, "maxLevel": 1 },
-      "tray": { "baseCost": 100, "growth": 1, "maxLevel": 1 },
-      "cart": { "baseCost": 80, "growth": 2.25, "maxLevel": 4 },
-      "busboy": { "baseCost": 400, "growth": 2, "maxLevel": 5 }
+      "boxcars": { "baseCost": 2500, "growth": 1, "maxLevel": 1 }
     },
-    "helperProfiles": 3,
-    "work": { "maxItems": 6, "respawnSeconds": 2, "maxItemValue": 1000, "cartValuePerLevel": 0.5 }
+    "helperProfiles": 3
   },
   "cards": {
     "debt": { "amount": 10000000 },
@@ -63,12 +55,8 @@
       "helperSpeed": { "baseCost": 700, "growth": 1.6, "maxLevel": 15 },
       "helperProfile": { "baseCost": 2500, "growth": 4, "maxLevel": 2 },
       "helperLuck": { "baseCost": 1800, "growth": 1.8, "maxLevel": 10 },
-      "jackpot": { "baseCost": 5000, "growth": 1.8, "maxLevel": 10 },
-      "sleeve": { "baseCost": 120, "growth": 1, "maxLevel": 1 },
-      "satchel": { "baseCost": 90, "growth": 2.25, "maxLevel": 4 },
-      "dealer": { "baseCost": 450, "growth": 2, "maxLevel": 5 }
+      "jackpot": { "baseCost": 5000, "growth": 1.8, "maxLevel": 10 }
     },
-    "helperProfiles": 3,
-    "work": { "maxItems": 6, "respawnSeconds": 2, "maxItemValue": 1200, "satchelValuePerLevel": 0.5 }
+    "helperProfiles": 3
   }
 }

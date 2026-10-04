@@ -154,29 +154,6 @@ const SHEETS: Sheet[] = [
     ],
   },
   {
-    // Basura de la mesa 2: 6 paneles con rejilla. La moneda atascada trae su ranura oxidada de fondo.
-    kind: 'grid',
-    source: 'assets/raw/basura2.png.jpg',
-    outDir: 'assets/sprites/trash2',
-    columns: [0, 945, 1849, 2723, 3543, 4331, 5088],
-    rows: [0, 832],
-    inset: 28,
-    names: ['chicle', 'moneda', 'bombilla', 'cable', 'oxidada', 'llave'],
-    size: [32, 32],
-    keepBackground: ['moneda'],
-  },
-  {
-    // Aprendiz de limpieza de la mesa 2: dos frames caminando con pinza y cubo. Cajas a mano para
-    // dejar fuera la línea de suelo, que une los dos frames.
-    kind: 'boxes',
-    source: 'assets/raw/ayudante2.png.jpg',
-    outDir: 'assets/sprites/apprentice',
-    boxes: [
-      { name: 'walk-1', x: 140, y: 80, width: 1080, height: 1265, size: [64, 64] },
-      { name: 'walk-2', x: 1590, y: 80, width: 1100, height: 1265, size: [64, 64] },
-    ],
-  },
-  {
     // Prestamista de la mesa 2, a tamaño de escena (detrás de la máquina central).
     kind: 'blocks',
     source: 'assets/raw/tragaperras-viviente.png.jpeg',
@@ -243,30 +220,6 @@ const SHEETS: Sheet[] = [
     source: 'assets/raw/fondo-mesa4.png.jpeg',
     out: 'assets/sprites/backgrounds/mesa4.png',
     size: [640, 360],
-  },
-  {
-    // Trastienda de la mesa 4: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.
-    kind: 'background',
-    source: 'assets/raw/trastienda4.*',
-    out: 'assets/sprites/backgrounds/trastienda4.png',
-    size: [640, 360],
-    optional: true,
-  },
-  {
-    // Trastienda de la mesa 3: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.
-    kind: 'background',
-    source: 'assets/raw/trastienda3.*',
-    out: 'assets/sprites/backgrounds/trastienda3.png',
-    size: [640, 360],
-    optional: true,
-  },
-  {
-    // Trastienda de la mesa 2: pendiente. Mientras no exista, la escena tiñe la de la mesa 1.
-    kind: 'background',
-    source: 'assets/raw/trastienda2.*',
-    out: 'assets/sprites/backgrounds/trastienda2.png',
-    size: [640, 360],
-    optional: true,
   },
   {
     kind: 'background',

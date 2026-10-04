@@ -5,13 +5,12 @@ import type { SlotSpin } from '../game/slots/state';
 import { hasZombie, slotsLenderPhase } from '../game/slots/table';
 import type { GameState } from '../game/state';
 import type { SelectorChip } from '../game/betting';
-import { itemAtPoint, type Collected } from '../game/workCore';
 import { formatNumber } from '../util/format';
 import { chipAt } from './casinoLayout';
 import { Effects } from './effects';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { reelAt, SlotsView } from './slotsView';
-import { ready, type PlayerFrame, type Sprites } from './sprites';
+import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
 
 /**
@@ -28,16 +27,8 @@ export const SPIN_BUTTON = { x: 276, y: 268, width: 88, height: 18 };
 const LENDER = { x: 320, top: 20, size: 96 };
 const ZOMBIE_SPOT = { x: 112, y: 332 };
 const PAYTABLE = { x: 434, y: 118, width: 92, height: 92 };
-const DOORS2: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
-  casino: { x: 6, y: 120, width: 44, height: 150, label: 'TRASTIENDA' },
-  trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'SALA' },
-};
-const TRASH_SIZE = 32;
 const PLAYER_SIZE = 64;
 const FLOAT_SECONDS = 1.2;
-const CLEANER_SPEED = 220;
-const CROUCH_SECONDS = 0.14;
-const LIFT_SECONDS = 0.3;
 const ZOMBIE_BOB_SECONDS = 0.3;
 const TEXT = '#c9a443';
 
@@ -68,8 +59,6 @@ export class SlotsScene {
   private seenSpins: number | null = null;
   private lenderTime = 0;
   private zombieBob = 0;
-  private playerAnim: { phase: 'idle' | 'crouch' | 'lift'; time: number } = { phase: 'idle', time: 0 };
-  private cleanerShown: { x: number; y: number; facing: 1 | -1; walk: number } | null = null;
   /** Tiradas del jugador que ya se han visto parar. */
   revealedSpins = 0;
   /** Cada tirada en cuanto se ve resolverse (del jugador al pararse los carretes; del zombi al momento). */
@@ -102,11 +91,6 @@ export class SlotsScene {
     this.revealedSpins = state.slots.stats.spins;
     this.reels.setReels(state.slots.reels);
     this.floats = [];
-    this.cleanerShown = null;
-  }
-
-  doorAt(point: { x: number; y: number }, room: Room): boolean {
-    return inside(DOORS2[room], point);
   }
 
   /** ¿Hay una tirada del jugador girando a la vista? */
@@ -126,20 +110,6 @@ export class SlotsScene {
     return null;
   }
 
-  trashAt(state: GameState, point: { x: number; y: number }) {
-    return itemAtPoint(state.slots.work.items, point.x, point.y, CONFIG.slots.work.clickRadius);
-  }
-
-  playerCollected(items: Collected[]): void {
-    if (!items.length) return;
-    this.playerAnim = { phase: 'crouch', time: 0 };
-    items.forEach((item, i) => this.addFloat(`+${formatNumber(item.value)}`, item.x, item.y - 24 - i * 10));
-  }
-
-  cleanerCollected(items: Collected[]): void {
-    for (const item of items) this.addFloat(`+${formatNumber(item.value)}`, item.x, item.y - 24);
-  }
-
   private addFloat(text: string, x: number, y: number, color = TEXT): void {
     this.floats.push({ text, x, y, age: 0, color });
   }
@@ -153,9 +123,7 @@ export class SlotsScene {
     const shake = this.effects.shakeOffset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
-    if (rooms.current === 'casino') this.drawHall(state);
-    else this.drawBackroom(state);
-    this.drawDoor(rooms);
+    this.drawHall(state);
     this.drawFloats();
     ctx.restore();
     const fade = fadeAlpha(rooms);
@@ -218,28 +186,9 @@ export class SlotsScene {
       if (landed.outcome === 'nada' && landed.bet + landed.holdFee >= (state.slots.balance + landed.bet + landed.holdFee) * 0.25) this.effects.shake();
       this.onSpinShown?.(landed);
     }
-    const anim = this.playerAnim;
-    anim.time += dt;
-    if (anim.phase === 'crouch' && anim.time >= CROUCH_SECONDS) this.playerAnim = { phase: 'lift', time: 0 };
-    else if (anim.phase === 'lift' && anim.time >= LIFT_SECONDS) this.playerAnim = { phase: 'idle', time: 0 };
     for (const f of this.floats) f.age += dt;
     this.floats = this.floats.filter((f) => f.age < FLOAT_SECONDS);
 
-    if (state.slots.upgrades.apprentice > 0) {
-      const target = state.slots.work.cleaner;
-      this.cleanerShown ??= { x: target.x, y: target.y, facing: -1, walk: 0 };
-      const c = this.cleanerShown;
-      const dx = target.x - c.x;
-      const dy = target.y - c.y;
-      const d = Math.hypot(dx, dy);
-      if (d > 1) {
-        const step = Math.min(d, CLEANER_SPEED * dt);
-        c.x += (dx / d) * step;
-        c.y += (dy / d) * step;
-        c.facing = dx >= 0 ? 1 : -1;
-        c.walk += dt;
-      } else c.walk = 0;
-    } else this.cleanerShown = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -332,76 +281,6 @@ export class SlotsScene {
   }
 
   // ---------------------------------------------------------------------------
-  // Trastienda de la mesa 2
-
-  private drawBackroom(state: GameState): void {
-    const ctx = this.ctx;
-    const own = this.sprites.backgrounds.get('trastienda2');
-    const fallback = this.sprites.backgrounds.get('trastienda');
-    if (ready(own)) ctx.drawImage(own, 0, 0);
-    else if (ready(fallback)) {
-      // Si faltara su fondo: la trastienda de la mesa 1 bañada en el verde enfermizo de las tragaperras.
-      ctx.drawImage(fallback, 0, 0);
-      ctx.fillStyle = 'rgba(20, 60, 30, 0.35)';
-      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
-    }
-    const items = state.slots.work.items;
-    const hovered = this.hover ? this.trashAt(state, this.hover) : null;
-    this.canvas.style.cursor = hovered ? 'pointer' : 'default';
-    const drawables: { y: number; draw: () => void }[] = items.map((item) => ({
-      y: item.y,
-      draw: () => {
-        if (item.id === hovered?.id) {
-          ctx.fillStyle = 'rgba(201, 164, 67, 0.35)';
-          ctx.beginPath();
-          ctx.ellipse(item.x, item.y - 2, 18, 7, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        this.drawSprite(this.sprites.trash2.get(item.kind), item.x, item.y, TRASH_SIZE, 1);
-      },
-    }));
-    drawables.push({ y: CONFIG.slots.work.player.y, draw: () => this.drawPlayer() });
-    if (this.cleanerShown) {
-      const c = this.cleanerShown;
-      drawables.push({ y: c.y, draw: () => this.drawCleaner(c) });
-    }
-    drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
-  }
-
-  private drawPlayer(): void {
-    const { phase } = this.playerAnim;
-    const frame: PlayerFrame = phase === 'lift' ? 'lift' : 'crouch';
-    const { player } = CONFIG.slots.work;
-    this.drawSprite(this.sprites.player.get(frame), player.x, player.y, PLAYER_SIZE, 1, phase === 'crouch' ? 2 : 0);
-  }
-
-  /** El aprendiz de limpieza (su sprite mira a la izquierda: se refleja al ir a la derecha). */
-  private drawCleaner(c: { x: number; y: number; facing: 1 | -1; walk: number }): void {
-    const frame = c.walk > 0 && Math.floor(c.walk * 6) % 2 === 1 ? 'walk-2' : 'walk-1';
-    this.drawSprite(this.sprites.apprentice.get(frame), c.x, c.y, PLAYER_SIZE, c.facing === 1 ? -1 : 1);
-  }
-
-  // ---------------------------------------------------------------------------
-
-  private drawDoor(rooms: RoomState): void {
-    const ctx = this.ctx;
-    const d = DOORS2[rooms.current];
-    const hovered = this.hover !== null && this.doorAt(this.hover, rooms.current) && !rooms.transition;
-    if (rooms.current === 'casino' && !hovered) {
-      // Indicación discreta de la puerta (el fondo no tiene una a la vista).
-      text(ctx, '◂', d.x + 8, d.y + d.height / 2, 'rgba(201, 164, 67, 0.55)', 14);
-    }
-    if (!hovered) return;
-    ctx.strokeStyle = TEXT;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 2]);
-    ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.width - 1, d.height - 1);
-    ctx.setLineDash([]);
-    text(ctx, d.label, d.x + d.width / 2 + (rooms.current === 'casino' ? 22 : 0), d.y - 6, TEXT, 12);
-    this.canvas.style.cursor = 'pointer';
-  }
 
   private drawFloats(): void {
     const ctx = this.ctx;

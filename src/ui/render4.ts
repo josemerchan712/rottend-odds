@@ -7,11 +7,9 @@ import {
   cardsDebtProgress,
   cardsNextCost,
   cardsPassiveRate,
-  dealerInterval,
   hasSkeleton,
   isCardsMaxed,
   isCardsUpgradeUnlocked,
-  satchelMultiplier,
   skeletonBet,
   skeletonInterval,
   skeletonLuckBonus,
@@ -24,7 +22,7 @@ import { setText, TABS_HTML, type Drawer } from './render';
 /** HUD y cajones de la mesa 4, con la misma forma que los de las otras mesas. */
 export const DRAWERS4 = {
   mesa: { upgrades: ['luck', 'maxBet', 'jackpot'] as CardUpgradeId[] },
-  ayuda: { upgrades: ['skeleton', 'helperSpeed', 'helperProfile', 'helperLuck', 'sleeve', 'satchel', 'dealer'] as CardUpgradeId[] },
+  ayuda: { upgrades: ['skeleton', 'helperSpeed', 'helperProfile', 'helperLuck'] as CardUpgradeId[] },
 } as const;
 export type Drawer4Id = keyof typeof DRAWERS4;
 
@@ -56,7 +54,6 @@ export interface Ui4 {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
-  workInfo: HTMLElement;
 }
 
 function shopRows(ids: readonly CardUpgradeId[]): string {
@@ -111,10 +108,7 @@ export function mountUi4(root: HTMLElement): Ui4 {
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
         </div>
-        ${shopRows(DRAWERS4.ayuda.upgrades.slice(0, 4))}
-        <h2 class="drawer-sub">Trastienda</h2>
-        <p class="small-text muted" data-ref="workInfo"></p>
-        ${shopRows(DRAWERS4.ayuda.upgrades.slice(4))}
+        ${shopRows(DRAWERS4.ayuda.upgrades)}
       </div>
     </aside>
   `;
@@ -149,7 +143,6 @@ export function mountUi4(root: HTMLElement): Ui4 {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile4]')],
     helperInfo: ref('helperInfo'),
-    workInfo: ref('workInfo'),
   };
 }
 
@@ -169,12 +162,6 @@ export function render4(ui: Ui4, state: GameState): void {
     `Tiempo en la mesa ${formatTime(cards.playTime)} · ${st.hands} manos · ${formatPercent(winRate)} ganadas · ${st.pushes} empates · ${st.discards} descartes · ${st.jackpots} jackpots · ${formatNumber(st.passiveEarned)} de la mesa 3`,
   );
 
-  const extras = [
-    upgrades.sleeve > 0 ? 'manga ancha' : '',
-    upgrades.satchel > 0 ? `faltriquera x${satchelMultiplier(cards).toFixed(1).replace('.', ',')}` : '',
-    upgrades.dealer > 0 ? `repartidor cada ${formatSeconds(dealerInterval(upgrades.dealer))}` : '',
-  ].filter(Boolean);
-  setText(ui.workInfo, `${cards.work.items.length}/${CONFIG.cards.work.maxItems} en el suelo${extras.length ? ` · ${extras.join(', ')}` : ''}`);
 
   const on = hasSkeleton(cards);
   ui.helperLocked.hidden = on;
@@ -232,18 +219,9 @@ function describe(cards: CardsState, id: CardUpgradeId): string {
     }
     case 'helperLuck':
       return arrow(`+${formatPercent(skeletonLuckBonus(lvl))}`, `+${formatPercent(skeletonLuckBonus(lvl + 1))}`);
-    case 'sleeve':
-      return maxed ? '2 objetos por clic' : 'Recoge 2 por clic';
-    case 'satchel':
-      return arrow(`Valor x${factor(lvl)}`, `x${factor(lvl + 1)}`);
-    case 'dealer':
-      return lvl === 0 ? `Recoge solo cada ${formatSeconds(dealerInterval(1))}` : arrow(`Cada ${formatSeconds(dealerInterval(lvl))}`, formatSeconds(dealerInterval(lvl + 1)));
   }
 }
 
-function factor(level: number): string {
-  return (1 + CONFIG.cards.work.valuePerLevel * level).toFixed(1).replace('.', ',');
-}
 
 export function toggleDrawer4(ui: Ui4, id: Drawer4Id): void {
   ui.drawers[id].root.dataset.open = String(ui.drawers[id].root.dataset.open !== 'true');

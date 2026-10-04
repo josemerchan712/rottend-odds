@@ -2,10 +2,8 @@ import { CONFIG, type DiceUpgradeId } from '../game/config';
 import { diceJackpotChance, diceLuckChance, diceMaxBet, maxRerolls, rerollInterval, targetChance } from '../game/dice/game';
 import type { DiceState } from '../game/dice/state';
 import {
-  busboyInterval,
   canBuyDice,
   canPayDiceDebt,
-  cartMultiplier,
   diceDebtProgress,
   diceNextCost,
   dicePassiveRate,
@@ -24,7 +22,7 @@ import { setText, TABS_HTML, type Drawer } from './render';
 /** HUD y cajones de la mesa 3, con la misma forma que los de las mesas 1 y 2. */
 export const DRAWERS3 = {
   mesa: { upgrades: ['luck', 'maxBet', 'jackpot', 'hardTargets', 'boxcars'] as DiceUpgradeId[] },
-  ayuda: { upgrades: ['ghost', 'helperSpeed', 'helperProfile', 'helperLuck', 'tray', 'cart', 'busboy'] as DiceUpgradeId[] },
+  ayuda: { upgrades: ['ghost', 'helperSpeed', 'helperProfile', 'helperLuck'] as DiceUpgradeId[] },
 } as const;
 export type Drawer3Id = keyof typeof DRAWERS3;
 
@@ -56,7 +54,6 @@ export interface Ui3 {
   helperPanel: HTMLElement;
   profileButtons: HTMLButtonElement[];
   helperInfo: HTMLElement;
-  workInfo: HTMLElement;
 }
 
 function shopRows(ids: readonly DiceUpgradeId[]): string {
@@ -111,10 +108,7 @@ export function mountUi3(root: HTMLElement): Ui3 {
           </div>
           <p class="small-text" data-ref="helperInfo"></p>
         </div>
-        ${shopRows(DRAWERS3.ayuda.upgrades.slice(0, 4))}
-        <h2 class="drawer-sub">Trastienda</h2>
-        <p class="small-text muted" data-ref="workInfo"></p>
-        ${shopRows(DRAWERS3.ayuda.upgrades.slice(4))}
+        ${shopRows(DRAWERS3.ayuda.upgrades)}
       </div>
     </aside>
   `;
@@ -149,7 +143,6 @@ export function mountUi3(root: HTMLElement): Ui3 {
     helperPanel: ref('helperPanel'),
     profileButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-profile3]')],
     helperInfo: ref('helperInfo'),
-    workInfo: ref('workInfo'),
   };
 }
 
@@ -168,12 +161,6 @@ export function render3(ui: Ui3, state: GameState): void {
     `Tiempo en la mesa ${formatTime(dice.playTime)} · ${dice.stats.rolls} tiradas · ${formatPercent(winRate)} aciertos · ${dice.stats.rerolls} relanzamientos (${dice.stats.rerollWins} salvados) · ${dice.stats.jackpots} jackpots · ${formatNumber(dice.stats.passiveEarned)} de la mesa 2`,
   );
 
-  const extras = [
-    upgrades.tray > 0 ? 'bandeja' : '',
-    upgrades.cart > 0 ? `carrito x${cartMultiplier(dice).toFixed(1).replace('.', ',')}` : '',
-    upgrades.busboy > 0 ? `friegaplatos cada ${formatSeconds(busboyInterval(upgrades.busboy))}` : '',
-  ].filter(Boolean);
-  setText(ui.workInfo, `${dice.work.items.length}/${CONFIG.dice.work.maxItems} en el suelo${extras.length ? ` · ${extras.join(', ')}` : ''}`);
 
   const on = hasGhost(dice);
   ui.helperLocked.hidden = on;
@@ -235,18 +222,9 @@ function describe(dice: DiceState, id: DiceUpgradeId): string {
     }
     case 'helperLuck':
       return arrow(`+${formatPercent(ghostLuckBonus(lvl))}`, `+${formatPercent(ghostLuckBonus(lvl + 1))}`);
-    case 'tray':
-      return maxed ? '2 objetos por clic' : 'Recoge 2 por clic';
-    case 'cart':
-      return arrow(`Valor x${factor(lvl)}`, `x${factor(lvl + 1)}`);
-    case 'busboy':
-      return lvl === 0 ? `Recoge solo cada ${formatSeconds(busboyInterval(1))}` : arrow(`Cada ${formatSeconds(busboyInterval(lvl))}`, formatSeconds(busboyInterval(lvl + 1)));
   }
 }
 
-function factor(level: number): string {
-  return (1 + CONFIG.dice.work.valuePerLevel * level).toFixed(1).replace('.', ',');
-}
 
 export function toggleDrawer3(ui: Ui3, id: Drawer3Id): void {
   ui.drawers[id].root.dataset.open = String(ui.drawers[id].root.dataset.open !== 'true');

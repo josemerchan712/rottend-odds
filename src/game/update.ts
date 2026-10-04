@@ -9,11 +9,11 @@ import { updateWork, type Collected } from './work';
 export interface Tick {
   /** Lo que ha recogido el ayudante de limpieza de la mesa 1. */
   cleaned: Collected[];
-  /** Lo que ha pasado en la mesa 2 (tiradas del zombi y lo que ha limpiado el aprendiz). */
+  /** Lo que ha pasado en la mesa 2 (tiradas del zombi). */
   slots: SlotsTick;
-  /** Lo que ha pasado en la mesa 3 (tiradas del camarero y lo que ha recogido el friegaplatos). */
+  /** Lo que ha pasado en la mesa 3 (tiradas del camarero). */
   dice: DiceTick;
-  /** Lo que ha pasado en la mesa 4 (manos del esqueleto y lo que ha recogido el repartidor). */
+  /** Lo que ha pasado en la mesa 4 (manos del esqueleto). */
   cards: CardsTick;
 }
 
@@ -22,7 +22,7 @@ export interface Tick {
  * Muta el estado.
  */
 export function updateGame(state: GameState, dt: number, rng: Rng): Tick {
-  if (dt <= 0) return { cleaned: [], slots: { zombie: [], cleaned: [] }, dice: { ghost: [], cleaned: [] }, cards: { skeleton: [], cleaned: [] } };
+  if (dt <= 0) return { cleaned: [], slots: { zombie: [] }, dice: { ghost: [] }, cards: { skeleton: [] } };
   state.playTime += dt;
   const cleaned = updateWork(state, dt, rng);
   updateHelper(state, dt, rng);

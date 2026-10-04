@@ -1,25 +1,15 @@
 import { CONFIG, type DiceUpgradeId } from '../config';
 import type { LenderPhase } from '../lender';
 import type { Rng } from '../rng';
-import { hasZombie, slotsWorkHost, toolboxMultiplier, zombieBet, zombieInterval, zombieLuckBonus } from '../slots/table';
+import { hasZombie, zombieBet, zombieInterval, zombieLuckBonus } from '../slots/table';
 import { slotCeiling, slotExpectedValue } from '../slots/machine';
 import type { GameState } from '../state';
-import {
-  cleanerIncomeRate,
-  cleanerIntervalFor,
-  collectFrom,
-  collectNearestFrom,
-  hostItemValue,
-  updateWorkHost,
-  type Collected,
-  type WorkHost,
-} from '../workCore';
 import { bestReroll, closeRoll, diceCeiling, rollDice, reroll, targetChance, updateRerolls, unlockedTargets } from './game';
 import type { DiceRoll, DiceState } from './state';
 
 /**
  * El resto de la mesa 3 (lógica pura): desbloqueo y deuda, mejoras, ayudante (el camarero
- * fantasma), trabajo (servir copas), conversión desde la mesa 2 y el paso del tiempo.
+ * fantasma), conversión desde la mesa 2 y el paso del tiempo. Sin trastienda.
  */
 const D = CONFIG.dice;
 
@@ -164,65 +154,12 @@ export function updateGhost(dice: DiceState, dt: number, rng: Rng): DiceRoll[] {
 }
 
 // ---------------------------------------------------------------------------
-// Trabajo: servir copas
-
-export function cartMultiplier(dice: DiceState): number {
-  return 1 + D.work.valuePerLevel * dice.upgrades.cart;
-}
-
-const hosts = new WeakMap<DiceState, WorkHost>();
-
-/** La trastienda de la mesa 3 para el núcleo común (una por estado, con getters). */
-export function diceWorkHost(dice: DiceState): WorkHost {
-  let host = hosts.get(dice);
-  if (!host) {
-    host = {
-      def: D.work,
-      get work() {
-        return dice.work;
-      },
-      get valueMultiplier() {
-        return cartMultiplier(dice);
-      },
-      get extraPerClick() {
-        return dice.upgrades.tray * D.work.extraPerLevel;
-      },
-      get cleanerLevel() {
-        return dice.upgrades.busboy;
-      },
-      credit(value: number) {
-        dice.balance += value;
-        dice.stats.workEarned += value;
-      },
-    };
-    hosts.set(dice, host);
-  }
-  return host;
-}
-
-export function diceItemValue(dice: DiceState, kind: string): number {
-  return hostItemValue(diceWorkHost(dice), kind);
-}
-
-export function busboyInterval(level: number): number {
-  return cleanerIntervalFor(D.work, level);
-}
-
-export function collectDiceItem(dice: DiceState, itemId: number): Collected[] {
-  return collectFrom(diceWorkHost(dice), itemId);
-}
-
-export function collectNearestDiceItem(dice: DiceState): Collected[] {
-  return collectNearestFrom(diceWorkHost(dice));
-}
-
-// ---------------------------------------------------------------------------
 // Conversión desde la mesa 2
 
-/** Ingreso esperado por segundo de la mesa 2 jugando sola: su zombi (sin retener) y su aprendiz. */
+/** Ingreso esperado por segundo de la mesa 2 jugando sola: su zombi (sin retener). */
 export function table2IncomeRate(state: GameState): number {
   const slots = state.slots;
-  let rate = cleanerIncomeRate(slotsWorkHost(slots).def, slots.upgrades.apprentice, toolboxMultiplier(slots));
+  let rate = 0;
   if (hasZombie(slots)) {
     const bet = zombieBet(slots);
     if (bet > 0) {
@@ -237,7 +174,7 @@ export function table2IncomeRate(state: GameState): number {
 }
 
 export function dicePassiveRate(state: GameState): number {
-  return D.conversion.k * Math.sqrt(Math.max(table2IncomeRate(state), 0));
+  return Math.max(D.conversion.floor, D.conversion.k * Math.sqrt(Math.max(table2IncomeRate(state), 0)));
 }
 
 // ---------------------------------------------------------------------------
@@ -245,11 +182,10 @@ export function dicePassiveRate(state: GameState): number {
 
 export interface DiceTick {
   ghost: DiceRoll[];
-  cleaned: Collected[];
 }
 
 export function updateDice(state: GameState, dt: number, rng: Rng): DiceTick {
-  if (!isDiceUnlocked(state) || dt <= 0) return { ghost: [], cleaned: [] };
+  if (!isDiceUnlocked(state) || dt <= 0) return { ghost: [] };
   const dice = state.dice;
   dice.playTime += dt;
   dice.passiveCarry += dicePassiveRate(state) * dt;
@@ -260,7 +196,6 @@ export function updateDice(state: GameState, dt: number, rng: Rng): DiceTick {
     dice.stats.passiveEarned += whole;
   }
   updateRerolls(dice, dt);
-  const cleaned = updateWorkHost(diceWorkHost(dice), dt, rng);
   const ghost = updateGhost(dice, dt, rng);
-  return { ghost, cleaned };
+  return { ghost };
 }

@@ -135,52 +135,10 @@ export const DIALOGUE4_ES: DialogueLines = {
       'Hueco. Suena a hueco cuando respira.',
     ],
   },
-  enterBackroom: {
-    calm: [
-      'Vaya. Las barajas no se ordenan solas.',
-      'Detrás hay cartas sueltas y fichas ajenas. Recójalas.',
-      'Un trabajo humilde. El rito también lo necesita.',
-      'Cuidado con las cenizas. Algunas aún queman.',
-      'La trastienda forma parte de la mesa.',
-    ],
-    uneasy: [
-      'Vaya detrás. No cuente las cartas que encuentre.',
-      'Recoja. No pregunte de quién son esas fichas.',
-      'También ahí detrás le observo.',
-      'Trabaje. El sudor también se anota.',
-      'Los mazos atascados guardan secretos. No los fuerce.',
-    ],
-    deformed: [
-      'Ahí detrás hay manos que nadie terminó de jugar.',
-      'Agáchese. Más. Recoja lo que dejaron los otros.',
-      'Las cartas del suelo le miran. Bocabajo.',
-      'Vaya. La puerta recuerda a quien entra.',
-      'Recoja los anillos. Los dedos ya no los necesitan.',
-    ],
-  },
-  returnCasino: {
-    calm: [
-      'De vuelta. Su silla le aguardaba.',
-      'Manos limpias. Puede apostar.',
-      'Trae fichas. La banca lo agradece.',
-      'Siéntese. Reparto en cuanto usted diga.',
-      'El tapete está listo. El rito también.',
-    ],
-    uneasy: [
-      'Trae poco. Lo mínimo para el rito.',
-      '¿Eso es todo? La banca esperaba más.',
-      'Las manos no se han detenido mientras usted barría.',
-      'Siéntese. La cuenta ha seguido su curso.',
-      'Vuelve a mi mesa. Como corresponde.',
-    ],
-    deformed: [
-      'Vuelve con cenizas en las manos. Bien.',
-      'Le esperaba. Barajando. Barajando.',
-      'La baraja dijo su nombre al cortar.',
-      'Cada mano le deja un poco más vacío.',
-      'Acérquese. Más. El tapete tiene frío.',
-    ],
-  },
+  // Sin trastienda en esta mesa: estos motivos solo existen en la mesa 1.
+  enterBackroom: {},
+  // Sin trastienda en esta mesa: estos motivos solo existen en la mesa 1.
+  returnCasino: {},
   buyCrupier: {
     any: [
       'Un esqueleto barajador. Discreto. Puntual. Eterno.',

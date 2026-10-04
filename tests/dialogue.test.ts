@@ -21,11 +21,13 @@ import { seededRng } from '../src/game/rng';
 
 const { cooldownSeconds, minBetsBetweenLines, silenceSeconds } = CONFIG.dialogue;
 const PHASED: DialogueTrigger[] = ['sessionResume', 'bigLoss', 'bigWin', 'jackpot', 'broke', 'enterBackroom', 'returnCasino', 'silence'];
+/** Las mesas 2 en adelante no tienen trastienda: sin entrar/volver. */
+const PHASED_NO_BACKROOM = PHASED.filter((t) => t !== 'enterBackroom' && t !== 'returnCasino');
 const SINGLE: DialogueTrigger[] = ['newGame', 'buyCrupier', 'phaseUneasy', 'phaseDeformed', 'debtPaid'];
 
 describe('contenido del diálogo de la mesa 2 (Tragaperras viviente)', () => {
   it('al menos 5 líneas por disparador y por fase, de 90 caracteres como mucho, distintas de las del Encargado', () => {
-    for (const t of PHASED) {
+    for (const t of PHASED_NO_BACKROOM) {
       for (const phase of ['calm', 'uneasy', 'deformed'] as const) {
         expect(DIALOGUE2_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
       }
@@ -46,7 +48,7 @@ describe('contenido del diálogo de la mesa 2 (Tragaperras viviente)', () => {
 
 describe('contenido del diálogo de la mesa 4 (la Crupier)', () => {
   it('al menos 5 líneas por disparador y fase, ≤ 90 caracteres, distintas de las otras mesas', () => {
-    for (const t of PHASED) for (const phase of ['calm', 'uneasy', 'deformed'] as const) expect(DIALOGUE4_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
+    for (const t of PHASED_NO_BACKROOM) for (const phase of ['calm', 'uneasy', 'deformed'] as const) expect(DIALOGUE4_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
     for (const t of SINGLE) expect(DIALOGUE4_ES[t].any!.length, t).toBeGreaterThanOrEqual(5);
     const others = JSON.stringify(DIALOGUE_ES) + JSON.stringify(DIALOGUE2_ES) + JSON.stringify(DIALOGUE3_ES);
     for (const byPhase of Object.values(DIALOGUE4_ES)) {
@@ -63,7 +65,7 @@ describe('contenido del diálogo de la mesa 4 (la Crupier)', () => {
 
 describe('contenido del diálogo de la mesa 3 (el Barman)', () => {
   it('al menos 5 líneas por disparador y fase, ≤ 90 caracteres, distintas de las otras mesas', () => {
-    for (const t of PHASED) for (const phase of ['calm', 'uneasy', 'deformed'] as const) expect(DIALOGUE3_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
+    for (const t of PHASED_NO_BACKROOM) for (const phase of ['calm', 'uneasy', 'deformed'] as const) expect(DIALOGUE3_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
     for (const t of SINGLE) expect(DIALOGUE3_ES[t].any!.length, t).toBeGreaterThanOrEqual(5);
     const others = JSON.stringify(DIALOGUE_ES) + JSON.stringify(DIALOGUE2_ES);
     for (const byPhase of Object.values(DIALOGUE3_ES)) {
@@ -211,5 +213,15 @@ describe('cambios aprobados del diálogo', () => {
     expect(all).toContain('Sin fichas. Así es como mejor se te ve.');
     expect(all).toContain('Mírame bien. Así me pongo cuando alguien está a punto de pagar.');
     expect(all).not.toContain('ser tu dueño');
+  });
+});
+
+describe('sin trastienda en las mesas 2 a 4', () => {
+  it('los motivos de entrar y volver de la trastienda solo tienen líneas en la mesa 1', () => {
+    for (const lines of [DIALOGUE2_ES, DIALOGUE3_ES, DIALOGUE4_ES]) {
+      expect(Object.keys(lines.enterBackroom)).toHaveLength(0);
+      expect(Object.keys(lines.returnCasino)).toHaveLength(0);
+    }
+    expect(DIALOGUE_ES.enterBackroom.calm!.length).toBeGreaterThanOrEqual(5);
   });
 });

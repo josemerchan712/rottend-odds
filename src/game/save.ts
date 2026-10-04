@@ -1,6 +1,5 @@
 import shared from '../../shared/config.json';
 import { CARD_UPGRADE_IDS, CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
-import { sanitizeWorkSlot } from './workCore';
 import { createCardsState } from './cards/state';
 import { createDiceState } from './dice/state';
 import { createSlotsState } from './slots/state';
@@ -42,6 +41,47 @@ const migrations: Record<number, (state: Json) => Json> = {
   5: (state) => ({ ...state, dice: createDiceState() }),
   // v7: mesa 4 (blackjack). Empieza de cero.
   6: (state) => ({ ...state, cards: createCardsState() }),
+  // v8: sin trastienda en las mesas 2 a 4. Se quitan su suelo y sus mejoras de trabajo, y se devuelve
+  // lo que costaron en la moneda de cada mesa.
+  7: (state) => {
+    const out: Json = { ...state };
+    for (const [table, ids] of Object.entries(REMOVED_WORK_UPGRADES)) {
+      const t = out[table];
+      if (!isRecord(t)) continue;
+      const copy: Json = { ...t };
+      const ups = isRecord(copy.upgrades) ? { ...copy.upgrades } : {};
+      let refund = 0;
+      for (const [id, cost] of Object.entries(ids)) {
+        const level = Math.max(0, Math.min(Math.floor(Number(ups[id]) || 0), cost.maxLevel));
+        for (let n = 0; n < level; n++) refund += Math.round(cost.baseCost * cost.growth ** n);
+        delete ups[id];
+      }
+      copy.upgrades = ups;
+      delete copy.work;
+      copy.balance = (Number(copy.balance) || 0) + refund;
+      out[table] = copy;
+    }
+    return out;
+  },
+};
+
+/** Mejoras de trabajo que existían en las mesas 2 a 4 hasta el guardado v7, con sus costes de entonces. */
+const REMOVED_WORK_UPGRADES: Record<string, Record<string, { baseCost: number; growth: number; maxLevel: number }>> = {
+  slots: {
+    rag: { baseCost: 80, growth: 1, maxLevel: 1 },
+    toolbox: { baseCost: 60, growth: 2.25, maxLevel: 4 },
+    apprentice: { baseCost: 300, growth: 2, maxLevel: 5 },
+  },
+  dice: {
+    tray: { baseCost: 100, growth: 1, maxLevel: 1 },
+    cart: { baseCost: 80, growth: 2.25, maxLevel: 4 },
+    busboy: { baseCost: 400, growth: 2, maxLevel: 5 },
+  },
+  cards: {
+    sleeve: { baseCost: 120, growth: 1, maxLevel: 1 },
+    satchel: { baseCost: 90, growth: 2.25, maxLevel: 4 },
+    dealer: { baseCost: 450, growth: 2, maxLevel: 5 },
+  },
 };
 
 export function serialize(state: GameState, now: number): string {
@@ -180,7 +220,6 @@ function sanitizeSlots(state: GameState): void {
   slots.hold = Number.isInteger(slots.hold) && (slots.hold as number) >= 0 && (slots.hold as number) <= 2 ? slots.hold : null;
   slots.helper.timer = nonNegative(slots.helper.timer);
   slots.helper.profile = Math.min(clampIndex(slots.helper.profile, S.helper.profiles.length), slots.upgrades.helperProfile);
-  sanitizeWorkSlot(S.work, slots.work);
   slots.passiveCarry = Math.min(nonNegative(slots.passiveCarry), 1);
   slots.pot = Math.min(Math.max(nonNegative(slots.pot), S.jackpot.potSeed), S.debt.amount * S.jackpot.payoutCapDebtFraction);
   slots.recentSpins = slots.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof slots.recentSpins;
@@ -209,7 +248,6 @@ function sanitizeCards(state: GameState): void {
   const maxCharges = C.discards.base + Math.floor(cards.upgrades.luck / C.discards.perLevels);
   cards.discards.charges = Math.min(Math.floor(nonNegative(cards.discards.charges)), maxCharges);
   cards.discards.timer = nonNegative(cards.discards.timer);
-  sanitizeWorkSlot(C.work, cards.work);
   cards.passiveCarry = Math.min(nonNegative(cards.passiveCarry), 1);
   cards.pot = Math.min(Math.max(nonNegative(cards.pot), C.jackpot.potSeed), C.debt.amount * C.jackpot.payoutCapDebtFraction);
   const hand = cards.hand as unknown;
@@ -248,7 +286,6 @@ function sanitizeDice(state: GameState): void {
   const maxCharges = C.rerolls.base + Math.floor(dice.upgrades.luck / C.rerolls.perLevels);
   dice.rerolls.charges = Math.min(Math.floor(nonNegative(dice.rerolls.charges)), maxCharges);
   dice.rerolls.timer = nonNegative(dice.rerolls.timer);
-  sanitizeWorkSlot(C.work, dice.work);
   dice.passiveCarry = Math.min(nonNegative(dice.passiveCarry), 1);
   dice.pot = Math.min(Math.max(nonNegative(dice.pot), C.jackpot.potSeed), C.debt.amount * C.jackpot.payoutCapDebtFraction);
   // Las tiradas guardadas se dan por cerradas (no se puede relanzar tras cargar).

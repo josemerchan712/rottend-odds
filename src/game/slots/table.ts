@@ -6,22 +6,13 @@ import type { Rng } from '../rng';
 import type { LenderPhase } from '../lender';
 import type { GameState } from '../state';
 import { WORK_DEF, bagMultiplier } from '../work';
-import {
-  cleanerIncomeRate,
-  cleanerIntervalFor,
-  collectFrom,
-  collectNearestFrom,
-  hostItemValue,
-  updateWorkHost,
-  type Collected,
-  type WorkHost,
-} from '../workCore';
+import { cleanerIncomeRate } from '../workCore';
 import { bestHold, slotCeiling, spinSlots } from './machine';
 import type { SlotSpin, SlotsState } from './state';
 
 /**
- * El resto de la mesa 2 (lógica pura): mejoras, ayudante (el empleado zombi), trabajo de la
- * trastienda, conversión desde la mesa 1 y el paso del tiempo.
+ * El resto de la mesa 2 (lógica pura): mejoras, ayudante (el empleado zombi), conversión desde la
+ * mesa 1 y el paso del tiempo. Sin trastienda: la red de seguridad es el pasivo (con un suelo).
  */
 const S = CONFIG.slots;
 
@@ -147,59 +138,6 @@ export function updateZombie(slots: SlotsState, dt: number, rng: Rng): SlotSpin[
 }
 
 // ---------------------------------------------------------------------------
-// Trabajo: limpiar tragaperras en la trastienda de la mesa 2
-
-export function toolboxMultiplier(slots: SlotsState): number {
-  return 1 + S.work.valuePerLevel * slots.upgrades.toolbox;
-}
-
-const hosts = new WeakMap<SlotsState, WorkHost>();
-
-/** La trastienda de la mesa 2 para el núcleo común (una por estado, con getters). */
-export function slotsWorkHost(slots: SlotsState): WorkHost {
-  let host = hosts.get(slots);
-  if (!host) {
-    host = {
-      def: S.work,
-      get work() {
-        return slots.work;
-      },
-      get valueMultiplier() {
-        return toolboxMultiplier(slots);
-      },
-      get extraPerClick() {
-        return slots.upgrades.rag * S.work.extraPerLevel;
-      },
-      get cleanerLevel() {
-        return slots.upgrades.apprentice;
-      },
-      credit(value: number) {
-        slots.balance += value;
-        slots.stats.workEarned += value;
-      },
-    };
-    hosts.set(slots, host);
-  }
-  return host;
-}
-
-export function slotItemValue(slots: SlotsState, kind: string): number {
-  return hostItemValue(slotsWorkHost(slots), kind);
-}
-
-export function apprenticeInterval(level: number): number {
-  return cleanerIntervalFor(S.work, level);
-}
-
-export function collectSlotItem(slots: SlotsState, itemId: number): Collected[] {
-  return collectFrom(slotsWorkHost(slots), itemId);
-}
-
-export function collectNearestSlotItem(slots: SlotsState): Collected[] {
-  return collectNearestFrom(slotsWorkHost(slots));
-}
-
-// ---------------------------------------------------------------------------
 // Conversión desde la mesa 1
 
 /**
@@ -220,7 +158,8 @@ export function table1IncomeRate(state: GameState): number {
 
 /** Monedas por segundo que recibe la mesa 2: k * (ingreso/s de la mesa 1)^0,5. */
 export function passiveRate(state: GameState): number {
-  return S.conversion.k * Math.sqrt(Math.max(table1IncomeRate(state), 0));
+  // Suelo mínimo: sin trastienda, el pasivo es la red de seguridad (nunca hay bloqueo).
+  return Math.max(S.conversion.floor, S.conversion.k * Math.sqrt(Math.max(table1IncomeRate(state), 0)));
 }
 
 // ---------------------------------------------------------------------------
@@ -228,12 +167,11 @@ export function passiveRate(state: GameState): number {
 
 export interface SlotsTick {
   zombie: SlotSpin[];
-  cleaned: Collected[];
 }
 
-/** Avanza la mesa 2 dt segundos (si está desbloqueada): conversión, trabajo y zombi. */
+/** Avanza la mesa 2 dt segundos (si está desbloqueada): conversión y zombi. */
 export function updateSlots(state: GameState, dt: number, rng: Rng): SlotsTick {
-  if (!isSlotsUnlocked(state) || dt <= 0) return { zombie: [], cleaned: [] };
+  if (!isSlotsUnlocked(state) || dt <= 0) return { zombie: [] };
   const slots = state.slots;
   slots.playTime += dt;
   slots.passiveCarry += passiveRate(state) * dt;
@@ -243,9 +181,8 @@ export function updateSlots(state: GameState, dt: number, rng: Rng): SlotsTick {
     slots.balance += whole;
     slots.stats.passiveEarned += whole;
   }
-  const cleaned = updateWorkHost(slotsWorkHost(slots), dt, rng);
   const zombie = updateZombie(slots, dt, rng);
-  return { zombie, cleaned };
+  return { zombie };
 }
 
 /** Fase de la Tragaperras viviente, como la del Encargado: por el % de la deuda de la mesa 2 reunido. */

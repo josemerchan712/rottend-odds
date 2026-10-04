@@ -1,25 +1,15 @@
 import { CONFIG, type CardUpgradeId } from '../config';
 import { diceCeiling, targetExpectedValue } from '../dice/game';
-import { cartMultiplier, diceWorkHost, ghostBet, ghostInterval, ghostLuckBonus, ghostTarget, hasGhost } from '../dice/table';
+import { ghostBet, ghostInterval, ghostLuckBonus, ghostTarget, hasGhost } from '../dice/table';
 import type { LenderPhase } from '../lender';
 import type { Rng } from '../rng';
 import type { GameState } from '../state';
-import {
-  cleanerIncomeRate,
-  cleanerIntervalFor,
-  collectFrom,
-  collectNearestFrom,
-  hostItemValue,
-  updateWorkHost,
-  type Collected,
-  type WorkHost,
-} from '../workCore';
 import { cardsCeiling, cardsWinChance, dealHand, playHandAuto, pushChanceFor, updateDiscards } from './game';
 import type { CardHand, CardsState } from './state';
 
 /**
  * El resto de la mesa 4 (lógica pura): desbloqueo y deuda, mejoras, ayudante (el esqueleto
- * barajador), trabajo (barajar y repartir), conversión desde la mesa 3 y el paso del tiempo.
+ * barajador), conversión desde la mesa 3 y el paso del tiempo. Sin trastienda.
  */
 const K = CONFIG.cards;
 
@@ -163,65 +153,12 @@ export function updateSkeleton(cards: CardsState, dt: number, rng: Rng): CardHan
 }
 
 // ---------------------------------------------------------------------------
-// Trabajo: barajar y repartir
-
-export function satchelMultiplier(cards: CardsState): number {
-  return 1 + K.work.valuePerLevel * cards.upgrades.satchel;
-}
-
-const hosts = new WeakMap<CardsState, WorkHost>();
-
-/** La trastienda de la mesa 4 para el núcleo común (una por estado, con getters). */
-export function cardsWorkHost(cards: CardsState): WorkHost {
-  let host = hosts.get(cards);
-  if (!host) {
-    host = {
-      def: K.work,
-      get work() {
-        return cards.work;
-      },
-      get valueMultiplier() {
-        return satchelMultiplier(cards);
-      },
-      get extraPerClick() {
-        return cards.upgrades.sleeve * K.work.extraPerLevel;
-      },
-      get cleanerLevel() {
-        return cards.upgrades.dealer;
-      },
-      credit(value: number) {
-        cards.balance += value;
-        cards.stats.workEarned += value;
-      },
-    };
-    hosts.set(cards, host);
-  }
-  return host;
-}
-
-export function cardsItemValue(cards: CardsState, kind: string): number {
-  return hostItemValue(cardsWorkHost(cards), kind);
-}
-
-export function dealerInterval(level: number): number {
-  return cleanerIntervalFor(K.work, level);
-}
-
-export function collectCardsItem(cards: CardsState, itemId: number): Collected[] {
-  return collectFrom(cardsWorkHost(cards), itemId);
-}
-
-export function collectNearestCardsItem(cards: CardsState): Collected[] {
-  return collectNearestFrom(cardsWorkHost(cards));
-}
-
-// ---------------------------------------------------------------------------
 // Conversión desde la mesa 3
 
-/** Ingreso esperado por segundo de la mesa 3 jugando sola: su camarero (sin relanzar) y su friegaplatos. */
+/** Ingreso esperado por segundo de la mesa 3 jugando sola: su camarero (sin relanzar). */
 export function table3IncomeRate(state: GameState): number {
   const dice = state.dice;
-  let rate = cleanerIncomeRate(diceWorkHost(dice).def, dice.upgrades.busboy, cartMultiplier(dice));
+  let rate = 0;
   if (hasGhost(dice)) {
     const bet = ghostBet(dice);
     if (bet > 0) {
@@ -233,7 +170,7 @@ export function table3IncomeRate(state: GameState): number {
 }
 
 export function cardsPassiveRate(state: GameState): number {
-  return K.conversion.k * Math.sqrt(Math.max(table3IncomeRate(state), 0));
+  return Math.max(K.conversion.floor, K.conversion.k * Math.sqrt(Math.max(table3IncomeRate(state), 0)));
 }
 
 // ---------------------------------------------------------------------------
@@ -241,11 +178,10 @@ export function cardsPassiveRate(state: GameState): number {
 
 export interface CardsTick {
   skeleton: CardHand[];
-  cleaned: Collected[];
 }
 
 export function updateCards(state: GameState, dt: number, rng: Rng): CardsTick {
-  if (!isCardsUnlocked(state) || dt <= 0) return { skeleton: [], cleaned: [] };
+  if (!isCardsUnlocked(state) || dt <= 0) return { skeleton: [] };
   const cards = state.cards;
   cards.playTime += dt;
   cards.passiveCarry += cardsPassiveRate(state) * dt;
@@ -256,7 +192,6 @@ export function updateCards(state: GameState, dt: number, rng: Rng): CardsTick {
     cards.stats.passiveEarned += whole;
   }
   updateDiscards(cards, dt);
-  const cleaned = updateWorkHost(cardsWorkHost(cards), dt, rng);
   const skeleton = updateSkeleton(cards, dt, rng);
-  return { skeleton, cleaned };
+  return { skeleton };
 }

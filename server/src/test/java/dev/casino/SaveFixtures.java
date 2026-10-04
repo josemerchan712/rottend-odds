@@ -40,7 +40,7 @@ public final class SaveFixtures {
         state.put("dice", dice(0, 0, diceUpgrades(), false));
         state.put("cards", cards(0, 0, cardsUpgrades(), false));
         Map<String, Object> file = new HashMap<>();
-        file.put("version", 7);
+        file.put("version", 8);
         file.put("savedAt", 1_700_000_000_000L);
         file.put("state", state);
         return file;
@@ -49,7 +49,7 @@ public final class SaveFixtures {
     public static Map<String, Object> slotUpgrades() {
         Map<String, Object> ups = new LinkedHashMap<>();
         for (String id : new String[] {"luck", "maxBet", "zombie", "helperSpeed", "helperProfile", "helperLuck",
-                "jackpot", "hold", "rag", "toolbox", "apprentice"}) {
+                "jackpot", "hold"}) {
             ups.put(id, 0);
         }
         return ups;
@@ -65,21 +65,18 @@ public final class SaveFixtures {
         slots.put("reels", java.util.List.of(0, 1, 3));
         slots.put("hold", null);
         slots.put("helper", Map.of("timer", 0, "profile", 0, "reels", java.util.List.of(4, 5, 0)));
-        slots.put("work", Map.of("items", java.util.List.of(), "spawnTimer", 0, "nextId", 0,
-                "cleaner", Map.of("timer", 0, "x", 520, "y", 340), "lastItem", ""));
         slots.put("pot", 50);
         slots.put("passiveCarry", 0);
         slots.put("recentSpins", java.util.List.of());
         slots.put("debtPaid", debtPaid);
-        slots.put("stats", Map.of("spins", 0, "wins", 0, "jackpots", 0, "jackpotsCapped", 0, "holds", 0,
-                "workEarned", 0, "passiveEarned", 0));
+        slots.put("stats", Map.of("spins", 0, "wins", 0, "jackpots", 0, "jackpotsCapped", 0, "holds", 0, "passiveEarned", 0));
         return slots;
     }
 
     public static Map<String, Object> diceUpgrades() {
         Map<String, Object> ups = new LinkedHashMap<>();
         for (String id : new String[] {"luck", "maxBet", "ghost", "helperSpeed", "helperProfile", "helperLuck",
-                "jackpot", "hardTargets", "boxcars", "tray", "cart", "busboy"}) {
+                "jackpot", "hardTargets", "boxcars"}) {
             ups.put(id, 0);
         }
         return ups;
@@ -97,8 +94,6 @@ public final class SaveFixtures {
         dice.put("streak", 0);
         dice.put("rerolls", Map.of("charges", 1, "timer", 0));
         dice.put("helper", Map.of("timer", 0, "profile", 0, "streak", 0));
-        dice.put("work", Map.of("items", java.util.List.of(), "spawnTimer", 0, "nextId", 0,
-                "cleaner", Map.of("timer", 0, "x", 520, "y", 340), "lastItem", ""));
         dice.put("pot", 50);
         dice.put("passiveCarry", 0);
         dice.put("recentRolls", java.util.List.of());
@@ -110,7 +105,7 @@ public final class SaveFixtures {
     public static Map<String, Object> cardsUpgrades() {
         Map<String, Object> ups = new LinkedHashMap<>();
         for (String id : new String[] {"luck", "maxBet", "skeleton", "helperSpeed", "helperProfile", "helperLuck",
-                "jackpot", "sleeve", "satchel", "dealer"}) {
+                "jackpot"}) {
             ups.put(id, 0);
         }
         return ups;
@@ -126,8 +121,6 @@ public final class SaveFixtures {
         cards.put("hand", null);
         cards.put("discards", Map.of("charges", 1, "timer", 0));
         cards.put("helper", Map.of("timer", 0, "profile", 0));
-        cards.put("work", Map.of("items", java.util.List.of(), "spawnTimer", 0, "nextId", 0,
-                "cleaner", Map.of("timer", 0, "x", 520, "y", 340), "lastItem", ""));
         cards.put("pot", 50);
         cards.put("passiveCarry", 0);
         cards.put("recentHands", java.util.List.of());

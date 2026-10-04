@@ -135,52 +135,10 @@ export const DIALOGUE3_ES: DialogueLines = {
       'Hueco. Suenas a botella vacía cuando respiras.',
     ],
   },
-  enterBackroom: {
-    calm: [
-      'Ve, ve. Las copas no se recogen solas.',
-      'Detrás hay vasos sucios. Y alguna propina olvidada.',
-      'Trabajo honrado. Qué refrescante.',
-      'Cuidado con los cristales. Cortan más de lo que parece.',
-      'La trastienda también da de comer. Poco.',
-    ],
-    uneasy: [
-      'Ve atrás. No pruebes lo que queda en los vasos.',
-      'Recoge. No mires debajo del fregadero.',
-      'Ahí detrás también te veo. Por el espejo.',
-      'Friega. El sudor también cuenta como pago.',
-      'Las botellas vacías cuentan cosas. No las escuches.',
-    ],
-    deformed: [
-      'Ahí detrás hay dientes que no son de nadie.',
-      'Agáchate. Más. Recoge lo que quedó de los otros.',
-      'Los vasos respiran. No los despiertes.',
-      'Ve. La puerta de atrás no olvida una cara.',
-      'Friega hasta que te sangren las manos.',
-    ],
-  },
-  returnCasino: {
-    calm: [
-      'De vuelta. Tu taburete sigue caliente.',
-      'Manos limpias. Bien. Tira.',
-      'Traes chapas. Me alegra verte.',
-      'Ya estás aquí. Los dados te echaban de menos.',
-      'Siéntate. Te pongo otra.',
-    ],
-    uneasy: [
-      'Traes poco. Nunca traes suficiente.',
-      '¿Eso es todo? La barra tiene sed.',
-      'Los dados no han parado mientras fregabas.',
-      'Siéntate. La pizarra ha seguido sumando.',
-      'Vuelves a mi barra. Como todos.',
-    ],
-    deformed: [
-      'Vuelves oliendo a lejía. Me encanta.',
-      'Te esperaba. Te esperaba. Limpiando.',
-      'Los dados han dicho tu nombre. Dos veces seis.',
-      'Cada ronda queda menos de ti en el vaso.',
-      'Acércate. Más. Apoya la cara en la barra.',
-    ],
-  },
+  // Sin trastienda en esta mesa: estos motivos solo existen en la mesa 1.
+  enterBackroom: {},
+  // Sin trastienda en esta mesa: estos motivos solo existen en la mesa 1.
+  returnCasino: {},
   buyCrupier: {
     any: [
       'Un camarero nuevo. No cobra. No respira. No se queja.',

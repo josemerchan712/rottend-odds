@@ -168,6 +168,11 @@ kbd {
 .hud-debt { display: flex; align-items: center; gap: 4px; flex: 1; max-width: 220px; margin: 0 auto; }
 .hud-debt .debt-bar { flex: 1; }
 .hud-buttons { display: flex; gap: 3px; }
+.hud-toast { min-width: 70px; text-align: right; opacity: 0; transition: opacity 0.25s; color: var(--muted); }
+.hud-toast.show { opacity: 1; }
+.hud-toast[data-kind='gana'] { color: #9fb97a; }
+.hud-toast[data-kind='pierde'] { color: #c0574d; }
+.hud-toast[data-kind='jackpot'] { color: var(--gold); }
 .debt-bar { height: 5px; background: #0a0908; border: 1px solid var(--line); }
 .debt-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--blood), var(--rust)); }
 

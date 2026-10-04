@@ -9,7 +9,7 @@
  * 3. Reescala con vecino más próximo al tamaño final.
  * 4. Exporta PNG con transparencia a assets/sprites/.
  */
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import sharp from 'sharp';
 import {
   crop,
@@ -49,9 +49,12 @@ interface GridSheet {
 /** Fondo de escena: sin recorte; se ajusta a la proporción y se escala al tamaño final. */
 interface Background {
   kind: 'background';
+  /** Ruta o patrón con extensión comodín (assets/raw/trastienda.*). */
   source: string;
   out: string;
   size: [number, number];
+  /** Si falta el original, se avisa y se sigue (la escena usa un provisional). */
+  optional?: boolean;
 }
 
 type Sheet = BlockSheet | GridSheet | Background;
@@ -123,7 +126,24 @@ const SHEETS: Sheet[] = [
     out: 'assets/sprites/backgrounds/mesa1.png',
     size: [640, 360],
   },
+  {
+    // Lo genera el diseñador; mientras no exista, la escena usa el casino reflejado y oscurecido.
+    kind: 'background',
+    source: 'assets/raw/trastienda.*',
+    out: 'assets/sprites/backgrounds/trastienda.png',
+    size: [640, 360],
+    optional: true,
+  },
 ];
+
+/** Resuelve un patrón "carpeta/nombre.*" al primer archivo que exista (o null). */
+function resolveSource(pattern: string): string | null {
+  if (!pattern.endsWith('.*')) return existsSync(pattern) ? pattern : null;
+  const dir = pattern.slice(0, pattern.lastIndexOf('/'));
+  const base = pattern.slice(dir.length + 1, -2);
+  const match = existsSync(dir) ? readdirSync(dir).find((f) => f.startsWith(`${base}.`)) : undefined;
+  return match ? `${dir}/${match}` : null;
+}
 
 async function load(path: string): Promise<RgbaImage> {
   const { data, info } = await sharp(path).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -147,7 +167,15 @@ function cutOut(img: RgbaImage): RgbaImage {
 }
 
 for (const sheet of SHEETS) {
-  const img = await load(sheet.source);
+  const source = resolveSource(sheet.source);
+  if (!source) {
+    if (sheet.kind === 'background' && sheet.optional) {
+      console.log(`(falta ${sheet.source}: se usará el fondo provisional)`);
+      continue;
+    }
+    throw new Error(`No existe ${sheet.source}`);
+  }
+  const img = await load(source);
   if (sheet.kind === 'background') {
     // Recorte centrado a la proporción del destino y reescalado con vecino más próximo.
     const [w, h] = sheet.size;

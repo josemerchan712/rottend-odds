@@ -1,7 +1,8 @@
 import { CONFIG } from '../game/config';
 import { debtProgress } from '../game/debt';
 import { lenderPhase } from '../game/lender';
-import type { GameState } from '../game/state';
+import { fadeAlpha, type Room, type RoomState } from '../game/rooms';
+import type { GameState, SpinResult } from '../game/state';
 import { itemAt, type Collected } from '../game/work';
 import { formatNumber } from '../util/format';
 import { Effects } from './effects';
@@ -23,6 +24,15 @@ const CLEANER_SPEED = 220; // px/s en la escena
 const ARM_REACH_SECONDS = 0.25;
 /** Una apuesta perdida es "grande" (tiembla la pantalla) si se jugó al menos esta fracción del saldo. */
 const BIG_LOSS_FRACTION = 0.25;
+
+/**
+ * Puertas entre salas: el hueco oscuro de la izquierda del casino y la puerta metálica de la
+ * izquierda de la trastienda (solo su parte alta, para no chocar con el jugador, que está delante).
+ */
+export const DOORS: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
+  casino: { x: 30, y: 88, width: 62, height: 168, label: 'TRASTIENDA' },
+  trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'CASINO' },
+};
 
 /** Posiciones en la escena de 640x360 (sección 9.2), ajustadas al fondo de la mesa 1. */
 const LAYOUT = {
@@ -74,6 +84,9 @@ export class Scene {
   private seenBets: number | null = null;
   /** Número de la última apuesta cuyo resultado ya se ha mostrado. */
   revealedBets = 0;
+  /** Tiradas del ayudante mientras el jugador no está en el casino (para el aviso del HUD). */
+  onAwayResult: ((spin: SpinResult) => void) | null = null;
+  private room: Room = 'casino';
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -104,6 +117,12 @@ export class Scene {
     this.hover = point;
   }
 
+  /** ¿Hay una puerta en ese punto de la sala actual? */
+  doorAt(point: { x: number; y: number }, room: Room): boolean {
+    const d = DOORS[room];
+    return point.x >= d.x && point.x <= d.x + d.width && point.y >= d.y && point.y <= d.y + d.height;
+  }
+
   /** El jugador ha recogido algo: se agacha, levanta el objeto y salen los "+N". */
   playerCollected(items: Collected[]): void {
     if (!items.length) return;
@@ -128,7 +147,8 @@ export class Scene {
     this.floats.push({ text, x, y, age: 0, color });
   }
 
-  render(state: GameState, dt: number): void {
+  render(state: GameState, dt: number, rooms: RoomState): void {
+    this.room = rooms.current;
     this.trackSpins(state);
     this.advance(state, dt);
     const ctx = this.ctx;
@@ -137,7 +157,23 @@ export class Scene {
     const shake = this.effects.shakeOffset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
+    if (rooms.current === 'casino') this.drawCasino(state);
+    else this.drawBackroom(state);
+    this.drawDoor(rooms);
+    this.drawFloats();
+    ctx.restore();
 
+    if (rooms.current === 'casino') this.drawPortrait(state);
+    const fade = fadeAlpha(rooms);
+    if (fade > 0) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${fade})`;
+      ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
+    }
+  }
+
+  /** Sala del casino: ruleta, mesa, fichas, brazo del crupier y Encargado. Sin basura. */
+  private drawCasino(state: GameState): void {
+    const ctx = this.ctx;
     this.drawBackground();
     this.effects.drawLamps(ctx);
     this.roulette.draw(ctx, this.sprites.roulette.get(state.debtPaid ? 'broken' : 'healthy'), state.debtPaid ? 'broken' : 'healthy', LAYOUT.wheel.x, LAYOUT.wheel.y);
@@ -147,7 +183,12 @@ export class Scene {
       const reach = Math.round((this.armReach / ARM_REACH_SECONDS) * 4);
       this.drawSprite(this.sprites.helpers.get('arm'), LAYOUT.arm.x - reach, LAYOUT.arm.y, PLAYER_SIZE, -1);
     }
+  }
 
+  /** Trastienda: el jugador, la basura y el ayudante de limpieza. */
+  private drawBackroom(state: GameState): void {
+    const ctx = this.ctx;
+    this.drawBackroomBackground();
     const hovered = this.hover ? itemAt(state.work.items, this.hover.x, this.hover.y) : null;
     this.canvas.style.cursor = hovered ? 'pointer' : 'default';
     const drawables: { y: number; draw: () => void }[] = state.work.items.map((item) => ({
@@ -168,10 +209,47 @@ export class Scene {
       drawables.push({ y: c.y, draw: () => this.drawCleaner(c) });
     }
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
-    this.drawFloats();
-    ctx.restore();
+  }
 
-    this.drawPortrait(state);
+  /** Fondo de la trastienda (assets/raw/trastienda.*); si faltara, el del casino reflejado y oscurecido. */
+  private drawBackroomBackground(): void {
+    const ctx = this.ctx;
+    const own = this.sprites.backgrounds.get('trastienda');
+    if (ready(own)) {
+      ctx.drawImage(own, 0, 0);
+      return;
+    }
+    const bg = this.sprites.backgrounds.get('mesa1');
+    if (ready(bg)) {
+      // Reflejado: la puerta por la que se ha entrado queda a la derecha.
+      ctx.save();
+      ctx.translate(SCENE_WIDTH, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(bg, 0, 0);
+      ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(4, 3, 2, 0.62)';
+    ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
+  }
+
+  /** Puerta de la sala actual: se resalta al pasar el ratón. */
+  private drawDoor(rooms: RoomState): void {
+    const hoveredDoor = this.hover !== null && this.doorAt(this.hover, rooms.current) && !rooms.transition;
+    if (!hoveredDoor) return;
+    const ctx = this.ctx;
+    const d = DOORS[rooms.current];
+    ctx.strokeStyle = COLORS.text;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 2]);
+    ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.width - 1, d.height - 1);
+    ctx.setLineDash([]);
+    ctx.font = '12px VT323, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = COLORS.shadow;
+    ctx.fillText(d.label, d.x + d.width / 2 + 1, d.y - 3);
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText(d.label, d.x + d.width / 2, d.y - 4);
+    this.canvas.style.cursor = 'pointer';
   }
 
   /** Detecta tiradas nuevas en el estado y lanza la animación de la última. */
@@ -187,6 +265,12 @@ export class Scene {
     this.revealedBets = Math.max(this.revealedBets, bets - 1);
     this.seenBets = bets;
     if (!latest) return;
+    if (this.room !== 'casino') {
+      // Fuera del casino no se ve la ruleta: el resultado se muestra ya, como aviso en el HUD.
+      this.revealedBets = bets;
+      this.onAwayResult?.(latest);
+      return;
+    }
     const balanceBefore = state.balance - latest.delta;
     const bigLoss = latest.outcome === 'pierde' && latest.bet >= balanceBefore * BIG_LOSS_FRACTION;
     if (latest.bettor === 'ayudante') this.armReach = ARM_REACH_SECONDS;
@@ -271,7 +355,7 @@ export class Scene {
 
   private drawFloats(): void {
     const ctx = this.ctx;
-    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.font = '12px VT323, monospace';
     ctx.textAlign = 'center';
     for (const f of this.floats) {
       const fx = Math.round(f.x);

@@ -18,6 +18,8 @@ export function bindControls(
   refresh: () => void,
   onMenu: () => void,
   onDebtPaid: () => void = () => {},
+  /** Apostar a mano solo se puede en el casino. */
+  canBet: () => boolean = () => true,
 ): void {
   const on = (el: HTMLElement, action: (state: GameState) => unknown) =>
     el.addEventListener('click', () => {
@@ -26,10 +28,11 @@ export function bindControls(
     });
 
   ui.fractionButtons.forEach((b, i) => on(b, (s) => selectBetFraction(s, i)));
-  on(ui.betBlack, (s) => playerBet(s, { type: 'color', color: 'negro' }, rng));
-  on(ui.betWhite, (s) => playerBet(s, { type: 'color', color: 'blanco' }, rng));
-  ui.dozenButtons.forEach((b, i) => on(b, (s) => playerBet(s, { type: 'dozen', dozen: (i + 1) as 1 | 2 | 3 }, rng)));
+  on(ui.betBlack, (s) => canBet() && playerBet(s, { type: 'color', color: 'negro' }, rng));
+  on(ui.betWhite, (s) => canBet() && playerBet(s, { type: 'color', color: 'blanco' }, rng));
+  ui.dozenButtons.forEach((b, i) => on(b, (s) => canBet() && playerBet(s, { type: 'dozen', dozen: (i + 1) as 1 | 2 | 3 }, rng)));
   on(ui.betNumber, (s) => {
+    if (!canBet()) return null;
     const n = Math.min(Math.max(Math.round(Number(ui.numberInput.value)) || 1, 1), 36);
     ui.numberInput.value = String(n);
     return playerBet(s, { type: 'number', number: n }, rng);

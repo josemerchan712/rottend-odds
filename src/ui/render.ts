@@ -42,6 +42,7 @@ export interface Ui {
   lastSpin: HTMLElement;
   spinLog: HTMLElement;
   fullscreen: HTMLButtonElement;
+  toast: HTMLElement;
   panelToggle: HTMLButtonElement;
   panel: HTMLElement;
   workInfo: HTMLElement;
@@ -64,6 +65,7 @@ export function mountUi(root: HTMLElement): Ui {
         <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
         <span data-ref="debtText"></span>
       </div>
+      <div class="hud-toast" data-ref="toast" role="status"></div>
       <div class="hud-buttons">
         <button data-ref="payDebt" class="gold small">Pagar deuda</button>
         <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
@@ -177,6 +179,7 @@ export function mountUi(root: HTMLElement): Ui {
     lastSpin: ref('lastSpin'),
     spinLog: ref('spinLog'),
     fullscreen: ref<HTMLButtonElement>('fullscreen'),
+    toast: ref('toast'),
     panelToggle: ref<HTMLButtonElement>('panelToggle'),
     panel: ref('panel'),
     workInfo: ref('workInfo'),

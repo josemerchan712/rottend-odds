@@ -120,8 +120,8 @@ export const CONFIG = {
     respawnInterval: shared.work.respawnSeconds,
     /** Cada nivel de "Bolsa grande" suma esta fracción al valor de cada objeto. */
     bagValuePerLevel: shared.work.bagValuePerLevel,
-    /** Zona del suelo de la escena (640x360) donde aparece la basura (posición de la base del objeto). */
-    floor: { x: 150, y: 270, width: 450, height: 70 },
+    /** Zona del suelo de la trastienda (640x360) donde aparece la basura (posición de la base del objeto). */
+    floor: { x: 150, y: 255, width: 280, height: 82 },
     /** Pies del jugador en la escena: desde aquí se busca "la basura más cercana". */
     player: { x: 64, y: 344 },
     /** Radio de la zona de clic alrededor de cada objeto: generoso a propósito. */
@@ -136,7 +136,7 @@ export const CONFIG = {
       /** Cada nivel extra quita esta fracción al intervalo. */
       reductionPerLevel: 0.2,
       /** Dónde aparece el ayudante de limpieza. */
-      start: { x: 600, y: 344 },
+      start: { x: 520, y: 340 },
     },
     /** Objetos con su valor y peso relativo de aparición. */
     items: [
@@ -152,6 +152,11 @@ export const CONFIG = {
 
   debt: {
     amount: shared.debt.amount,
+  },
+
+  rooms: {
+    /** Segundos de cada mitad del fundido a negro al cambiar de sala. */
+    fadeSeconds: 0.3,
   },
 
   lender: {

@@ -27,6 +27,8 @@ import { Scene } from './ui/scene';
 import { enterFullscreen, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
 import { loadSprites } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
+import { canBetManually, canCollectTrash, createRoomState, inTransition, toggleRoom, updateRooms } from './game/rooms';
+import { formatNumber } from './util/format';
 
 const { saveKey, settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
 
@@ -76,6 +78,8 @@ const api = createApi();
 let session: Session | null = loadSession(localStorage, sessionKey, Date.now());
 
 let screen: Screen = 'menu';
+/** Sala actual de la mesa 1 (no se guarda: siempre se empieza en el casino). */
+let rooms = createRoomState();
 /** Partida en curso; null fuera del juego. */
 let state: GameState | null = null;
 const settings = loadSettings(localStorage, settingsKey);
@@ -90,8 +94,13 @@ function show(next: Screen): void {
 
 // Escena: clic en la basura (zona generosa), resaltado al pasar por encima y tecla E.
 sceneCanvas.addEventListener('click', (event) => {
-  if (!state) return;
+  if (!state || screen !== 'game') return;
   const point = scene.toScene(event.clientX, event.clientY);
+  if (!inTransition(rooms) && scene.doorAt(point, rooms.current)) {
+    toggleRoom(rooms);
+    return;
+  }
+  if (!canCollectTrash(rooms)) return;
   const item = itemAt(state.work.items, point.x, point.y);
   if (!item) return;
   scene.playerCollected(collectItem(state, item.id));
@@ -107,7 +116,13 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (screen !== 'game' || !state) return;
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    toggleRoom(rooms);
+    return;
+  }
   if (event.key !== 'e' && event.key !== 'E') return;
+  if (!canCollectTrash(rooms)) return;
   scene.playerCollected(collectNearest(state));
   render(gameUi, state, scene.revealedBets);
 });
@@ -117,6 +132,7 @@ function enterGame(loaded: GameState): void {
   unlockAudio();
   if (settings.startFullscreen) void enterFullscreen(root);
   state = loaded;
+  rooms = createRoomState();
   scene.reset(loaded);
   show('game');
 }
@@ -198,6 +214,17 @@ gameUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
 gameUi.panelToggle.addEventListener('click', () => {
   gameUi.panel.hidden = !gameUi.panel.hidden;
 });
+// Fuera del casino, las tiradas del ayudante se avisan en el HUD.
+let toastTimer = 0;
+scene.onAwayResult = (spin) => {
+  const won = spin.delta >= 0;
+  gameUi.toast.textContent = `Ayudante ${won ? '+' : '−'}${formatNumber(Math.abs(spin.delta))}`;
+  gameUi.toast.dataset.kind = spin.outcome;
+  gameUi.toast.classList.add('show');
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => gameUi.toast.classList.remove('show'), 1400);
+};
+
 bindControls(
   gameUi,
   () => state!,
@@ -209,6 +236,7 @@ bindControls(
     show('menu');
   },
   () => void reportDebtPaid(),
+  () => canBetManually(rooms),
 );
 
 // ---------------------------------------------------------------------------
@@ -370,14 +398,17 @@ let lastDt = 0;
 startLoop(
   {
     update: (dt) => {
-      if (screen === 'game' && state) scene.cleanerCollected(update(state, dt, defaultRng));
+      if (screen === 'game' && state) {
+        updateRooms(rooms, dt);
+        scene.cleanerCollected(update(state, dt, defaultRng));
+      }
       lastDt = dt;
     },
     render: () => {
       crt.tick();
       if (screen === 'game' && state) {
         render(gameUi, state, scene.revealedBets);
-        scene.render(state, lastDt);
+        scene.render(state, lastDt, rooms);
       }
     },
   },

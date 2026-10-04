@@ -1,15 +1,13 @@
-import { isBetTypeUnlocked, maxBet, playerBetAmount } from '../game/betting';
-import { CONFIG, UPGRADE_IDS, type BetType, type UpgradeId } from '../game/config';
+import { maxBet } from '../game/betting';
+import { CONFIG, UPGRADE_IDS, type UpgradeId } from '../game/config';
 import { canPayDebt, debtProgress } from '../game/debt';
 import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus, helperProfile } from '../game/helper';
-import { betWinChance, effectiveWinChance, expectedValue, jackpotChance, luckChance, riskPenalty } from '../game/luck';
-import { slotColor } from '../game/roulette';
-import type { BetChoice, GameState, SpinResult } from '../game/state';
+import { betWinChance, effectiveWinChance, jackpotChance, luckChance } from '../game/luck';
+import type { GameState } from '../game/state';
 import { canBuy, isMaxed, isUnlocked, nextCost } from '../game/upgrades';
 import { bagMultiplier, cleanerInterval } from '../game/work';
 import { formatNumber, formatPercent, formatSeconds, formatTime } from '../util/format';
 
-const FRACTION_LABELS = ['1%', '10%', '50%', 'TODO'];
 
 export interface ShopRow {
   row: HTMLElement;
@@ -28,21 +26,9 @@ export interface Ui {
   debtNote: HTMLElement;
   /** Mensaje del servidor al registrar la deuda saldada (lo escribe main.ts). */
   debtOnline: HTMLElement;
-  fractionButtons: HTMLButtonElement[];
-  betInfo: HTMLElement;
-  chanceInfo: HTMLElement;
-  jackpotInfo: HTMLElement;
-  betBlack: HTMLButtonElement;
-  betWhite: HTMLButtonElement;
-  dozenRow: HTMLElement;
-  dozenButtons: HTMLButtonElement[];
-  numberRow: HTMLElement;
-  numberInput: HTMLInputElement;
-  betNumber: HTMLButtonElement;
-  lastSpin: HTMLElement;
-  spinLog: HTMLElement;
   fullscreen: HTMLButtonElement;
   toast: HTMLElement;
+  tooltip: HTMLElement;
   panelToggle: HTMLButtonElement;
   panel: HTMLElement;
   workInfo: HTMLElement;
@@ -73,35 +59,13 @@ export function mountUi(root: HTMLElement): Ui {
       </div>
     </div>
 
+    <div class="tooltip pixel-frame" data-ref="tooltip" hidden></div>
     <button class="temp-toggle small" data-ref="panelToggle">Controles</button>
     <div class="temp-panel pixel-frame" data-ref="panel" hidden>
         <section class="panel">
           <p class="muted">Tiempo <span data-ref="playTime">0:00</span> · <span data-ref="stats"></span></p>
           <p class="note" data-ref="debtNote"></p>
           <p class="muted" data-ref="debtOnline" role="status"></p>
-        </section>
-
-        <section class="panel">
-          <h2>Ruleta</h2>
-          <div class="row" data-ref="fractions">
-            ${FRACTION_LABELS.map((l, i) => `<button class="chip" data-fraction="${i}">${l}</button>`).join('')}
-          </div>
-          <p data-ref="betInfo"></p>
-          <p data-ref="chanceInfo"></p>
-          <p class="muted" data-ref="jackpotInfo"></p>
-          <div class="row">
-            <button data-ref="betBlack" class="bet black">Apostar a NEGRO</button>
-            <button data-ref="betWhite" class="bet white">Apostar a BLANCO</button>
-          </div>
-          <div class="row" data-ref="dozenRow">
-            ${[1, 2, 3].map((d) => `<button data-dozen="${d}">${d}ª docena (${d * 12 - 11}-${d * 12})</button>`).join('')}
-          </div>
-          <div class="row" data-ref="numberRow">
-            <label>Número <input type="number" min="1" max="36" value="17" data-ref="numberInput" /></label>
-            <button data-ref="betNumber">Apostar al número</button>
-          </div>
-          <div class="last-spin" data-ref="lastSpin">Aún no has apostado.</div>
-          <ol class="spin-log" data-ref="spinLog"></ol>
         </section>
 
         <section class="panel">
@@ -118,7 +82,7 @@ export function mountUi(root: HTMLElement): Ui {
               ${CONFIG.helper.profiles
                 .map(
                   (p, i) =>
-                    `<button class="chip" data-profile="${i}" title="Apuesta el ${formatPercent(p.fraction, 0)} del techo, como mucho el ${formatPercent(p.maxBalanceFraction, 0)} de tu saldo">${p.name} ${formatPercent(p.fraction, 0)} · máx. ${formatPercent(p.maxBalanceFraction, 0)} saldo</button>`,
+                    `<button class="chip" data-profile="${i}">${p.name}</button>`,
                 )
                 .join('')}
             </div>
@@ -165,21 +129,9 @@ export function mountUi(root: HTMLElement): Ui {
     payDebt: ref('payDebt'),
     debtNote: ref('debtNote'),
     debtOnline: ref('debtOnline'),
-    fractionButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-fraction]')],
-    betInfo: ref('betInfo'),
-    chanceInfo: ref('chanceInfo'),
-    jackpotInfo: ref('jackpotInfo'),
-    betBlack: ref('betBlack'),
-    betWhite: ref('betWhite'),
-    dozenRow: ref('dozenRow'),
-    dozenButtons: [...root.querySelectorAll<HTMLButtonElement>('[data-dozen]')],
-    numberRow: ref('numberRow'),
-    numberInput: ref<HTMLInputElement>('numberInput'),
-    betNumber: ref('betNumber'),
-    lastSpin: ref('lastSpin'),
-    spinLog: ref('spinLog'),
     fullscreen: ref<HTMLButtonElement>('fullscreen'),
     toast: ref('toast'),
+    tooltip: ref('tooltip'),
     panelToggle: ref<HTMLButtonElement>('panelToggle'),
     panel: ref('panel'),
     workInfo: ref('workInfo'),
@@ -193,11 +145,8 @@ export function mountUi(root: HTMLElement): Ui {
   };
 }
 
-/**
- * Pinta el estado. `revealedBets`: número de la última apuesta cuya bola ya ha caído en la escena;
- * las tiradas posteriores aún no se muestran para no adelantar el resultado.
- */
-export function render(ui: Ui, state: GameState, revealedBets = Infinity): void {
+/** Pinta el HUD y los paneles con el estado actual. */
+export function render(ui: Ui, state: GameState): void {
   const { upgrades } = state;
 
   setText(ui.balance, formatNumber(state.balance));
@@ -214,59 +163,6 @@ export function render(ui: Ui, state: GameState, revealedBets = Infinity): void 
   ui.payDebt.disabled = !canPayDebt(state);
   ui.payDebt.hidden = state.debtPaid;
   setText(ui.debtNote, state.debtPaid ? 'Deuda saldada. La mesa 2 llegará en un hito posterior.' : '');
-
-  // Apuesta del jugador
-  ui.fractionButtons.forEach((b, i) => b.classList.toggle('active', i === state.betFractionIndex));
-  const bet = playerBetAmount(state);
-  const ceiling = maxBet(upgrades.maxBet);
-  const fraction = bet / ceiling;
-  setText(
-    ui.betInfo,
-    bet > 0
-      ? `Apuesta: ${formatNumber(bet)} ${bet === 1 ? 'ficha' : 'fichas'} (${formatPercent(fraction)} del techo de ${formatNumber(ceiling)})`
-      : 'Sin fichas para apostar. Recoge basura.',
-  );
-  const base = luckChance(upgrades.luck);
-  const penalty = riskPenalty(fraction, upgrades.luck);
-  const chanceFor = (type: BetType) => {
-    const p = formatPercent(betWinChance(type, upgrades.luck, fraction));
-    const ev = expectedValue(type, bet, ceiling, upgrades.luck, upgrades.jackpot);
-    const evText = ev >= 0 ? `+${formatNumber(ev)}` : `−${formatNumber(-ev)}`;
-    return `${CONFIG.betTypes[type].name} ${p} (VE ${evText})`;
-  };
-  const types = (['color', 'dozen', 'number'] as const).filter((t) => isBetTypeUnlocked(state, t));
-  setText(
-    ui.chanceInfo,
-    `Prob. de ganar: ${types.map(chanceFor).join(' · ')}  —  suerte ${formatPercent(base)} − riesgo ${formatPercent(penalty, 2)}`,
-  );
-  setText(
-    ui.jackpotInfo,
-    `Cero Dorado: ${formatPercent(jackpotChance(upgrades.luck, upgrades.jackpot), 2)} · paga x${CONFIG.jackpot.payoutMultiplier} (máx. ${formatNumber(CONFIG.debt.amount * CONFIG.jackpot.payoutCapDebtFraction)})`,
-  );
-  ui.betBlack.disabled = ui.betWhite.disabled = bet <= 0;
-  ui.dozenRow.hidden = !isBetTypeUnlocked(state, 'dozen');
-  ui.dozenButtons.forEach((b) => (b.disabled = bet <= 0));
-  ui.numberRow.hidden = !isBetTypeUnlocked(state, 'number');
-  ui.betNumber.disabled = bet <= 0;
-
-  // Tiradas: solo las que ya han caído en la ruleta de la escena.
-  const shownSpins = state.recentSpins.filter((_, i) => state.stats.bets - i <= revealedBets);
-  const last = shownSpins[0];
-  if (last) {
-    setText(ui.lastSpin, describeSpin(last));
-    ui.lastSpin.dataset.outcome = last.outcome;
-  } else if (state.recentSpins.length) {
-    setText(ui.lastSpin, 'La ruleta gira…');
-    delete ui.lastSpin.dataset.outcome;
-  }
-  const log = shownSpins.slice(1).map(describeSpin).join('\n');
-  if (ui.spinLog.dataset.log !== log) {
-    ui.spinLog.dataset.log = log;
-    ui.spinLog.innerHTML = shownSpins
-      .slice(1)
-      .map((s) => `<li class="${s.outcome}">${describeSpin(s)}</li>`)
-      .join('');
-  }
 
   // Trabajo
   const respawn = state.work.items.length < CONFIG.work.maxItems
@@ -296,7 +192,7 @@ export function render(ui: Ui, state: GameState, revealedBets = Infinity): void 
     });
     const interval = helperInterval(upgrades.helperSpeed);
     const hBet = helperBetAmount(state);
-    const hFraction = hBet / ceiling;
+    const hFraction = hBet / maxBet(upgrades.maxBet);
     const hChance = effectiveWinChance(upgrades.luck, hFraction, helperLuckBonus(upgrades.helperLuck));
     const status =
       state.helper.lockout > 0
@@ -304,10 +200,7 @@ export function render(ui: Ui, state: GameState, revealedBets = Infinity): void 
         : hBet <= 0
           ? 'Esperando fichas'
           : `próxima en ${formatSeconds(Math.max(interval - state.helper.timer, 0))}`;
-    setText(
-      ui.helperInfo,
-      `Apuesta ${formatNumber(hBet)} cada ${formatSeconds(interval, 2)} · prob. ${formatPercent(hChance)} · ${status}`,
-    );
+    setText(ui.helperInfo, `Apuesta cada ${formatSeconds(interval, 2)} · gana con un ${formatPercent(hChance)} · ${status}`);
   }
 
   // Tienda
@@ -321,26 +214,6 @@ export function render(ui: Ui, state: GameState, revealedBets = Infinity): void 
     const cost = nextCost(state, id);
     setText(row.buy, isMaxed(state, id) ? 'MÁX' : formatNumber(cost ?? 0));
     row.buy.disabled = !canBuy(state, id);
-  }
-}
-
-function describeSpin(s: SpinResult): string {
-  const who = s.bettor === 'jugador' ? 'Tú' : 'Ayudante';
-  const color = slotColor(s.slot);
-  const slot = color === 'dorado' ? 'CERO DORADO' : color === 'verde' ? '0 verde' : `${color} ${s.slot}`;
-  const delta = s.delta >= 0 ? `+${formatNumber(s.delta)}` : `−${formatNumber(-s.delta)}`;
-  const capped = s.jackpotCapped ? ' (tope)' : '';
-  return `${who}: ${formatNumber(s.bet)} a ${describeChoice(s.choice)} → sale ${slot} · ${delta}${capped} · (${formatPercent(s.winChance)})`;
-}
-
-function describeChoice(choice: BetChoice): string {
-  switch (choice.type) {
-    case 'color':
-      return choice.color;
-    case 'dozen':
-      return `${choice.dozen}ª docena`;
-    case 'number':
-      return `número ${choice.number}`;
   }
 }
 

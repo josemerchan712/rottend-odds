@@ -29,6 +29,9 @@ import { loadSprites } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
 import { canBetManually, canCollectTrash, createRoomState, inTransition, toggleRoom, updateRooms } from './game/rooms';
 import { formatNumber } from './util/format';
+import { playerBet, selectBetFraction } from './game/actions';
+import { stateChips } from './game/betting';
+import { tooltipLines } from './ui/tooltips';
 
 const { saveKey, settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
 
@@ -89,7 +92,7 @@ function show(next: Screen): void {
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
   if (next === 'menu') renderMenu(menuUi, continueInfo(localStorage, saveKey), currentSession()?.displayName ?? null);
   if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
-  if (next === 'game' && state) render(gameUi, state, scene.revealedBets);
+  if (next === 'game' && state) render(gameUi, state);
 }
 
 // Escena: clic en la basura (zona generosa), resaltado al pasar por encima y tecla E.
@@ -100,11 +103,21 @@ sceneCanvas.addEventListener('click', (event) => {
     toggleRoom(rooms);
     return;
   }
+  // Casino: elegir ficha o apostar en una zona del tapete (gira en el acto).
+  const target = scene.casinoTarget(state, point);
+  if (target?.kind === 'chip') {
+    selectBetFraction(state, target.chip.index);
+    return;
+  }
+  if (target?.kind === 'zone') {
+    if (!target.locked && canBetManually(rooms)) playerBet(state, target.zone.choice, defaultRng);
+    return;
+  }
   if (!canCollectTrash(rooms)) return;
   const item = itemAt(state.work.items, point.x, point.y);
   if (!item) return;
   scene.playerCollected(collectItem(state, item.id));
-  render(gameUi, state, scene.revealedBets);
+  render(gameUi, state);
 });
 sceneCanvas.addEventListener('mousemove', (event) => scene.setHover(scene.toScene(event.clientX, event.clientY)));
 sceneCanvas.addEventListener('mouseleave', () => scene.setHover(null));
@@ -121,10 +134,16 @@ window.addEventListener('keydown', (event) => {
     toggleRoom(rooms);
     return;
   }
+  // Teclas 1-4: las fichas visibles, de izquierda a derecha (de arriba abajo en la columna).
+  if (/^[1-4]$/.test(event.key) && rooms.current === 'casino') {
+    const chip = stateChips(state)[Number(event.key) - 1];
+    if (chip) selectBetFraction(state, chip.index);
+    return;
+  }
   if (event.key !== 'e' && event.key !== 'E') return;
   if (!canCollectTrash(rooms)) return;
   scene.playerCollected(collectNearest(state));
-  render(gameUi, state, scene.revealedBets);
+  render(gameUi, state);
 });
 
 function enterGame(loaded: GameState): void {
@@ -228,15 +247,13 @@ scene.onAwayResult = (spin) => {
 bindControls(
   gameUi,
   () => state!,
-  defaultRng,
-  () => state && render(gameUi, state, scene.revealedBets),
+  () => state && render(gameUi, state),
   () => {
     save();
     state = null;
     show('menu');
   },
   () => void reportDebtPaid(),
-  () => canBetManually(rooms),
 );
 
 // ---------------------------------------------------------------------------
@@ -394,6 +411,30 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') save();
 });
 
+/** Tooltip pixelado junto al ratón para las zonas del tapete y las fichas. */
+function updateTooltip(current: GameState): void {
+  const point = scene.hoverPoint;
+  const target = point && !inTransition(rooms) ? scene.casinoTarget(current, point) : null;
+  const tip = gameUi.tooltip;
+  if (!target || !point) {
+    tip.hidden = true;
+    return;
+  }
+  const html = tooltipLines(current, target)
+    .map((line, i) => `<div${i === 0 ? ' class="tip-title"' : ''}>${line.replace(/[<>&]/g, '')}</div>`)
+    .join('');
+  if (tip.dataset.html !== html) {
+    tip.innerHTML = html;
+    tip.dataset.html = html;
+  }
+  tip.hidden = false;
+  // Junto al ratón, sin salirse del escenario (unidades de 640x360).
+  const left = Math.min(point.x + 10, 640 - tip.offsetWidth - 4);
+  const top = point.y - tip.offsetHeight - 8 < 22 ? point.y + 14 : point.y - tip.offsetHeight - 8;
+  tip.style.left = `${Math.round(left)}px`;
+  tip.style.top = `${Math.round(top)}px`;
+}
+
 let lastDt = 0;
 startLoop(
   {
@@ -407,8 +448,9 @@ startLoop(
     render: () => {
       crt.tick();
       if (screen === 'game' && state) {
-        render(gameUi, state, scene.revealedBets);
+        render(gameUi, state);
         scene.render(state, lastDt, rooms);
+        updateTooltip(state);
       }
     },
   },

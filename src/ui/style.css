@@ -216,3 +216,16 @@ kbd {
 .crt-scan { background: repeating-linear-gradient(to bottom, transparent 0, transparent 1px, rgba(0, 0, 0, 0.22) 1px, rgba(0, 0, 0, 0.22) 2px); }
 .crt-vignette { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%); }
 .crt-grain { opacity: 0.6; image-rendering: pixelated; }
+
+/* Tooltip pixelado (tapete y fichas). */
+.tooltip {
+  position: absolute;
+  z-index: 30;
+  padding: 3px 6px;
+  font-size: 11px;
+  line-height: 1.05;
+  pointer-events: none;
+  max-width: 200px;
+  white-space: nowrap;
+}
+.tooltip .tip-title { color: var(--gold); }

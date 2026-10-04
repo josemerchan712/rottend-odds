@@ -8,6 +8,9 @@ import { formatNumber } from '../util/format';
 import { Effects } from './effects';
 import { RouletteView } from './rouletteView';
 import { ready, type PlayerFrame, type Sprites } from './sprites';
+import { ARM_SPOT, chipAt, WHEEL_CENTER, zoneAt, type Zone } from './casinoLayout';
+import { drawChips, drawStrip, drawTapete } from './tapeteView';
+import { isBetTypeUnlocked, stateChips, type SelectorChip } from '../game/betting';
 
 /** Resolución interna de la escena (sección 8 del diseño). */
 export const SCENE_WIDTH = 640;
@@ -15,7 +18,6 @@ export const SCENE_HEIGHT = 360;
 
 const TRASH_SIZE = 32;
 const PLAYER_SIZE = 64;
-const CHIP_SIZE = 32;
 const PORTRAIT_SIZE = 128;
 const CROUCH_SECONDS = 0.14;
 const LIFT_SECONDS = 0.3;
@@ -36,14 +38,13 @@ export const DOORS: Record<Room, { x: number; y: number; width: number; height: 
 
 /** Posiciones en la escena de 640x360 (sección 9.2), ajustadas al fondo de la mesa 1. */
 const LAYOUT = {
-  wheel: { x: 320, y: 140 },
-  chips: { x: 376, y: 236 },
-  arm: { x: 458, y: 252 },
   portrait: { x: SCENE_WIDTH - PORTRAIT_SIZE - 6, y: 6 },
 };
 
-/** Ficha o pila sobre la mesa según el botón de apuesta elegido (1%, 10%, 50%, TODO). */
-const BET_CHIPS = ['chip-1', 'chip-2', 'stack-3', 'stack-8'];
+/** Lo que hay bajo el ratón en el casino (para el tooltip y el clic). */
+export type CasinoTarget =
+  | { kind: 'zone'; zone: Zone; locked: boolean }
+  | { kind: 'chip'; chip: SelectorChip; position: number };
 
 const COLORS = {
   wall: '#100e0b',
@@ -117,6 +118,10 @@ export class Scene {
     this.hover = point;
   }
 
+  get hoverPoint(): { x: number; y: number } | null {
+    return this.hover;
+  }
+
   /** ¿Hay una puerta en ese punto de la sala actual? */
   doorAt(point: { x: number; y: number }, room: Room): boolean {
     const d = DOORS[room];
@@ -176,13 +181,34 @@ export class Scene {
     const ctx = this.ctx;
     this.drawBackground();
     this.effects.drawLamps(ctx);
-    this.roulette.draw(ctx, this.sprites.roulette.get(state.debtPaid ? 'broken' : 'healthy'), state.debtPaid ? 'broken' : 'healthy', LAYOUT.wheel.x, LAYOUT.wheel.y);
-    this.drawSprite(this.sprites.chips.get(BET_CHIPS[state.betFractionIndex] ?? BET_CHIPS[0]), LAYOUT.chips.x, LAYOUT.chips.y, CHIP_SIZE, 1);
+    const version = state.debtPaid ? 'broken' : 'healthy';
+    this.roulette.draw(ctx, this.sprites.roulette.get(version), version, WHEEL_CENTER.x, WHEEL_CENTER.y);
+    drawStrip(ctx, this.shownSpins(state));
+    const target = this.casinoTarget(state);
+    drawTapete(ctx, state, target?.kind === 'zone' ? target.zone : null);
+    drawChips(ctx, state, this.sprites, target?.kind === 'chip' ? target.position : null);
     if (state.upgrades.crupier > 0) {
       // El brazo mecánico del crupier, junto a la mesa; se estira un poco cuando apuesta.
       const reach = Math.round((this.armReach / ARM_REACH_SECONDS) * 4);
-      this.drawSprite(this.sprites.helpers.get('arm'), LAYOUT.arm.x - reach, LAYOUT.arm.y, PLAYER_SIZE, -1);
+      this.drawSprite(this.sprites.helpers.get('arm'), ARM_SPOT.x - reach, ARM_SPOT.y, PLAYER_SIZE, -1);
     }
+    this.canvas.style.cursor = target && !(target.kind === 'zone' && target.locked) ? 'pointer' : 'default';
+  }
+
+  /** Tiradas cuya bola ya ha caído (la tira de resultados no adelanta el resultado). */
+  shownSpins(state: GameState): SpinResult[] {
+    return state.recentSpins.filter((_, i) => state.stats.bets - i <= this.revealedBets);
+  }
+
+  /** Zona del tapete o ficha bajo el ratón (solo en el casino). */
+  casinoTarget(state: GameState, point = this.hover): CasinoTarget | null {
+    if (!point || this.room !== 'casino') return null;
+    const chips = stateChips(state);
+    const position = chipAt(point.x, point.y, chips.length);
+    if (position !== null) return { kind: 'chip', chip: chips[position], position };
+    const zone = zoneAt(point.x, point.y);
+    if (zone) return { kind: 'zone', zone, locked: !isBetTypeUnlocked(state, zone.type) };
+    return null;
   }
 
   /** Trastienda: el jugador, la basura y el ayudante de limpieza. */
@@ -286,7 +312,7 @@ export class Scene {
       this.revealedBets = Math.max(this.revealedBets, landed.number);
       const { spin } = landed;
       const text = spin.delta >= 0 ? `+${formatNumber(spin.delta)}` : `−${formatNumber(-spin.delta)}`;
-      this.addFloat(text, LAYOUT.wheel.x, LAYOUT.wheel.y - 70, spin.delta >= 0 ? COLORS.text : '#c0473d');
+      this.addFloat(text, WHEEL_CENTER.x, WHEEL_CENTER.y - 70, spin.delta >= 0 ? COLORS.text : '#c0473d');
       if (landed.bigLoss) this.effects.shake();
     }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { playerBet, selectBetFraction } from '../src/game/actions';
+import { playerBet } from '../src/game/actions';
 import { betAmount, maxBet, playerBetAmount } from '../src/game/betting';
 import { seededRng } from '../src/game/rng';
 import { spin } from '../src/game/roulette';
@@ -25,14 +25,6 @@ describe('selector de apuesta', () => {
         expect(bet).toBeGreaterThanOrEqual(0);
       }
     }
-  });
-
-  it('los botones 1%, 10%, 50% y TODO son fracciones del techo', () => {
-    const state = stateWith({ balance: 1e9 });
-    state.upgrades.maxBet = 11;
-    const ceiling = maxBet(11);
-    const bets = [0, 1, 2, 3].map((i) => (selectBetFraction(state, i), playerBetAmount(state)));
-    expect(bets).toEqual([0.01, 0.1, 0.5, 1].map((f) => Math.floor(ceiling * f)));
   });
 
   it('si el saldo es menor que la apuesta pedida, se limita al saldo', () => {

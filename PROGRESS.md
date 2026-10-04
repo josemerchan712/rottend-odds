@@ -65,9 +65,9 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
       Ajustes respecto al diseño inicial: suerte base 550 → 150; techo máx. nivel 10 con base 15 (143K);
       descartes cada 6 s y 1 + nivel/3, la sustituta con 2 candidatas más; pozo 8% de cada apuesta; el
       esqueleto solo descarta si se pasa y quedan 2+ cargas.
-- [ ] M4.6 assets (crupier, cartas, fondo, esqueleto) + provisionales
-- [ ] M4.7 escena (cartas que se reparten y voltean, PEDIR/PLANTARSE en la mesa), HUD, pestaña, ?dev=mesa4
-- [ ] M4.8 diálogo de la Crupier (pendiente de revisión)
+- [x] M4.6 assets (crupier, cartas, fondo, esqueleto) + provisionales
+- [x] M4.7 escena (cartas que se reparten y voltean, PEDIR/PLANTARSE en la mesa), HUD, pestaña, ?dev=mesa4
+- [x] M4.8 diálogo de la Crupier (pendiente de revisión)
 - [ ] M4.9 servidor v7 + plausibility --full + docs
 - [ ] B3 cierre
 

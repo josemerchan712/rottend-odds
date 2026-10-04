@@ -50,6 +50,21 @@ import { payDebt } from './game/debt';
 import { closeDrawers2, mountUi2, render2, toggleDrawer2 } from './ui/render2';
 import { SlotsScene } from './ui/slotsScene';
 import { DiceScene } from './ui/diceScene';
+import { CardsScene } from './ui/cardsScene';
+import { closeDrawers4, mountUi4, render4, toggleDrawer4 } from './ui/render4';
+import { cardsTooltip } from './ui/tooltips4';
+import { DIALOGUE4_ES } from './content/dialogue4.es';
+import { acceptBust, cardsCeiling, cardsChips, discard as discardCard, hit as hitCard, playerDeal, selectCardsChip, stand as standHand } from './game/cards/game';
+import {
+  buyCardsUpgrade,
+  cardsLenderPhase,
+  collectCardsItem,
+  collectNearestCardsItem,
+  payCardsDebt,
+  selectSkeletonProfile,
+} from './game/cards/table';
+import { isTableUnlocked } from './game/tables';
+import { CARD_UPGRADE_IDS } from './game/config';
 import { closeDrawers3, mountUi3, render3, toggleDrawer3 } from './ui/render3';
 import { diceTooltip } from './ui/tooltips3';
 import { DIALOGUE3_ES } from './content/dialogue3.es';
@@ -59,7 +74,6 @@ import {
   collectDiceItem,
   collectNearestDiceItem,
   diceLenderPhase,
-  isDiceUnlocked,
   payDiceDebt,
   selectGhostProfile,
 } from './game/dice/table';
@@ -85,11 +99,11 @@ import { LENDER_SIZE, LENDER_SPOT } from './ui/casinoLayout';
 const { settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
 
 /**
- * Modo desarrollador (solo con `npm run dev`): ?dev=mesa2 o ?dev=mesa3 usan un hueco de guardado
+ * Modo desarrollador (solo con `npm run dev`): ?dev=mesa2, ?dev=mesa3 o ?dev=mesa4 usan un hueco de guardado
  * aparte con las mesas anteriores saldadas y moneda de prueba, para llegar sin jugarlas.
  */
 const DEV_MODE = import.meta.env.DEV ? new URLSearchParams(location.search).get('dev') : null;
-const DEV_TABLE = DEV_MODE === 'mesa2' ? 2 : DEV_MODE === 'mesa3' ? 3 : null;
+const DEV_TABLE = DEV_MODE === 'mesa2' ? 2 : DEV_MODE === 'mesa3' ? 3 : DEV_MODE === 'mesa4' ? 4 : null;
 const saveKey = DEV_TABLE ? `${CONFIG.tech.saveKey}-dev${DEV_TABLE}` : CONFIG.tech.saveKey;
 if (DEV_TABLE && !loadGame(localStorage, saveKey)) saveGame(localStorage, saveKey, devState(DEV_TABLE), Date.now());
 
@@ -133,19 +147,21 @@ screens.game.innerHTML = `
   <div class="table-layer" data-layer="1"></div>
   <div class="table-layer" data-layer="2" hidden></div>
   <div class="table-layer" data-layer="3" hidden></div>
+  <div class="table-layer" data-layer="4" hidden></div>
   <div class="table-fade" data-ref="tableFade"></div>
   <div class="banner pixel-frame" data-ref="banner" hidden>
     <h2 data-ref="bannerTitle"></h2>
     <p data-ref="bannerText"></p>
     <button class="gold small" data-ref="bannerButton"></button>
   </div>`;
-const layers = [1, 2, 3].map((n) => screens.game.querySelector<HTMLElement>(`[data-layer="${n}"]`)!);
+const layers = [1, 2, 3, 4].map((n) => screens.game.querySelector<HTMLElement>(`[data-layer="${n}"]`)!);
 const gameRef = <T extends HTMLElement = HTMLElement>(name: string) => screens.game.querySelector<T>(`[data-ref="${name}"]`)!;
 const tableFadeEl = gameRef('tableFade');
 const banner = { root: gameRef('banner'), title: gameRef('bannerTitle'), text: gameRef('bannerText'), button: gameRef<HTMLButtonElement>('bannerButton') };
 const gameUi = mountUi(layers[0]);
 const slotsUi = mountUi2(layers[1]);
 const diceUi = mountUi3(layers[2]);
+const cardsUi = mountUi4(layers[3]);
 const authUi = mountAuth(screens.auth);
 const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
@@ -154,6 +170,7 @@ const sprites = loadSprites();
 const scene = new Scene(sceneCanvas, sprites);
 const slotsScene = new SlotsScene(sceneCanvas, sprites);
 const diceScene = new DiceScene(sceneCanvas, sprites);
+const cardsScene = new CardsScene(sceneCanvas, sprites);
 const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE', 3: 'EL BARMAN', 4: 'LA CRUPIER' } as const;
 const speech = new Speech(screens.game, SPEAKERS[1]);
 /** Cuándo habla el prestamista de cada mesa (se crean al entrar en la partida). */
@@ -168,8 +185,13 @@ function snapshot3(current: GameState): WatchSnapshot {
   return { balance: dice.balance, phase: diceLenderPhase(dice), helperBought: dice.upgrades.ghost > 0, debtPaid: dice.debtPaid };
 }
 
+function snapshot4(current: GameState): WatchSnapshot {
+  const cards = current.cards;
+  return { balance: cards.balance, phase: cardsLenderPhase(cards), helperBought: cards.upgrades.skeleton > 0, debtPaid: cards.debtPaid };
+}
+
 function snapshotFor(current: GameState, table: TableId): WatchSnapshot {
-  return table === 1 ? snapshot(current) : table === 2 ? snapshot2(current) : snapshot3(current);
+  return table === 1 ? snapshot(current) : table === 2 ? snapshot2(current) : table === 3 ? snapshot3(current) : snapshot4(current);
 }
 
 function snapshot2(current: GameState): WatchSnapshot {
@@ -185,6 +207,11 @@ function activeTable(): TableId {
 scene.onSpinShown = (spin) => {
   const w = watches[1];
   if (w && state) noteSpinShown(w, spin, currentMaxBet(state));
+};
+cardsScene.onHandShown = (hand) => {
+  const w = watches[4];
+  if (!w || !state) return;
+  noteSpinShown(w, { bettor: hand.bettor, bet: hand.bet, outcome: hand.jackpot > 0 ? 'jackpot' : hand.result === 'gana' ? 'gana' : 'pierde' }, cardsCeiling(state.cards));
 };
 diceScene.onRollShown = (roll) => {
   const w = watches[3];
@@ -228,17 +255,17 @@ function show(next: Screen): void {
 function renderHud(current: GameState): void {
   const table = current.activeTable;
   layers.forEach((layer, i) => (layer.hidden = table !== i + 1));
-  const table3 = isDiceUnlocked(current);
-  for (const ui of [gameUi, slotsUi, diceUi]) {
+  for (const ui of [gameUi, slotsUi, diceUi, cardsUi]) {
     ui.tabs.hidden = !current.debtPaid;
     ui.tabButtons.forEach((b) => {
       b.classList.toggle('active', Number(b.dataset.table) === table);
-      if (b.dataset.table === '3') b.hidden = !table3;
+      b.hidden = !isTableUnlocked(current, Number(b.dataset.table) as TableId);
     });
   }
   if (table === 1) render(gameUi, current);
   else if (table === 2) render2(slotsUi, current);
-  else render3(diceUi, current);
+  else if (table === 3) render3(diceUi, current);
+  else render4(cardsUi, current);
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +283,7 @@ function switchTable(to: TableId): void {
   closeDrawers(gameUi);
   closeDrawers2(slotsUi);
   closeDrawers3(diceUi);
+  closeDrawers4(cardsUi);
 }
 
 function updateTableFade(current: GameState, dt: number): void {
@@ -267,14 +295,16 @@ function updateTableFade(current: GameState, dt: number): void {
   const t = tableFade.elapsed;
   if (!tableFade.switched && t >= TABLE_FADE_SECONDS) {
     tableFade.switched = true;
-    const firstVisit = (tableFade.to === 2 && !current.slots.visited) || (tableFade.to === 3 && !current.dice.visited);
-    if (tableFade.to === 2) current.slots.visited = true;
-    if (tableFade.to === 3) current.dice.visited = true;
+    const visited = { 2: current.slots, 3: current.dice, 4: current.cards } as const;
+    const target = tableFade.to === 1 ? null : visited[tableFade.to];
+    const firstVisit = target !== null && !target.visited;
+    if (target) target.visited = true;
     current.activeTable = tableFade.to;
     rooms = createRoomState();
     scene.reset(current);
     slotsScene.reset(current);
     diceScene.reset(current);
+    cardsScene.reset(current);
     speech.close();
     speech.setSpeaker(SPEAKERS[tableFade.to]);
     // Cada prestamista solo habla en su mesa, y no comenta lo que pasó mientras no se le veía.
@@ -289,7 +319,7 @@ function updateTableFade(current: GameState, dt: number): void {
   if (t >= total) tableFade = null;
 }
 
-for (const ui of [gameUi, slotsUi, diceUi]) {
+for (const ui of [gameUi, slotsUi, diceUi, cardsUi]) {
   ui.tabButtons.forEach((b) => b.addEventListener('click', () => switchTable(Number(b.dataset.table) as TableId)));
 }
 
@@ -317,6 +347,10 @@ sceneCanvas.addEventListener('click', (event) => {
   }
   if (activeTable() === 3) {
     clickDice(state, point);
+    return;
+  }
+  if (activeTable() === 4) {
+    clickCards(state, point);
     return;
   }
   if (!inTransition(rooms) && scene.doorAt(point, rooms.current)) {
@@ -377,6 +411,38 @@ function clickDice(current: GameState, point: { x: number; y: number }): void {
   diceScene.playerCollected(collectDiceItem(dice, item.id));
 }
 
+/** Clic en la escena de la mesa 4: puerta, ficha, repartir, pedir, plantarse, aceptar, descartar o basura. */
+function clickCards(current: GameState, point: { x: number; y: number }): void {
+  const cards = current.cards;
+  if (!inTransition(rooms) && cardsScene.doorAt(point, rooms.current)) {
+    toggleRoom(rooms);
+    return;
+  }
+  const hit = cardsScene.target(current, point);
+  if (hit?.kind === 'chip') selectCardsChip(cards, hit.chip.index);
+  else if (hit) cardsAction(hit.kind);
+  if (hit || !canCollectTrash(rooms)) return;
+  const item = cardsScene.trashAt(current, point);
+  if (!item) return;
+  cardsScene.playerCollected(collectCardsItem(cards, item.id));
+}
+
+/** Una decisión en la mesa 4 (solo en la sala y sin cartas moviéndose). */
+function cardsAction(kind: 'deal' | 'hit' | 'stand' | 'accept' | 'discard'): void {
+  if (!state || !canBetManually(rooms) || cardsScene.dealing()) return;
+  const cards = state.cards;
+  const hand = cards.hand;
+  if (kind === 'deal') {
+    if (!hand || hand.status === 'fin') playerDeal(cards, defaultRng);
+    return;
+  }
+  if (!hand || hand.status === 'fin') return;
+  if (kind === 'hit') hitCard(cards, hand, defaultRng);
+  else if (kind === 'stand') standHand(cards, hand, defaultRng);
+  else if (kind === 'accept') acceptBust(cards, hand);
+  else discardCard(cards, hand, defaultRng);
+}
+
 /** El jugador tira los dados (solo en el bar). Una tirada perdida abierta se acepta al tirar otra. */
 function rollDiceNow(): void {
   if (!state || !canBetManually(rooms) || diceScene.rollInFlight()) return;
@@ -394,11 +460,13 @@ sceneCanvas.addEventListener('mousemove', (event) => {
   scene.setHover(point);
   slotsScene.setHover(point);
   diceScene.setHover(point);
+  cardsScene.setHover(point);
 });
 sceneCanvas.addEventListener('mouseleave', () => {
   scene.setHover(null);
   slotsScene.setHover(null);
   diceScene.setHover(null);
+  cardsScene.setHover(null);
 });
 window.addEventListener('keydown', (event) => {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -410,15 +478,18 @@ window.addEventListener('keydown', (event) => {
   if (screen !== 'game' || !state) return;
   const table2 = activeTable() === 2;
   const table3 = activeTable() === 3;
+  const table4 = activeTable() === 4;
   if (event.key === 'Escape') {
     closeDrawers(gameUi);
     closeDrawers2(slotsUi);
     closeDrawers3(diceUi);
+    closeDrawers4(cardsUi);
     return;
   }
   if (event.key === 'm' || event.key === 'M' || event.key === 'a' || event.key === 'A') {
     const drawer = event.key.toLowerCase() === 'm' ? 'mesa' : 'ayuda';
-    if (table3) toggleDrawer3(diceUi, drawer);
+    if (table4) toggleDrawer4(cardsUi, drawer);
+    else if (table3) toggleDrawer3(diceUi, drawer);
     else if (table2) toggleDrawer2(slotsUi, drawer);
     else toggleDrawer(gameUi, drawer);
     return;
@@ -426,6 +497,25 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'Tab') {
     event.preventDefault();
     if (!tableFade) toggleRoom(rooms);
+    return;
+  }
+  if (table4) {
+    const cards = state.cards;
+    const key = event.key.toLowerCase();
+    if (rooms.current === 'casino') {
+      // Espacio: repartir (o plantarse con una mano en juego); P pedir; S plantarse; D descartar.
+      if (event.key === ' ') {
+        event.preventDefault();
+        cardsAction(cards.hand && cards.hand.status !== 'fin' ? (cards.hand.status === 'pasado' ? 'accept' : 'stand') : 'deal');
+      } else if (/^[1-4]$/.test(event.key)) {
+        const chip = cardsChips(cards)[Number(event.key) - 1];
+        if (chip) selectCardsChip(cards, chip.index);
+      } else if (key === 'p') cardsAction('hit');
+      else if (key === 's') cardsAction('stand');
+      else if (key === 'd') cardsAction('discard');
+    } else if (key === 'e' && canCollectTrash(rooms)) {
+      cardsScene.playerCollected(collectNearestCardsItem(cards));
+    }
     return;
   }
   if (table3) {
@@ -477,11 +567,13 @@ function enterGame(loaded: GameState, start: { kind: 'new' | 'resume'; absenceSe
   scene.reset(loaded);
   slotsScene.reset(loaded);
   diceScene.reset(loaded);
+  cardsScene.reset(loaded);
   speech.close();
   speech.setSpeaker(SPEAKERS[loaded.activeTable]);
   watches[1] = createWatch(snapshot(loaded));
   watches[2] = createWatch(snapshot2(loaded));
   watches[3] = createWatch(snapshot3(loaded));
+  watches[4] = createWatch(snapshot4(loaded));
   noteSessionStart(watches[loaded.activeTable]!, start.kind, start.absenceSeconds);
   tableFade = null;
   banner.root.hidden = true;
@@ -627,7 +719,7 @@ diceUi.profileButtons.forEach((b, i) => b.addEventListener('click', () => state 
 diceUi.payDebt.addEventListener('click', () => {
   if (!state || !payDiceDebt(state.dice)) return;
   renderHud(state);
-  showBanner('MESA 3 SALDADA', 'El Barman ha cobrado. La mesa 4 todavía no está abierta.', 'Seguir', () => {});
+  showBanner('MESA 3 SALDADA', 'El Barman ha cobrado. Tras las cortinas rojas se abre la mesa de la Crupier.', 'Bajar a la mesa 4', () => switchTable(4));
 });
 diceUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
 diceUi.toMenu.addEventListener('click', toMenu);
@@ -636,6 +728,36 @@ diceUi.statsToggle.addEventListener('click', () => {
   diceUi.statsBody.hidden = !diceUi.statsBody.hidden;
   diceUi.statsToggle.textContent = diceUi.statsBody.hidden ? 'Estadísticas ▸' : 'Estadísticas ▾';
 });
+// Mesa 4: tienda, perfiles del esqueleto, pago de la deuda, pantalla completa y menú.
+for (const id of CARD_UPGRADE_IDS) {
+  cardsUi.shop[id].buy.addEventListener('click', () => {
+    if (!state) return;
+    buyCardsUpgrade(state.cards, id);
+    renderHud(state);
+  });
+}
+cardsUi.profileButtons.forEach((b, i) => b.addEventListener('click', () => state && selectSkeletonProfile(state.cards, i)));
+cardsUi.payDebt.addEventListener('click', () => {
+  if (!state || !payCardsDebt(state.cards)) return;
+  renderHud(state);
+  showBanner('MESA 4 SALDADA', 'La Crupier ha cobrado. La mesa 5 todavía no está abierta.', 'Seguir', () => {});
+});
+cardsUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
+cardsUi.toMenu.addEventListener('click', toMenu);
+for (const id of ['mesa', 'ayuda'] as const) cardsUi.drawers[id].tab.addEventListener('click', () => toggleDrawer4(cardsUi, id));
+cardsUi.statsToggle.addEventListener('click', () => {
+  cardsUi.statsBody.hidden = !cardsUi.statsBody.hidden;
+  cardsUi.statsToggle.textContent = cardsUi.statsBody.hidden ? 'Estadísticas ▸' : 'Estadísticas ▾';
+});
+let toast4Timer = 0;
+cardsScene.onAwayResult = (hand) => {
+  cardsUi.toast.textContent = `Esqueleto ${hand.delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(hand.delta))}`;
+  cardsUi.toast.dataset.kind = hand.jackpot > 0 ? 'jackpot' : hand.result === 'gana' ? 'gana' : 'pierde';
+  cardsUi.toast.classList.add('show');
+  window.clearTimeout(toast4Timer);
+  toast4Timer = window.setTimeout(() => cardsUi.toast.classList.remove('show'), 1400);
+};
+
 let toast3Timer = 0;
 diceScene.onAwayResult = (roll) => {
   diceUi.toast.textContent = `Camarero ${roll.delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(roll.delta))}`;
@@ -821,10 +943,13 @@ document.addEventListener('visibilitychange', () => {
 function updateTooltip(current: GameState): void {
   const table2 = current.activeTable === 2;
   const point = scene.hoverPoint;
-  const tip = current.activeTable === 3 ? diceUi.tooltip : table2 ? slotsUi.tooltip : gameUi.tooltip;
+  const tip = current.activeTable === 4 ? cardsUi.tooltip : current.activeTable === 3 ? diceUi.tooltip : table2 ? slotsUi.tooltip : gameUi.tooltip;
   let lines: string[] | null = null;
   if (point && !inTransition(rooms) && !tableFade) {
-    if (current.activeTable === 3) {
+    if (current.activeTable === 4) {
+      const hit = cardsScene.target(current, point);
+      if (hit) lines = cardsTooltip(current, hit);
+    } else if (current.activeTable === 3) {
       const hit = diceScene.target(current, point);
       if (hit) lines = diceTooltip(current, hit);
     } else if (table2) {
@@ -864,20 +989,23 @@ function updateDialogue(current: GameState, dt: number, entered: ReturnType<type
   if (!watch) return;
   if (entered) noteRoomEntered(watch, entered);
   observe(watch, snapshotFor(current, table));
-  const inFlight = table === 1 ? scene.spinInFlight(current) : table === 2 ? slotsScene.spinInFlight() : diceScene.rollInFlight();
+  const inFlight =
+    table === 1 ? scene.spinInFlight(current) : table === 2 ? slotsScene.spinInFlight() : table === 3 ? diceScene.rollInFlight() : cardsScene.dealing();
   const blocked = inTransition(rooms) || tableFade !== null || inFlight || !settings.dialogues;
   const line =
     table === 1
       ? tickWatch(watch, dt, DIALOGUE_ES, lenderPhase(current), defaultRng, blocked)
       : table === 2
         ? tickWatch(watch, dt, DIALOGUE2_ES, slotsLenderPhase(current.slots), defaultRng, blocked)
-        : tickWatch(watch, dt, DIALOGUE3_ES, diceLenderPhase(current.dice), defaultRng, blocked);
+        : table === 3
+          ? tickWatch(watch, dt, DIALOGUE3_ES, diceLenderPhase(current.dice), defaultRng, blocked)
+          : tickWatch(watch, dt, DIALOGUE4_ES, cardsLenderPhase(current.cards), defaultRng, blocked);
   if (line) speech.say(line.text);
   if (!settings.dialogues && speech.speaking) speech.close();
   const inHall = rooms.current === 'casino' && !inTransition(rooms);
   // Mesa 2: el bocadillo sale a la derecha de la cabeza de la Tragaperras viviente.
   // Mesa 2 y 3: el bocadillo sale a la derecha de la cabeza del prestamista.
-  const anchor = table === 1 ? { x: LENDER_SPOT.x, y: LENDER_SPOT.y - LENDER_SIZE + 4 } : table === 2 ? { x: 380, y: 44 } : { x: 380, y: 124 };
+  const anchor = table === 1 ? { x: LENDER_SPOT.x, y: LENDER_SPOT.y - LENDER_SIZE + 4 } : table === 2 ? { x: 380, y: 44 } : { x: 380, y: 122 };
   speech.update(dt, inHall ? { mode: 'bubble', anchor, minLeft: table === 1 ? SPEECH_MIN_LEFT : 372 } : { mode: 'box' });
 }
 
@@ -890,7 +1018,8 @@ startLoop(
         const tick = updateGame(state, dt, defaultRng);
         if (state.activeTable === 1) scene.cleanerCollected(tick.cleaned);
         else if (state.activeTable === 2) slotsScene.cleanerCollected(tick.slots.cleaned);
-        else diceScene.cleanerCollected(tick.dice.cleaned);
+        else if (state.activeTable === 3) diceScene.cleanerCollected(tick.dice.cleaned);
+        else cardsScene.cleanerCollected(tick.cards.cleaned);
         updateTableFade(state, dt);
         updateDialogue(state, dt, entered);
       }
@@ -902,7 +1031,8 @@ startLoop(
         renderHud(state);
         if (state.activeTable === 1) scene.render(state, lastDt, rooms);
         else if (state.activeTable === 2) slotsScene.render(state, lastDt, rooms);
-        else diceScene.render(state, lastDt, rooms);
+        else if (state.activeTable === 3) diceScene.render(state, lastDt, rooms);
+        else cardsScene.render(state, lastDt, rooms);
         updateTooltip(state);
       }
     },
@@ -911,7 +1041,7 @@ startLoop(
 );
 
 /** Partida de prueba del modo desarrollador: las mesas anteriores con todo comprado y saldadas. */
-function devState(table: 2 | 3): GameState {
+function devState(table: 2 | 3 | 4): GameState {
   const dev = createInitialState();
   for (const id of UPGRADE_IDS) dev.upgrades[id] = CONFIG.upgrades[id].maxLevel;
   dev.helper.profile = 1;
@@ -919,7 +1049,7 @@ function devState(table: 2 | 3): GameState {
   payDebt(dev);
   dev.playTime = 8 * 60;
   dev.slots.balance = 2_000;
-  if (table === 3) {
+  if (table >= 3) {
     for (const id of SLOT_UPGRADE_IDS) dev.slots.upgrades[id] = CONFIG.slots.upgrades[id].maxLevel;
     dev.slots.helper.profile = 1;
     dev.slots.debtPaid = true;
@@ -928,6 +1058,16 @@ function devState(table: 2 | 3): GameState {
     dev.slots.balance = 50_000;
     dev.playTime = 20 * 60;
     dev.dice.balance = 3_000;
+  }
+  if (table === 4) {
+    for (const id of DICE_UPGRADE_IDS) dev.dice.upgrades[id] = CONFIG.dice.upgrades[id].maxLevel;
+    dev.dice.helper.profile = 1;
+    dev.dice.debtPaid = true;
+    dev.dice.visited = true;
+    dev.dice.playTime = 14 * 60;
+    dev.dice.balance = 60_000;
+    dev.playTime = 34 * 60;
+    dev.cards.balance = 4_000;
   }
   return dev;
 }

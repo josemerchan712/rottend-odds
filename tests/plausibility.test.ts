@@ -8,6 +8,8 @@ const table = JSON.parse(read('plausibility.json'));
 describe('shared/plausibility.json', () => {
   it('se generó con la shared/config.json actual (si falla: npm run plausibility)', () => {
     expect(table.configHash).toBe(configHash(read('config.json')));
+    // La que se sube tiene que ser la completa (npm run plausibility, que es --full).
+    expect(table.mode, 'generada con --quick: regenera con npm run plausibility').toBe('full');
   });
 
   it('la tabla nunca baja y cubre todo el horizonte', () => {

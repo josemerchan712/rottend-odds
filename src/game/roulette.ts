@@ -27,7 +27,7 @@ export function spin(state: GameState, req: SpinRequest, rng: Rng): SpinResult |
   const winChance = betWinChance(req.choice.type, state.upgrades.luck, bet / ceiling, req.luckBonus ?? 0);
   const jpChance = jackpotChance(state.upgrades.luck, state.upgrades.jackpot);
   const base = { bettor: req.bettor, choice: req.choice, bet, winChance };
-  const winners = winningSlots(req.choice);
+  const { win: winners, lose: losers } = slotsFor(req.choice);
 
   let result: SpinResult;
   if (rng() < jpChance) {
@@ -37,7 +37,7 @@ export function spin(state: GameState, req: SpinRequest, rng: Rng): SpinResult |
     const delta = bet * CONFIG.betTypes[req.choice.type].payout;
     result = { ...base, outcome: 'gana', slot: pick(winners, rng), delta, jackpotCapped: false };
   } else {
-    const slot = pick(losingSlots(winners), rng);
+    const slot = pick(losers, rng);
     result = { ...base, outcome: 'pierde', slot, delta: -bet, jackpotCapped: false };
   }
 
@@ -59,24 +59,37 @@ export function slotColor(slot: number): BetColor | 'verde' | 'dorado' {
   return slot % 2 === 1 ? 'negro' : 'blanco';
 }
 
+/** Casillas ganadoras y perdedoras de cada apuesta, calculadas una vez (se tira muchas veces por segundo). */
+const slotCache = new Map<string, { win: readonly number[]; lose: readonly number[] }>();
+
+function choiceKey(choice: BetChoice): string {
+  return choice.type === 'color' ? `c${choice.color}` : choice.type === 'dozen' ? `d${choice.dozen}` : `n${choice.number}`;
+}
+
+function slotsFor(choice: BetChoice): { win: readonly number[]; lose: readonly number[] } {
+  const key = choiceKey(choice);
+  let entry = slotCache.get(key);
+  if (!entry) {
+    const all = Array.from({ length: CONFIG.roulette.slots - 1 }, (_, i) => i + 1);
+    const win =
+      choice.type === 'color'
+        ? all.filter((s) => slotColor(s) === choice.color)
+        : choice.type === 'dozen'
+          ? all.filter((s) => Math.ceil(s / 12) === choice.dozen)
+          : [choice.number];
+    // Las perdedoras incluyen el cero verde.
+    const lose = Array.from({ length: CONFIG.roulette.slots }, (_, i) => i).filter((s) => !win.includes(s));
+    entry = { win, lose };
+    slotCache.set(key, entry);
+  }
+  return entry;
+}
+
 /** Casillas (1-36) que hacen ganar la apuesta. */
 export function winningSlots(choice: BetChoice): number[] {
-  const all = Array.from({ length: CONFIG.roulette.slots - 1 }, (_, i) => i + 1);
-  switch (choice.type) {
-    case 'color':
-      return all.filter((s) => slotColor(s) === choice.color);
-    case 'dozen':
-      return all.filter((s) => Math.ceil(s / 12) === choice.dozen);
-    case 'number':
-      return [choice.number];
-  }
+  return [...slotsFor(choice).win];
 }
 
-/** Casillas que hacen perder, incluido el cero verde. */
-function losingSlots(winners: number[]): number[] {
-  return Array.from({ length: CONFIG.roulette.slots }, (_, i) => i).filter((s) => !winners.includes(s));
-}
-
-function pick(slots: number[], rng: Rng): number {
+function pick(slots: readonly number[], rng: Rng): number {
   return slots[Math.floor(rng() * slots.length)];
 }

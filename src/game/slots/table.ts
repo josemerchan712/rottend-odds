@@ -153,18 +153,34 @@ export function toolboxMultiplier(slots: SlotsState): number {
   return 1 + S.work.valuePerLevel * slots.upgrades.toolbox;
 }
 
+const hosts = new WeakMap<SlotsState, WorkHost>();
+
+/** La trastienda de la mesa 2 para el núcleo común (una por estado, con getters). */
 export function slotsWorkHost(slots: SlotsState): WorkHost {
-  return {
-    def: S.work,
-    work: slots.work,
-    valueMultiplier: toolboxMultiplier(slots),
-    extraPerClick: slots.upgrades.rag * S.work.extraPerLevel,
-    cleanerLevel: slots.upgrades.apprentice,
-    credit: (value) => {
-      slots.balance += value;
-      slots.stats.workEarned += value;
-    },
-  };
+  let host = hosts.get(slots);
+  if (!host) {
+    host = {
+      def: S.work,
+      get work() {
+        return slots.work;
+      },
+      get valueMultiplier() {
+        return toolboxMultiplier(slots);
+      },
+      get extraPerClick() {
+        return slots.upgrades.rag * S.work.extraPerLevel;
+      },
+      get cleanerLevel() {
+        return slots.upgrades.apprentice;
+      },
+      credit(value: number) {
+        slots.balance += value;
+        slots.stats.workEarned += value;
+      },
+    };
+    hosts.set(slots, host);
+  }
+  return host;
 }
 
 export function slotItemValue(slots: SlotsState, kind: string): number {

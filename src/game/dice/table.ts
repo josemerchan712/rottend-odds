@@ -170,18 +170,34 @@ export function cartMultiplier(dice: DiceState): number {
   return 1 + D.work.valuePerLevel * dice.upgrades.cart;
 }
 
+const hosts = new WeakMap<DiceState, WorkHost>();
+
+/** La trastienda de la mesa 3 para el núcleo común (una por estado, con getters). */
 export function diceWorkHost(dice: DiceState): WorkHost {
-  return {
-    def: D.work,
-    work: dice.work,
-    valueMultiplier: cartMultiplier(dice),
-    extraPerClick: dice.upgrades.tray * D.work.extraPerLevel,
-    cleanerLevel: dice.upgrades.busboy,
-    credit: (value) => {
-      dice.balance += value;
-      dice.stats.workEarned += value;
-    },
-  };
+  let host = hosts.get(dice);
+  if (!host) {
+    host = {
+      def: D.work,
+      get work() {
+        return dice.work;
+      },
+      get valueMultiplier() {
+        return cartMultiplier(dice);
+      },
+      get extraPerClick() {
+        return dice.upgrades.tray * D.work.extraPerLevel;
+      },
+      get cleanerLevel() {
+        return dice.upgrades.busboy;
+      },
+      credit(value: number) {
+        dice.balance += value;
+        dice.stats.workEarned += value;
+      },
+    };
+    hosts.set(dice, host);
+  }
+  return host;
 }
 
 export function diceItemValue(dice: DiceState, kind: string): number {

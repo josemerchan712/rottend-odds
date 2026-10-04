@@ -235,9 +235,10 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
     // 2. Compras: primero las prioritarias; después siempre la más barata que pueda pagar.
     for (;;) {
       let best: UpgradeId | null =
-        strategy.priority?.find((id) => strategy.buys(id, state) && canBuy(state, id)) ?? null;
+        strategy.priority?.find((id) => canBuy(state, id) && strategy.buys(id, state)) ?? null;
+      // Primero lo barato (¿le llega?) y después lo que calcula la estrategia: mismo resultado, más rápido.
       for (const id of best ? [] : UPGRADE_IDS) {
-        if (!strategy.buys(id, state) || !canBuy(state, id)) continue;
+        if (!canBuy(state, id) || !strategy.buys(id, state)) continue;
         if (state.balance - nextCost(state, id)! < strategy.reserve(state)) continue;
         if (SIDE_UPGRADES.includes(id) && nextCost(state, id)! > state.balance * SIDE_BUDGET) continue;
         if (best === null || nextCost(state, id)! < nextCost(state, best)!) best = id;
@@ -251,7 +252,8 @@ export function runOne(strategy: Strategy, seed: number, player: PlayerModel = D
         if (state.upgrades.luck >= CONFIG.upgrades.luck.maxLevel) result.luckMaxTime = state.playTime;
       }
     }
-    selectHelperProfile(state, Math.min(strategy.helperProfile(state), state.upgrades.helperProfile));
+    // Sin crupier solo existe el perfil 0 (el que ya tiene): no hace falta preguntar a la estrategia.
+    if (state.upgrades.crupier > 0) selectHelperProfile(state, Math.min(strategy.helperProfile(state), state.upgrades.helperProfile));
 
     // 3. El jugador actúa: apostar (solo en el casino) o recoger (solo en la trastienda).
     betTimer += player.dt;

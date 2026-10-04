@@ -18,9 +18,29 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
 - [x] B0.5 README: "Cómo arrancar el proyecto desde cero en otra máquina", comprobado con un clon
       limpio (npm ci, tests, build y servidor respondiendo en ~28 s).
 
+- [x] B1.1 Regeneración rápida de `shared/plausibility.json`:
+      - Antes: 817 s (la última, secuencial; ~14 min). Ahora: **81 s** con cambios en la mesa 1 y
+        **3 s** si la mesa 1 no cambió (caché). Tabla idéntica byte a byte a la anterior y a la
+        secuencial (`--workers 1`).
+      - Workers (`sim/plausibility-worker.ts`): uno por núcleo, lotes dinámicos de 8 partidas, cada
+        partida con estrategia y semilla fijas y su resultado en su índice. Los workers se cierran al
+        acabar y el proceso sale con `process.exit(0)`: sin huérfanos (comprobado).
+      - Caché por mesa en `shared/plausibility-cache.json`: hash de lo que determina la tabla de la mesa
+        1 (su parte de `shared/config.json`, su parte de `config.ts` y el código del motor). La tabla
+        estadística es solo de la mesa 1 (el servidor no valida estadísticamente las demás), así que
+        cambiar las mesas 2+ solo recalcula el hash del archivo.
+      - `--full` (300 por estrategia, la de `npm run plausibility`) y `--quick` (200 en total,
+        `npm run plausibility:quick`); el test exige `mode: full`.
+      - Motor más rápido sin cambiar resultados: casillas de la ruleta memorizadas, `WorkHost` uno
+        por estado (con getters), `itemValue` sin construir el host, y comprobaciones baratas antes que
+        las de la estrategia en el bucle de compras.
+      - **Objetivo de "una mesa sola por debajo de 1 min" no alcanzado en esta máquina**: la mesa 1
+        son 2.100 partidas de 30 min de juego y el portátil (i5-8265U) tiene 4 núcleos físicos; ya va
+        3,7 veces más rápido que en secuencial y está limitado por la CPU.
+
 ### Pendiente
 
-- B1 regeneración rápida (workers, caché por mesa, --quick/--full), camarero agresivo, tramo final de la mesa 3
+- B1.2 camarero agresivo, B1.3 tramo final de la mesa 3, B1.4 regenerar --full
 - B2 mesa 4 (blackjack, la Crupier)
 - B3 cierre
 

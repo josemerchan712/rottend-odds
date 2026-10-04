@@ -106,7 +106,8 @@ Se abre en http://localhost:5173. Otros comandos:
 | `npm run simulate` | Simula miles de partidas de la mesa 1 con varias estrategias e imprime un informe |
 | `npm run simulate:slots` | Lo mismo para la mesa 2 (tragaperras), empezando al pagar la mesa 1 (~5 min con 200 partidas) |
 | `npm run simulate:dice` | Lo mismo para la mesa 3 (dados), empezando al pagar la mesa 2 (~15 min con 200 partidas; `--no-study` lo acorta) |
-| `npm run plausibility` | Regenera `shared/plausibility.json` (~3-4 min) |
+| `npm run plausibility` | Regenera `shared/plausibility.json` completa (`--full`): ~80 s si cambia la mesa 1 (en paralelo, un worker por núcleo), ~3 s si no (caché por mesa en `shared/plausibility-cache.json`) |
+| `npm run plausibility:quick` | Versión rápida para desarrollo (200 partidas); el test la rechaza para que se suba la completa |
 | `npm run assets` | Regenera los sprites y los fondos de las mesas 1 a 3 en `assets/sprites/` desde las hojas de `assets/raw/` |
 
 El frontend busca el servidor en `http://localhost:8080`. Para cambiarlo, define `VITE_API_URL`.
@@ -208,7 +209,7 @@ eso la capa estadística no rechaza: marca.
 
 La tabla lleva un hash de `shared/config.json`. Si alguien cambia los números del juego y no la
 regenera, fallan los tests de los dos lados y el servidor no arranca. Para regenerarla:
-`npm run plausibility`, que tarda unos 3-4 minutos.
+`npm run plausibility` (~80 s si cambia la mesa 1; ~3 s si no, gracias a la caché por mesa).
 
 ## Decisiones
 

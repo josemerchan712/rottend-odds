@@ -5,7 +5,6 @@ import {
   cleanerIntervalFor,
   collectFrom,
   collectNearestFrom,
-  hostItemValue,
   itemAtPoint,
   updateWorkHost,
   type Collected,
@@ -25,24 +24,44 @@ export function bagMultiplier(state: GameState): number {
   return 1 + work.bagValuePerLevel * state.upgrades.bigBag;
 }
 
-/** La trastienda de la mesa 1 vista por el núcleo común: pinzas, bolsa y limpiador. */
+const hosts = new WeakMap<GameState, WorkHost>();
+
+/**
+ * La trastienda de la mesa 1 vista por el núcleo común: pinzas, bolsa y limpiador. Uno por estado,
+ * con getters que leen siempre el estado actual (se pide en cada tick y crear uno cada vez costaba).
+ */
 export function workHost(state: GameState): WorkHost {
-  return {
-    def: WORK_DEF,
-    work: state.work,
-    valueMultiplier: bagMultiplier(state),
-    extraPerClick: state.upgrades.tweezers * work.tweezersExtraPerLevel,
-    cleanerLevel: state.upgrades.cleaner,
-    credit: (value) => {
-      state.balance += value;
-      state.stats.workEarned += value;
-    },
-  };
+  let host = hosts.get(state);
+  if (!host) {
+    host = {
+      def: WORK_DEF,
+      get work() {
+        return state.work;
+      },
+      get valueMultiplier() {
+        return bagMultiplier(state);
+      },
+      get extraPerClick() {
+        return state.upgrades.tweezers * work.tweezersExtraPerLevel;
+      },
+      get cleanerLevel() {
+        return state.upgrades.cleaner;
+      },
+      credit(value: number) {
+        state.balance += value;
+        state.stats.workEarned += value;
+      },
+    };
+    hosts.set(state, host);
+  }
+  return host;
 }
 
 /** Fichas que da un objeto con las mejoras actuales. */
 export function itemValue(state: GameState, kind: string): number {
-  return hostItemValue(workHost(state), kind);
+  // Sin construir el WorkHost: la simulación lo llama muchas veces por segundo.
+  const def = work.items.find((i) => i.id === kind);
+  return def ? Math.round(def.value * bagMultiplier(state)) : 0;
 }
 
 /** Segundos entre recogidas del ayudante de limpieza (Infinity si no está contratado). */

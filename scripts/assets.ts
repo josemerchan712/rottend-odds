@@ -44,6 +44,8 @@ interface GridSheet {
   /** Nombre por celda, fila a fila; null = no se exporta. */
   names: (string | null)[];
   size: [number, number];
+  /** Celdas sin fondo que quitar (el dibujo llena la celda hasta el borde): solo se recortan. */
+  keepBackground?: string[];
 }
 
 /** Hoja con cajas a mano: cada caja se recorta desde sus propios bordes (sprites de tamaños distintos). */
@@ -149,6 +151,29 @@ const SHEETS: Sheet[] = [
       { name: 'limon', x: 676, y: 398, width: 224, height: 222, size: [32, 32] },
       { name: 'siete', x: 918, y: 398, width: 212, height: 222, size: [32, 32] },
       { name: 'ojo', x: 1148, y: 398, width: 222, height: 222, size: [32, 32] },
+    ],
+  },
+  {
+    // Basura de la mesa 2: 6 paneles con rejilla. La moneda atascada trae su ranura oxidada de fondo.
+    kind: 'grid',
+    source: 'assets/raw/basura2.png.jpg',
+    outDir: 'assets/sprites/trash2',
+    columns: [0, 945, 1849, 2723, 3543, 4331, 5088],
+    rows: [0, 832],
+    inset: 28,
+    names: ['chicle', 'moneda', 'bombilla', 'cable', 'oxidada', 'llave'],
+    size: [32, 32],
+    keepBackground: ['moneda'],
+  },
+  {
+    // Aprendiz de limpieza de la mesa 2: dos frames caminando con pinza y cubo. Cajas a mano para
+    // dejar fuera la línea de suelo, que une los dos frames.
+    kind: 'boxes',
+    source: 'assets/raw/ayudante2.png.jpg',
+    outDir: 'assets/sprites/apprentice',
+    boxes: [
+      { name: 'walk-1', x: 140, y: 80, width: 1080, height: 1265, size: [64, 64] },
+      { name: 'walk-2', x: 1590, y: 80, width: 1100, height: 1265, size: [64, 64] },
     ],
   },
   {
@@ -277,7 +302,7 @@ for (const sheet of SHEETS) {
         height: sheet.rows[row + 1] - sheet.rows[row] - 2 * sheet.inset,
       });
       const out = `${sheet.outDir}/${name}.png`;
-      const sprite = cutOut(cell);
+      const sprite = sheet.keepBackground?.includes(name) ? cell : cutOut(cell);
       await save(fitNearest(sprite, ...sheet.size), out);
       console.log(`${out}  (${sprite.width}x${sprite.height})`);
     }

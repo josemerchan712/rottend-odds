@@ -8,6 +8,7 @@ import {
   noteSpinShown,
   notePlayerActivity,
   observe,
+  rebaseWatch,
   tickWatch,
   type WatchSnapshot,
 } from '../src/game/dialogueWatch';
@@ -103,5 +104,14 @@ describe('cuándo habla el Encargado', () => {
       if (line) said.push(line.trigger);
     }
     expect(said).toHaveLength(3);
+  });
+
+  it('al volver a una mesa no comenta lo que pasó mientras no se miraba', () => {
+    const w = createWatch(snap({ balance: 50 }));
+    noteRoomEntered(w, 'trastienda');
+    // Mientras tanto su ayudante dejó el saldo a 0 y subió de fase.
+    rebaseWatch(w, snap({ balance: 0, phase: 'uneasy' }));
+    observe(w, snap({ balance: 0, phase: 'uneasy' }));
+    expect(tick(w)).toBeNull();
   });
 });

@@ -59,6 +59,7 @@ import {
   noteSpinShown,
   notePlayerActivity,
   observe,
+  rebaseWatch,
   tickWatch,
   type DialogueWatch,
   type WatchSnapshot,
@@ -236,6 +237,8 @@ function updateTableFade(current: GameState, dt: number): void {
     slotsScene.reset(current);
     speech.close();
     speech.setSpeaker(SPEAKERS[tableFade.to]);
+    // Cada prestamista solo habla en su mesa, y no comenta lo que pasó mientras no se le veía.
+    rebaseWatch(watches[tableFade.to]!, tableFade.to === 1 ? snapshot(current) : snapshot2(current));
     if (firstVisit) noteSessionStart(watches[2]!, 'new');
   }
   // Sube, se queda un instante con el rótulo y baja.

@@ -178,7 +178,7 @@ Todas las mejoras suman ~1,9M. La suerte y el techo son baratos porque, con la c
 | Bombilla rota | 8 | 14% |
 | Cable pelado | 25 | 7% |
 | Ficha oxidada | 60 | 3,5% |
-| Diente de oro (raro) | 800 | 0,5% |
+| Llave dorada (rara) | 800 | 0,5% |
 
 - Mejoras propias: **Trapo** (2 objetos por clic), **Caja de herramientas** (+50% de valor por nivel) y **Aprendiz de limpieza** (recoge solo).
 - El trabajo es común a las dos mesas en el código (`src/game/workCore.ts`).
@@ -227,7 +227,7 @@ Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de
 ### 4b.7 Escena
 
 - **Sala**: el fondo de la mesa 2; la Tragaperras viviente (96 px) asoma la cabeza por detrás de la máquina central, con respiración y un foco verde; la máquina (200x252) con los tres carretes en su pantalla, que giran de verdad y se paran de izquierda a derecha con un pequeño rebote (0,7 / 0,95 / 1,2 s), línea de premio y destello al ganar; placa "TIRAR" y palanca (clic o Espacio); la columna de fichas; la tabla de premios con el pozo; el zombi en la máquina de la izquierda.
-- **Trastienda**: provisional (la de la mesa 1 teñida de verde) con la basura de las tragaperras dibujada con código hasta que llegue su arte. La puerta está a la izquierda en las dos salas.
+- **Trastienda**: su fondo propio (taller con máquinas abiertas y cubos de monedas), su basura y el aprendiz de limpieza con pinza y cubo. La puerta está a la izquierda en las dos salas.
 - Temblor al perder una tirada grande y el CRT de siempre; el diálogo en el mismo bocadillo (a la derecha de la cabeza) o en la caja de la trastienda con el nombre "TRAGAPERRAS VIVIENTE".
 
 ## 5. Conversión de monedas entre mesas
@@ -312,13 +312,7 @@ Implementado para la basura y el jugador (`npm run assets`; código en `scripts/
 - Ampliado para la mesa 2:
   - Hoja de la tragaperras troceada con cajas a mano (la máquina con su palanca a 200x252 y los 6 símbolos a 32x32 con su cuadro negro, que hace de carrete). La Tragaperras viviente a 96x96 (detección de bloques), el empleado zombi a 64x64 (segunda celda de la hoja de ayudantes) y el fondo de la mesa 2 a 640x360.
   - El brazo esquelético de la Tragaperras viviente conserva un halo rosado de 1 px en algunos píxeles.
-  - **Faltan (provisionales en el juego):**
-
-| Asset | Archivo esperado | Tamaño | Provisional |
-|---|---|---|---|
-| Fondo de la trastienda de la mesa 2 | `assets/raw/trastienda2.*` (el pipeline lo detecta solo) | 640x360 (o 16:9 mayor) | La trastienda de la mesa 1 teñida de verde |
-| Basura de la mesa 2 (6 objetos) | `assets/sprites/trash2/<id>.png` (chicle, moneda, bombilla, cable, oxidada, diente) | 32x32 cada uno, fondo transparente (o una hoja magenta en `assets/raw/` para añadirla al pipeline) | Dibujada con código (`src/ui/provisional.ts`) |
-| Aprendiz de limpieza de la mesa 2 | sprite propio caminando, 2 frames | 64x64 | El mismo personaje que el limpiador de la mesa 1 |
+  - Arte de la trastienda de la mesa 2 (procesado después): fondo `assets/raw/trastienda2.*` a 640x360; basura en 6 paneles con rejilla (`basura2`), troceada por cuadrícula a 32x32; la moneda atascada llena su celda con su ranura oxidada y se recorta sin quitar fondo (`keepBackground`), porque su borde no es magenta; el aprendiz (`ayudante2`) en dos frames con cajas a mano, para dejar fuera la línea de suelo que une los frames. El objeto raro es una llave dorada (antes "diente de oro", sin arte).
 
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
 
@@ -392,7 +386,7 @@ Estado: ✅ hecho · 🔲 pendiente.
    - ✅ **Rediseño de la interfaz en 8 pasos**: pantalla completa, dos salas, tapete y selector con cantidades reales, cajones laterales, el Encargado detrás de la mesa, diálogo conectado a la escena, simulación con coste de cambiar de sala (mesa 1 ≈ 8:18 con (c), sin tocar números) y documentación (3.1, 9.2, 9.3).
 7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
 8. ✅ **Deuda y paso a la mesa 2**: pago, cartel "Mesa 1 saldada", pestañas, transición, conversión de monedas y guardado v5 (con migración desde v4; el servidor acepta v5 con validación estructural de la mesa 2).
-   - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, trabajo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Faltan arte de su trastienda y de su basura (provisionales).
+   - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, trabajo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Su trastienda, su basura y el aprendiz ya tienen arte.
 9. 🔲 Mesas 3 a 5 (la 2 ya está), una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
 10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.
 

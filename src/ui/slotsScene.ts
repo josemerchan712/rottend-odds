@@ -9,7 +9,6 @@ import { itemAtPoint, type Collected } from '../game/workCore';
 import { formatNumber } from '../util/format';
 import { chipAt } from './casinoLayout';
 import { Effects } from './effects';
-import { provisionalTrash } from './provisional';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { reelAt, SlotsView } from './slotsView';
 import { ready, type PlayerFrame, type Sprites } from './sprites';
@@ -63,7 +62,6 @@ export class SlotsScene {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly reels = new SlotsView();
   private readonly effects: Effects;
-  private readonly trash = provisionalTrash();
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
@@ -342,7 +340,7 @@ export class SlotsScene {
     const fallback = this.sprites.backgrounds.get('trastienda');
     if (ready(own)) ctx.drawImage(own, 0, 0);
     else if (ready(fallback)) {
-      // Provisional: la trastienda de la mesa 1 bañada en el verde enfermizo de las tragaperras.
+      // Si faltara su fondo: la trastienda de la mesa 1 bañada en el verde enfermizo de las tragaperras.
       ctx.drawImage(fallback, 0, 0);
       ctx.fillStyle = 'rgba(20, 60, 30, 0.35)';
       ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
@@ -361,10 +359,7 @@ export class SlotsScene {
           ctx.ellipse(item.x, item.y - 2, 18, 7, 0, 0, Math.PI * 2);
           ctx.fill();
         }
-        const art = this.sprites.trash2.get(item.kind) ?? this.trash.get(item.kind);
-        const left = Math.round(item.x - TRASH_SIZE / 2);
-        const top = Math.round(item.y - TRASH_SIZE);
-        if (art instanceof HTMLImageElement ? ready(art) : art) ctx.drawImage(art!, left, top, TRASH_SIZE, TRASH_SIZE);
+        this.drawSprite(this.sprites.trash2.get(item.kind), item.x, item.y, TRASH_SIZE, 1);
       },
     }));
     drawables.push({ y: CONFIG.slots.work.player.y, draw: () => this.drawPlayer() });
@@ -382,9 +377,10 @@ export class SlotsScene {
     this.drawSprite(this.sprites.player.get(frame), player.x, player.y, PLAYER_SIZE, 1, phase === 'crouch' ? 2 : 0);
   }
 
+  /** El aprendiz de limpieza (su sprite mira a la izquierda: se refleja al ir a la derecha). */
   private drawCleaner(c: { x: number; y: number; facing: 1 | -1; walk: number }): void {
-    const frame: PlayerFrame = c.walk > 0 && Math.floor(c.walk * 6) % 2 === 1 ? 'walk-2' : 'walk-1';
-    this.drawSprite(this.sprites.player.get(frame), c.x, c.y, PLAYER_SIZE, c.facing);
+    const frame = c.walk > 0 && Math.floor(c.walk * 6) % 2 === 1 ? 'walk-2' : 'walk-1';
+    this.drawSprite(this.sprites.apprentice.get(frame), c.x, c.y, PLAYER_SIZE, c.facing === 1 ? -1 : 1);
   }
 
   // ---------------------------------------------------------------------------

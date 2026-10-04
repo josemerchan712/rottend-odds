@@ -280,7 +280,7 @@ export const CONFIG = {
         { id: 'bombilla', name: 'Bombilla rota', value: 8, weight: 14 },
         { id: 'cable', name: 'Cable pelado', value: 25, weight: 7 },
         { id: 'oxidada', name: 'Ficha oxidada', value: 60, weight: 3.5 },
-        { id: 'diente', name: 'Diente de oro', value: 800, weight: 0.5 },
+        { id: 'llave', name: 'Llave dorada', value: 800, weight: 0.5 },
       ] as readonly { id: string; name: string; value: number; weight: number }[],
     },
     debt: { amount: shared.slots.debt.amount },

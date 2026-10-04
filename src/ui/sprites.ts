@@ -16,6 +16,7 @@ const urls = {
   slots: import.meta.glob<string>('../../assets/sprites/slots/*.png', { eager: true, query: '?url', import: 'default' }),
   lender2Scene: import.meta.glob<string>('../../assets/sprites/lender2-scene/*.png', { eager: true, query: '?url', import: 'default' }),
   trash2: import.meta.glob<string>('../../assets/sprites/trash2/*.png', { eager: true, query: '?url', import: 'default' }),
+  apprentice: import.meta.glob<string>('../../assets/sprites/apprentice/*.png', { eager: true, query: '?url', import: 'default' }),
 };
 
 export type PlayerFrame = 'walk-1' | 'walk-2' | 'crouch' | 'lift';

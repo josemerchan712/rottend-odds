@@ -129,3 +129,13 @@ export function tickWatch(
   watch.pending = [];
   return speak(watch.dialogue, lines, trigger, phase, watch.now, rng, { absenceSeconds: chosen.absenceSeconds });
 }
+
+/**
+ * Al volver a una mesa: toma lo que hay ahora como punto de partida, sin decir nada por lo que
+ * pasó mientras no se miraba (su ayudante siguió jugando). Lo pendiente se descarta.
+ */
+export function rebaseWatch(watch: DialogueWatch, snap: WatchSnapshot): void {
+  watch.prev = { ...snap };
+  if (PHASE_ORDER.indexOf(snap.phase) > PHASE_ORDER.indexOf(watch.maxPhase)) watch.maxPhase = snap.phase;
+  watch.pending = [];
+}

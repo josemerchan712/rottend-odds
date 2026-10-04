@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(5));
+                .andExpect(jsonPath("$.saveVersion").value(6));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -160,6 +160,50 @@ class SaveControllerTest extends ApiTestSupport {
         Map<String, Object> missing = SaveFixtures.save(100, 120);
         ((Map<String, Object>) missing.get("state")).remove("slots");
         putSave(token, 1L, missing).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mesa3ValidacionEstructural() throws Exception {
+        String token = registerUser();
+        // Mesas 1 y 2 saldadas y mesa 3 en marcha: se acepta.
+        Map<String, Object> ok = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> state = (Map<String, Object>) ok.get("state");
+        state.put("slots", SaveFixtures.slots(500, 700, SaveFixtures.slotUpgrades(), true));
+        Map<String, Object> diceUps = SaveFixtures.diceUpgrades();
+        diceUps.put("luck", 5);
+        diceUps.put("ghost", 1);
+        diceUps.put("hardTargets", 1);
+        state.put("dice", SaveFixtures.dice(4_000, 120, diceUps, false));
+        state.put("activeTable", 3);
+        putSave(token, null, ok).andExpect(status().isOk());
+
+        // Progreso en la mesa 3 sin haber pagado la mesa 2.
+        Map<String, Object> early = SaveFixtures.finished(8 * 60 + 30);
+        ((Map<String, Object>) early.get("state")).put("dice", SaveFixtures.dice(100, 10, SaveFixtures.diceUpgrades(), false));
+        putSave(token, 1L, early)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("sin la deuda de la mesa 2"))));
+
+        // Nivel fuera de rango y mejoras del camarero sin el camarero.
+        Map<String, Object> bad = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> badState = (Map<String, Object>) bad.get("state");
+        badState.put("slots", SaveFixtures.slots(0, 700, SaveFixtures.slotUpgrades(), true));
+        Map<String, Object> badUps = SaveFixtures.diceUpgrades();
+        badUps.put("boxcars", 4);
+        badUps.put("helperLuck", 1);
+        badState.put("dice", SaveFixtures.dice(10, 10, badUps, false));
+        putSave(token, 1L, bad)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("dice.upgrades.boxcars"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("requiere el camarero fantasma"))));
+
+        // La mesa 3 activa sin pagar la 2.
+        Map<String, Object> active = SaveFixtures.finished(8 * 60 + 30);
+        ((Map<String, Object>) active.get("state")).put("activeTable", 3);
+        putSave(token, 1L, active)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("activeTable"))));
     }
 
     @Test

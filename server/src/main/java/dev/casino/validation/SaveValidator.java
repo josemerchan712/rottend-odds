@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import dev.casino.validation.GameRules.Upgrade;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -21,16 +22,16 @@ import org.springframework.stereotype.Component;
  *       tabla estadística considera posibles para ese tiempo de juego, o la deuda saldada antes del
  *       mínimo plausible.</li>
  * </ol>
- * La mesa 2 (tragaperras, guardado v5) solo pasa la capa 1: estructura, niveles de sus mejoras y que
- * no haya progreso en ella sin la deuda de la mesa 1 pagada. El ranking sigue siendo el de la mesa 1.
+ * Las mesas 2 (tragaperras) y 3 (dados) solo pasan la capa 1: estructura, niveles de sus mejoras y
+ * que no haya progreso en una sin la deuda de la anterior pagada. El ranking sigue siendo el de la mesa 1.
  */
 @Component
 public class SaveValidator {
 
     /** Mejoras que el juego solo deja comprar con el Crupier. */
     private static final Set<String> NEED_CRUPIER = Set.of("helperSpeed", "helperProfile", "helperLuck");
-    /** Mesa 2: mejoras que requieren al empleado zombi. */
-    private static final Set<String> NEED_ZOMBIE = Set.of("helperSpeed", "helperProfile", "helperLuck");
+    /** Mesas 2 y 3: mejoras que requieren a su ayudante. */
+    private static final Set<String> NEED_HELPER = Set.of("helperSpeed", "helperProfile", "helperLuck");
     private static final double MAX_SANE_NUMBER = 1e15;
     private static final double MAX_PLAY_TIME = 1e8;
 
@@ -128,65 +129,78 @@ public class SaveValidator {
             debtPaid = debtNode.asBoolean();
         }
 
+        boolean slotsPaid = parseTable(state.path("slots"), new TableSpec("slots", "mesa 2", rules.slotsUpgrades(), "zombie",
+                "el empleado zombi", rules.slotsHelperProfiles(), "mesa 1"), debtPaid, errors);
+        parseTable(state.path("dice"), new TableSpec("dice", "mesa 3", rules.diceUpgrades(), "ghost",
+                "el camarero fantasma", rules.diceHelperProfiles(), "mesa 2"), debtPaid && slotsPaid, errors);
         JsonNode active = state.path("activeTable");
-        if (!active.isMissingNode() && (!active.isInt() || (active.asInt() != 1 && active.asInt() != 2))) {
-            errors.add("activeTable: debe ser 1 o 2");
+        if (!active.isMissingNode() && (!active.isInt() || active.asInt() < 1 || active.asInt() > 3)) {
+            errors.add("activeTable: debe ser 1, 2 o 3");
         } else if (active.asInt(1) == 2 && !debtPaid) {
             errors.add("activeTable: la mesa 2 requiere la deuda de la mesa 1 pagada");
+        } else if (active.asInt(1) == 3 && !(debtPaid && slotsPaid)) {
+            errors.add("activeTable: la mesa 3 requiere la deuda de la mesa 2 pagada");
         }
-        parseSlots(state.path("slots"), debtPaid, errors);
         return new Snapshot(version, balance, playTime, levels, debtPaid);
     }
 
-    /** Mesa 2: estructura y niveles. Sin la deuda de la mesa 1 pagada, debe estar sin empezar. */
-    private void parseSlots(JsonNode slots, boolean table1Paid, List<String> errors) {
-        if (!slots.isObject()) {
-            errors.add("slots: falta el estado de la mesa 2");
-            return;
+    /** Estructura de una mesa añadida (2, 3...): saldo, tiempo, mejoras, ayudante, deuda y progreso. */
+    private record TableSpec(String field, String label, Map<String, Upgrade> upgrades, String helperId, String helperName,
+            int helperProfiles, String previous) {}
+
+    /**
+     * Mesa 2 o 3: estructura y niveles. Sin la deuda de la mesa anterior pagada, debe estar sin
+     * empezar. Devuelve si su deuda está pagada.
+     */
+    private boolean parseTable(JsonNode table, TableSpec spec, boolean previousPaid, List<String> errors) {
+        if (!table.isObject()) {
+            errors.add(spec.field() + ": falta el estado de la " + spec.label());
+            return false;
         }
-        List<String> slotErrors = new ArrayList<>();
-        double balance = number(slots, "balance", slotErrors);
-        double playTime = number(slots, "playTime", slotErrors);
-        if (slots.has("pot")) number(slots, "pot", slotErrors);
+        List<String> tableErrors = new ArrayList<>();
+        double balance = number(table, "balance", tableErrors);
+        double playTime = number(table, "playTime", tableErrors);
+        if (table.has("pot")) number(table, "pot", tableErrors);
         Map<String, Integer> levels = new LinkedHashMap<>();
-        JsonNode ups = slots.path("upgrades");
+        JsonNode ups = table.path("upgrades");
         if (!ups.isObject()) {
-            slotErrors.add("upgrades: falta el objeto de mejoras");
+            tableErrors.add("upgrades: falta el objeto de mejoras");
         } else {
             ups.fieldNames().forEachRemaining(id -> {
-                if (!rules.slotsUpgrades().containsKey(id)) slotErrors.add("upgrades." + id + ": mejora desconocida");
+                if (!spec.upgrades().containsKey(id)) tableErrors.add("upgrades." + id + ": mejora desconocida");
             });
-            for (var e : rules.slotsUpgrades().entrySet()) {
+            for (var e : spec.upgrades().entrySet()) {
                 JsonNode level = ups.path(e.getKey());
                 if (level.isMissingNode()) {
                     levels.put(e.getKey(), 0);
                 } else if (!level.isIntegralNumber() || !level.canConvertToInt()) {
-                    slotErrors.add("upgrades." + e.getKey() + ": debe ser un entero");
+                    tableErrors.add("upgrades." + e.getKey() + ": debe ser un entero");
                 } else if (level.asInt() < 0 || level.asInt() > e.getValue().maxLevel()) {
-                    slotErrors.add("upgrades." + e.getKey() + ": nivel " + level.asInt() + " fuera de 0-" + e.getValue().maxLevel());
+                    tableErrors.add("upgrades." + e.getKey() + ": nivel " + level.asInt() + " fuera de 0-" + e.getValue().maxLevel());
                 } else {
                     levels.put(e.getKey(), level.asInt());
                 }
             }
-            if (levels.getOrDefault("zombie", 0) == 0) {
-                for (String id : NEED_ZOMBIE) {
-                    if (levels.getOrDefault(id, 0) > 0) slotErrors.add("upgrades." + id + ": requiere el empleado zombi");
+            if (levels.getOrDefault(spec.helperId(), 0) == 0) {
+                for (String id : NEED_HELPER) {
+                    if (levels.getOrDefault(id, 0) > 0) tableErrors.add("upgrades." + id + ": requiere " + spec.helperName());
                 }
             }
         }
-        JsonNode profile = slots.path("helper").path("profile");
+        JsonNode profile = table.path("helper").path("profile");
         if (!profile.isMissingNode()) {
-            int unlocked = Math.min(levels.getOrDefault("helperProfile", 0), rules.slotsHelperProfiles() - 1);
+            int unlocked = Math.min(levels.getOrDefault("helperProfile", 0), spec.helperProfiles() - 1);
             if (!profile.isInt() || profile.asInt() < 0 || profile.asInt() > unlocked) {
-                slotErrors.add("helper.profile: perfil no desbloqueado");
+                tableErrors.add("helper.profile: perfil no desbloqueado");
             }
         }
-        JsonNode paid = slots.path("debtPaid");
-        if (!paid.isMissingNode() && !paid.isBoolean()) slotErrors.add("debtPaid: debe ser true o false");
+        JsonNode paid = table.path("debtPaid");
+        if (!paid.isMissingNode() && !paid.isBoolean()) tableErrors.add("debtPaid: debe ser true o false");
         boolean started = balance > 0 || playTime > 0 || paid.asBoolean(false)
                 || levels.values().stream().anyMatch(level -> level > 0);
-        if (started && !table1Paid) slotErrors.add("hay progreso en la mesa 2 sin la deuda de la mesa 1 pagada");
-        for (String error : slotErrors) errors.add("slots." + error);
+        if (started && !previousPaid) tableErrors.add("hay progreso en la " + spec.label() + " sin la deuda de la " + spec.previous() + " pagada");
+        for (String error : tableErrors) errors.add(spec.field() + "." + error);
+        return paid.asBoolean(false);
     }
 
     private static double number(JsonNode state, String field, List<String> errors) {

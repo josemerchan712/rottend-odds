@@ -35,6 +35,9 @@ public class GameRules {
     /** Mesa 2 (tragaperras): solo lo que hace falta para la validación estructural. */
     private final Map<String, Upgrade> slotsUpgrades;
     private final int slotsHelperProfiles;
+    /** Mesa 3 (dados): igual, solo estructura. */
+    private final Map<String, Upgrade> diceUpgrades;
+    private final int diceHelperProfiles;
 
     public GameRules(ObjectMapper mapper) throws IOException {
         String configText = read("shared/config.json");
@@ -51,6 +54,9 @@ public class GameRules {
         JsonNode slots = config.path("slots");
         this.slotsUpgrades = Collections.unmodifiableMap(readUpgrades(slots.path("upgrades")));
         this.slotsHelperProfiles = slots.path("helperProfiles").asInt();
+        JsonNode dice = config.path("dice");
+        this.diceUpgrades = Collections.unmodifiableMap(readUpgrades(dice.path("upgrades")));
+        this.diceHelperProfiles = dice.path("helperProfiles").asInt();
         JsonNode w = config.path("work");
         this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(),
                 w.path("maxItemValue").asDouble(), w.path("bagValuePerLevel").asDouble());
@@ -61,7 +67,7 @@ public class GameRules {
             throw new IllegalStateException("shared/plausibility.json no corresponde a shared/config.json: "
                     + "regenérala con `npm run plausibility`");
         }
-        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty()) {
+        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty()) {
             throw new IllegalStateException("shared/config.json incompleto");
         }
     }
@@ -145,5 +151,13 @@ public class GameRules {
 
     public int slotsHelperProfiles() {
         return slotsHelperProfiles;
+    }
+
+    public Map<String, Upgrade> diceUpgrades() {
+        return diceUpgrades;
+    }
+
+    public int diceHelperProfiles() {
+        return diceHelperProfiles;
     }
 }

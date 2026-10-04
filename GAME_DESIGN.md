@@ -230,6 +230,84 @@ Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de
 - **Trastienda**: su fondo propio (taller con máquinas abiertas y cubos de monedas), su basura y el aprendiz de limpieza con pinza y cubo. La puerta está a la izquierda en las dos salas.
 - Temblor al perder una tirada grande y el CRT de siempre; el diálogo en el mismo bocadillo (a la derecha de la cabeza) o en la caja de la trastienda con el nombre "TRAGAPERRAS VIVIENTE".
 
+## 4c. Mesa 3: Dados (hecha)
+
+**Prestamista**: el Barman. **Trabajo**: servir copas (recoger lo que queda en su trastienda). **Moneda**: chapas. **Deuda**: 10M de chapas.
+
+### 4c.1 Desbloqueo y conversión
+
+- Al pagar la deuda de la mesa 2 sale el cartel **"Mesa 2 saldada"** y aparece la pestaña **MESA 3**. Las mesas 1 y 2 siguen jugando solas con sus ayudantes.
+- **Conversión**: `chapas/s = k * (ingreso/s de la mesa 2)^0,5`, con **k = 0,3**. El ingreso de la mesa 2 es el esperado de su zombi (sin retener) y su aprendiz. Sin pasivo, la mesa 3 tarda ~57 min (la mitad no termina en una hora); con él, ~13.
+
+### 4c.2 El juego
+
+- Se tiran **dos dados** a un **objetivo** elegido antes de tirar. Los objetivos funcionan como los tipos de apuesta de la ruleta: `p = p_par · r · m(L)` y pago neto `2/r − 1`, así que **el valor esperado base es el mismo** (con la ventaja de la casa) y cambia el riesgo:
+
+| Objetivo | Honrado | r | Pago | m sin suerte → con suerte máxima | Disponible |
+|---|---|---|---|---|---|
+| Par | 50% | 1 | 1:1 | 1 → 1 | Desde el inicio |
+| Más de 7 | 41,7% | 15/18 | 1,4:1 | 0,97 → 1,15 | Desde el inicio |
+| Más de 9 | 16,7% | 1/3 | 5:1 | 0,90 → 1,40 | Mejora "Más de 9 y doble" |
+| Doble | 16,7% | 1/3 | 5:1 | 0,85 → 1,50 | Mejora "Más de 9 y doble" |
+| Doble seis | 2,8% | 1/18 | 35:1 | 0,80 → 1,80 | Mejora "Doble seis" |
+
+- **Suerte**: `p_par = 0,486 → 0,97` (curva 1,6). Como m < 1 en los arriesgados con poca suerte, **el objetivo seguro es el mejor al principio**; con mucha suerte los arriesgados tienen más valor esperado (doble seis: +250% por ficha frente al +94% de par).
+- **Penalización por apostar fuerte**: la de siempre (`0,20 → 0,04` por `fracción^1,5`).
+- **Relanzamientos** (la mecánica del Barman): la suerte da **cargas**, como mucho `1 + nivel/4` (1 a 6), que se recargan solas (una cada `16 s × 0,93^nivel`, de 16 s a ~3,7 s). Tras una tirada **perdida** se puede gastar una para **relanzar un dado** (clic en él) o aceptar la tirada. El dado nuevo sale al azar (honrado): la probabilidad de convertir depende del dado que se queda y del objetivo (con un 6 y un 2 a "más de 9", relanzar el 2 convierte el 50% de las veces; relanzar el 6, nunca). El tooltip la enseña. La reserva es común con el ayudante.
+- **Jackpot**: **tres dobles seises seguidos**, con la **racha visible** en el tapete (0/3, 1/3, 2/3). Los dados del Barman están **cargados**: el doble seis sale con probabilidad `j^(1/3)` dentro de las tiradas ganadoras, con `j` la probabilidad de jackpot de siempre (0,1% → 1,5% con la suerte y su mejora), así que tres seguidos salen ~j de las veces y el casi-premio (2/3) se ve a menudo. Paga **min(apuesta × 500, pozo, 25% de la deuda)**, con **pozo progresivo** (semilla 50, +15% de cada apuesta), la lección de la mesa 2. Aporta ~4% de las chapas.
+- **Selector**: las mismas fichas de cantidades reales. Techo: 20 × 2,5^nivel.
+- **Ayudante**: el **camarero fantasma**, al otro lado de la barra. Elige el objetivo que más hace crecer su saldo con su apuesta (criterio de Kelly: por valor esperado perseguía el doble seis con apuestas grandes y hundía el saldo) y relanza el mejor dado si convierte con al menos 1/3. Perfiles prudente, normal y agresivo con límite por saldo, como en las otras mesas.
+
+### 4c.3 Trabajo: servir copas
+
+| Objeto | Chapas | Frecuencia |
+|---|---|---|
+| Servilleta manchada | 2 | 45% |
+| Vaso sucio | 5 | 30% |
+| Botella vacía | 9 | 14% |
+| Copa rota | 30 | 7% |
+| Propina | 75 | 3,5% |
+| Dentadura de oro (rara) | 1.000 | 0,5% |
+
+Mejoras: **Bandeja** (2 objetos por clic), **Carrito** (+50% de valor por nivel) y **Friegaplatos** (recoge solo).
+
+### 4c.4 Mejoras (calibradas con simulación)
+
+| Mejora | Coste base | Crecimiento | Niveles |
+|---|---|---|---|
+| Suerte (y cargas de relanzamiento) | 420 | 1,6 | 20 |
+| Apuesta máxima | 350 | 2,0 | 11 |
+| Camarero fantasma | 1.000 | - | 1 |
+| Velocidad / perfil / suerte del camarero | 600 / 2.000 / 1.500 | 1,6 / 4 / 1,8 | 15 / 2 / 10 |
+| Jackpot | 4.000 | 1,8 | 10 |
+| Más de 9 y doble | 300 | - | 1 |
+| Doble seis | 2.500 | - | 1 |
+| Bandeja / Carrito / Friegaplatos | 100 / 80 / 400 | - / 2,25 / 2 | 1 / 4 / 5 |
+
+### 4c.5 Simulación (`npm run simulate:dice`, 200 partidas por estrategia)
+
+Empieza al pagar la deuda de la mesa 2 con el estado real de una partida (d) de la mesa 2 de la misma semilla (que a su vez empieza desde una (c) de la mesa 1). Mismo jugador: una acción cada 0,5 s, una tirada por segundo como mucho, 1,5 s por cambio de sala; decidir un relanzamiento gasta una acción.
+
+| Estrategia | Media | p10 | p50 | p90 | Tramo final | Mesas 1+2+3 |
+|---|---|---|---|---|---|---|
+| (a) Par, ficha mínima | 45:51 | 44:35 | 45:51 | 47:11 | 3:10 | 66:31 |
+| (b) Par, siempre TODO | 20:57 | 16:32 | 20:24 | 25:41 | 0:11 | 41:37 |
+| (b2) Siempre doble seis, ficha óptima | 16:19 | 14:36 | 16:14 | 18:02 | 0:09 | 36:59 |
+| (c) Óptima, solo par, sin relanzar | 14:32 | 13:41 | 14:35 | 15:31 | 0:11 | 35:12 |
+| (c2) Óptima, todos los objetivos, sin relanzar | 14:35 | 13:31 | 14:29 | 15:54 | 0:07 | 35:14 |
+| (d) Óptima, todos los objetivos y relanzando | **13:14** | 11:48 | 13:10 | 14:40 | 0:06 | **33:54** |
+
+- Mesa 3 de ~13 minutos con la mejor estrategia (el objetivo de ~14 min es propio: el encargo se cortó antes de dar una cifra); mesas 1+2+3 ≈ 34 min.
+- Ninguna estrategia trivial gana: siempre TODO quiebra en casi todas las partidas en las fases media y alta; perseguir siempre el doble seis tarda un 23% más.
+- Los relanzamientos dan una ventaja real (−9% de tiempo, ~33 por partida, convierten el 45%); usar todos los objetivos sin relanzar empata con jugar solo a par: los arriesgados compensan con suerte alta, pero esa fase es corta.
+- Sin bancarrotas con las estrategias (c) y (d). El camarero no deja el saldo a 0 con ningún perfil (prudente 15:36, normal 13:46, agresivo 12:52; 40 partidas).
+- Chapas por fuente (d): dados 95%, jackpot 4%, pasivo 1%, trabajo < 1%; ~3,6 jackpots por partida.
+
+### 4c.6 Escena
+
+- **Bar**: el fondo de la mesa 3; el Barman (96 px) tras la barra, recortado por ella, con respiración; un tapete verde delante con los dos dados, que ruedan desde la izquierda con rebote y caras cambiando (y el dado en 3/4) y se paran en el resultado; la racha 6·6, el pozo y las cargas; los cinco objetivos (clic o Q W E R T); TIRAR (o Espacio) y ACEPTAR; la columna de fichas; el camarero fantasma a la derecha.
+- **Trastienda**: provisional (la de la mesa 1 con luz ámbar) con la basura dibujada con código y el limpiador de la mesa 1 como friegaplatos.
+
 ## 5. Conversión de monedas entre mesas
 
 - Cada mesa tiene su moneda (fichas, monedas, etc.).
@@ -237,7 +315,7 @@ Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de
 - La raíz evita que la mesa vieja sustituya a la nueva: mejorar la vieja ayuda de verdad, pero no la vuelve inútil.
 - La mesa vieja sigue funcionando con su ayudante, y el jugador puede volver a gastar su moneda en mejoras (que a su vez suben la producción pasiva de la nueva). Interfaz con **pestañas por mesa**.
 - Al pagar la deuda se descuentan los 10M del saldo; lo que sobre se conserva.
-- Implementado de la mesa 1 a la 2 con k = 0,3 (ver 4b.1).
+- Implementado de la mesa 1 a la 2 y de la 2 a la 3, con k = 0,3 (ver 4b.1 y 4c.1).
 
 ## 6. Mesas 2 a 5 (resumen)
 
@@ -246,7 +324,7 @@ Cada mesa mantiene suerte, valor de apuesta, ayudante y jackpot. Cambia el juego
 | Mesa | Juego | Trabajo | Prestamista | Particularidad |
 |---|---|---|---|---|
 | 2 | Tragaperras (3 carretes, 6 símbolos) | Limpiar tragaperras | Tragaperras viviente | Dos iguales x1,5, tres iguales x10. Mejora **retener carrete**. Jackpot: 3 diamantes x1000 con pozo. **Hecha: ver 4b.** |
-| 3 | Dados, mayor o menor | Servir copas | Barman | El jugador elige objetivo (más de 7, más de 9, doble seis) y cuanto más difícil más paga. Suerte = relanzar un dado. Jackpot: tres dobles seises seguidos. |
+| 3 | Dados, mayor o menor | Servir copas | Barman | El jugador elige objetivo (más de 7, más de 9, doble seis) y cuanto más difícil más paga. Suerte = relanzar un dado. Jackpot: tres dobles seises seguidos. **Hecha: ver 4c.** |
 | 4 | Blackjack simplificado (pedir o plantarse) | Barajar y repartir | Crupier | Sin doblar ni dividir, pago 1:1. Suerte = descartar una carta mala. Jackpot: 21 con tres sietes. |
 | 5 | Doble o nada encadenado | Por decidir (siniestro) | El Dueño | Cada acierto duplica y decides retirarte o seguir; fallar lo pierde todo. Jackpot: racha de 10 aciertos. |
 
@@ -312,6 +390,14 @@ Implementado para la basura y el jugador (`npm run assets`; código en `scripts/
 - Ampliado para la mesa 2:
   - Hoja de la tragaperras troceada con cajas a mano (la máquina con su palanca a 200x252 y los 6 símbolos a 32x32 con su cuadro negro, que hace de carrete). La Tragaperras viviente a 96x96 (detección de bloques), el empleado zombi a 64x64 (segunda celda de la hoja de ayudantes) y el fondo de la mesa 2 a 640x360.
   - El brazo esquelético de la Tragaperras viviente conserva un halo rosado de 1 px en algunos píxeles.
+  - Mesa 3: el Barman a 96x96 (bloques), las 6 caras de los dados a 32x32 y el dado en 3/4 (cajas a mano), el camarero fantasma a 64x64 (tercera celda de la hoja de ayudantes; sus piernas translúcidas conservan algo de tono rosado) y el fondo de la mesa 3.
+  - **Faltan de la mesa 3 (provisionales en el juego):**
+
+| Asset | Archivo esperado | Tamaño | Provisional | Prompt sugerido |
+|---|---|---|---|---|
+| Trastienda del bar | `assets/raw/trastienda3.*` (el pipeline lo detecta solo) | 640x360 (o 16:9 mayor) | La de la mesa 1 con luz ámbar | "Pixel art 16:9, trastienda de un bar abandonado de casino de terror: fregadero con platos sucios, cajas de botellas, barril, estantes con vasos, suelo de baldosas manchado, puerta metálica a la izquierda, luz ámbar de bombilla, paleta verde enfermizo, óxido y rojo seco" |
+| Basura de la mesa 3 (6) | hoja magenta con 6 paneles, o `assets/sprites/trash3/<id>.png` (servilleta, vaso, botella, copa, propina, dentadura) | 32x32 cada uno | Dibujada con código | "Pixel art, 6 objetos sueltos sobre fondo magenta plano: servilleta manchada, vaso sucio, botella vacía tumbada, copa rota, billetes de propina doblados, dentadura de oro; estilo terror, contorno negro" |
+| Friegaplatos | `assets/sprites/busboy/walk-1.png` y `walk-2.png` (o hoja magenta de 2 frames) | 64x64 | El limpiador de la mesa 1 | "Pixel art, chico friegaplatos zombi con delantal y trapo, caminando de lado, 2 frames, fondo magenta plano" |
   - Arte de la trastienda de la mesa 2 (procesado después): fondo `assets/raw/trastienda2.*` a 640x360; basura en 6 paneles con rejilla (`basura2`), troceada por cuadrícula a 32x32; la moneda atascada llena su celda con su ranura oxidada y se recorta sin quitar fondo (`keepBackground`), porque su borde no es magenta; el aprendiz (`ayudante2`) en dos frames con cajas a mano, para dejar fuera la línea de suelo que une los frames. El objeto raro es una llave dorada (antes "diente de oro", sin arte).
 
 Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador verde en sprites aparte (para que no giren con la rueda), un dado repetido que hay que descartar.
@@ -386,8 +472,9 @@ Estado: ✅ hecho · 🔲 pendiente.
    - ✅ **Rediseño de la interfaz en 8 pasos**: pantalla completa, dos salas, tapete y selector con cantidades reales, cajones laterales, el Encargado detrás de la mesa, diálogo conectado a la escena, simulación con coste de cambiar de sala (mesa 1 ≈ 8:18 con (c), sin tocar números) y documentación (3.1, 9.2, 9.3).
 7. 🔲 **Efectos**: CRT, temblor, glitch, luces parpadeantes. Hechos en el hito 6 para la mesa 1: CRT (scanlines, viñeta, grano), temblor y luces parpadeantes. Falta el glitch.
 8. ✅ **Deuda y paso a la mesa 2**: pago, cartel "Mesa 1 saldada", pestañas, transición, conversión de monedas y guardado v5 (con migración desde v4; el servidor acepta v5 con validación estructural de la mesa 2).
+   - ✅ **Mesa 3 (dados)** jugable completa (ver 4c): objetivos con el mismo VE base, relanzamientos, jackpot de tres dobles seises con racha visible y pozo, servir copas, camarero fantasma, el Barman con diálogo (pendiente de revisión), guardado v6. Faltan arte de su trastienda, su basura y el friegaplatos (provisionales).
    - ✅ **Mesa 2 (tragaperras)** jugable completa (ver 4b): máquina con retención y jackpot con pozo, trabajo, zombi, Tragaperras viviente con diálogo (pendiente de revisión), escena con carretes que giran, simulación (~12 min; mesa 1 + 2 ≈ 20:40). Su trastienda, su basura y el aprendiz ya tienen arte.
-9. 🔲 Mesas 3 a 5 (la 2 ya está), una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
+9. 🔲 Mesas 4 y 5 (la 2 y la 3 ya están), una por una, reutilizando el sistema de suerte, mejoras y prestamistas.
 10. 🔲 Sonido, textos de cobro, pulido y equilibrio final.
 
 ## 12. Decisiones abiertas

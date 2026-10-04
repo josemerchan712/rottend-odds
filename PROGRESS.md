@@ -42,7 +42,8 @@ simulaciones largas si no han cambiado los números.
 - [x] M3.6 assets (barman, dados, fondo-mesa3, camarero) + provisionales (trastienda3, basura3, friegaplatos)
 - [x] M3.7 escena, HUD/cajones, pestaña 3, transición, cartel "Mesa 2 saldada"
 - [x] M3.8 diálogo del Barman (pendiente de revisión)
-- [ ] M3.9 servidor v6 (validación estructural de la mesa 3) + `shared/plausibility.json` regenerada
+- [x] M3.9 servidor v6 (validación estructural de la mesa 3)
+- [ ] M3.9b `shared/plausibility.json` regenerada (~20 min, `npx tsx sim/plausibility.ts`) y `cd server && ./mvnw test`: EN MARCHA. Si la sesión se corta, repetir ambos y hacer commit.
 - [x] M3.10 docs (GAME_DESIGN 4c, README) y resumen final aquí
 
 ## Diseño de la mesa 3 (decisiones propias)
@@ -64,6 +65,54 @@ simulaciones largas si no han cambiado los números.
 - Trabajo: servir copas (vaso sucio, servilleta, botella vacía, copa rota, propina, dentadura de oro).
 - Ayudante: camarero fantasma (tercer panel de la hoja de ayudantes).
 - Duración objetivo: ~14 min con la mejor estrategia (el mensaje se cortó antes de dar una cifra).
+- Ajustes tras simular: suerte base 420 y techo base 350 (con 140/130 la mesa duraba 7:30), recarga
+  de relanzamientos 16 s (con 24 s apenas importaban), y el camarero elige objetivo por crecimiento
+  del saldo (por valor esperado perseguía el doble seis con apuestas grandes y hundía el saldo).
+
+## Resumen final de esta sesión
+
+### Cómo probar
+
+`npm run dev` y abre http://localhost:5173/?dev=mesa3 → Continuar (hueco de guardado aparte con
+las mesas 1 y 2 saldadas). `?dev=mesa2` sigue funcionando (ahora en `casino-incremental-save-dev2`).
+Mesa 3: elige objetivo (clic o Q W E R T), ficha (1-4), Espacio para tirar; si fallas y hay cargas,
+clic en un dado para relanzarlo o ACEPTAR.
+
+### Resultados de la mesa 3 (200 partidas)
+
+Mejor estrategia (todos los objetivos y relanzando) 13:14; solo par sin relanzar 14:32; siempre
+doble seis 16:19; siempre TODO 20:57 (quiebra); mesas 1+2+3 ≈ 34 min. Jackpot ~4% de las chapas,
+~3,6 por partida. Sin pasivo de la mesa 2 tardaría ~57 min. Detalle en GAME_DESIGN 4c.
+
+### Números que cambiaron
+
+- Nuevos: sección `dice` de `shared/config.json` y `config.ts` (ver GAME_DESIGN 4c.4).
+- Guardado v6 (con migración desde v5), `shared/plausibility.json` regenerada.
+- Mesa 2: el objeto raro pasa a ser la llave dorada (lo trae el arte). Nada más.
+
+### Decisiones propias
+
+Moneda "chapas"; objetivos como los tipos de apuesta de la ruleta (mismo VE base vía `r·(1+pago)=2`,
+multiplicador de suerte mayor en los arriesgados); cargas de relanzamiento ligadas al nivel de
+suerte y reserva común con el ayudante; una tirada perdida queda abierta hasta relanzar, aceptar o
+volver a tirar; dados cargados (doble seis con probabilidad j^(1/3)) para que la racha de tres sea
+visible sin que el jackpot domine; pago x500 con pozo; camarero por criterio de Kelly; duración ~14
+min; atajos Q W E R T para los objetivos.
+
+### Assets que faltan (provisionales; tamaños y prompts en GAME_DESIGN 8.1)
+
+Trastienda del bar (640x360), 6 objetos de basura de la mesa 3 (32x32), friegaplatos (64x64, 2
+frames). Pendientes de antes: idle del jugador; ruleta con bola y marcador aparte.
+
+### Problemas conocidos
+
+- El mensaje de esta sesión llegó cortado en "Con mejoras" (bloque 2, punto 6): no llegó el resto
+  del bloque 2 ni el bloque 3. Hay que reenviarlo para seguir.
+- Las líneas del Barman y de la Tragaperras viviente están pendientes de revisión.
+- Las piernas translúcidas del camarero fantasma conservan algo de tono rosado.
+- Jugar a "más de 7" o a los arriesgados sin relanzar empata con jugar solo a par: compensan con
+  suerte alta, pero esa fase es corta. Si se quiere que pesen más, subir sus multiplicadores máximos.
+- Las mesas 2 y 3 no tienen validación estadística en el servidor (solo estructural).
 
 ---
 

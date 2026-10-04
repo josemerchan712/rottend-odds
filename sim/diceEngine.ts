@@ -51,6 +51,8 @@ export interface DiceRunResult {
   /** Tiempo de las mesas 1 y 2 hasta llegar aquí. */
   previousTime: number;
   luckMaxTime: number | null;
+  /** Momento en que se entra en cada fase (por el nivel de suerte). */
+  phaseStart: Record<Phase, number | null>;
   bankruptcies: Record<Phase, number>;
   reachedPhase: Record<Phase, boolean>;
   earned: { work: number; dice: number; jackpot: number; passive: number };
@@ -92,6 +94,7 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
     time: 0,
     previousTime: start.time,
     luckMaxTime: null,
+    phaseStart: { inicio: 0, media: null, alta: null, final: null },
     bankruptcies: { inicio: 0, media: 0, alta: 0, final: 0 },
     reachedPhase: { inicio: true, media: false, alta: false, final: false },
     earned: { work: 0, dice: 0, jackpot: 0, passive: 0 },
@@ -163,7 +166,9 @@ export function runDice(strategy: DiceStrategy, seed: number, player: PlayerMode
       spent += diceNextCost(dice, best)!;
       buyDiceUpgrade(dice, best);
       if (best === 'luck') {
-        result.reachedPhase[phaseOf(dice.upgrades.luck)] = true;
+        const phase = phaseOf(dice.upgrades.luck);
+        result.reachedPhase[phase] = true;
+        result.phaseStart[phase] ??= dice.playTime;
         if (dice.upgrades.luck >= CONFIG.dice.upgrades.luck.maxLevel) result.luckMaxTime ??= dice.playTime;
       }
     }

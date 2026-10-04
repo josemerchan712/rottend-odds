@@ -38,9 +38,16 @@ no han cambiado los números. Carpeta de trabajo: `C:ideojuego` (fuera de OneDr
         son 2.100 partidas de 30 min de juego y el portátil (i5-8265U) tiene 4 núcleos físicos; ya va
         3,7 veces más rápido que en secuencial y está limitado por la CPU.
 
+- [x] B1.2 Camarero de la mesa 3 por fase (40 partidas, el jugador como (d); tiempo en cada fase):
+      antes, agresivo (50% del techo, 30% del saldo) ganaba en la media y la alta (9:26 y 1:18 frente a
+      11:11/2:17 de prudente). Con los relanzamientos el camarero gana a menudo incluso a media suerte,
+      así que subir la fracción del techo no bastaba. Ahora agresivo = 100% del techo y hasta el 60% del
+      saldo (por encima del Kelly de media suerte): prudente gana la fase inicial (1:48), normal la media
+      (9:50 frente a 10:21 de agresivo) y agresivo solo la alta (1:07). Sin quiebras en ninguna fase.
+
 ### Pendiente
 
-- B1.2 camarero agresivo, B1.3 tramo final de la mesa 3, B1.4 regenerar --full
+- B1.3 tramo final de la mesa 3, B1.4 regenerar --full
 - B2 mesa 4 (blackjack, la Crupier)
 - B3 cierre
 

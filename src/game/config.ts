@@ -345,7 +345,10 @@ export const CONFIG = {
       profiles: [
         { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03 },
         { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1 },
-        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3 },
+        // Agresivo: todo el techo y hasta el 60% del saldo. Con los relanzamientos, a media suerte sigue
+        // ganando a menudo, así que solo un límite por encima del de Kelly a media suerte (y por debajo
+        // del de suerte alta) hace que compense solo con suerte alta. Con 50% / 30% ganaba en todas las fases.
+        { id: 'agresivo', name: 'Agresivo', fraction: 1, maxBalanceFraction: 0.6 },
       ] as readonly { id: string; name: string; fraction: number; maxBalanceFraction: number }[],
       luckPerLevel: 0.005,
     },

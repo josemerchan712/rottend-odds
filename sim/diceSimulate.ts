@@ -110,6 +110,18 @@ if (!noStudy) {
   section('Camarero con perfil fijo (el jugador juega como (d))');
   const ghost = GHOST_STUDY.map((s) => ({ s, r: Array.from({ length: runs }, (_, i) => runDice(s, i + 1)) }));
   table(
+    ['Perfil', 'Fase inicial (media)', 'Fase media (media)', 'Fase alta (media)', 'Final (media)'],
+    ghost.map(({ s, r }) => {
+      const span = (from: (typeof PHASES)[number], to: (typeof PHASES)[number] | null) => {
+        const xs = r.filter((x) => x.phaseStart[from] !== null && (to === null ? x.finished : x.phaseStart[to] !== null))
+          .map((x) => (to === null ? x.time : x.phaseStart[to]!) - x.phaseStart[from]!);
+        return xs.length ? t(mean(xs)) : '-';
+      };
+      return [s.label, span('inicio', 'media'), span('media', 'alta'), span('alta', 'final'), span('final', null)];
+    }),
+  );
+  console.log('  Tiempo medio en cada fase (suerte 0-4 / 5-11 / 12-19 / 20): el perfil que menos tarda en una fase es el que compensa en ella.');
+  table(
     ['Perfil', 'Tiempo p50', ...PHASES.map((p) => `VE ${p}`), ...PHASES.map((p) => `quiebra ${p}`)],
     ghost.map(({ s, r }) => [
       s.label,

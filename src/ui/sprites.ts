@@ -8,6 +8,7 @@ const urls = {
   trash: import.meta.glob<string>('../../assets/sprites/trash/*.png', { eager: true, query: '?url', import: 'default' }),
   player: import.meta.glob<string>('../../assets/sprites/player/*.png', { eager: true, query: '?url', import: 'default' }),
   lender: import.meta.glob<string>('../../assets/sprites/lender/*.png', { eager: true, query: '?url', import: 'default' }),
+  lenderScene: import.meta.glob<string>('../../assets/sprites/lender-scene/*.png', { eager: true, query: '?url', import: 'default' }),
   roulette: import.meta.glob<string>('../../assets/sprites/roulette/*.png', { eager: true, query: '?url', import: 'default' }),
   chips: import.meta.glob<string>('../../assets/sprites/chips/*.png', { eager: true, query: '?url', import: 'default' }),
   helpers: import.meta.glob<string>('../../assets/sprites/helpers/*.png', { eager: true, query: '?url', import: 'default' }),

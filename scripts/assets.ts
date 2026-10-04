@@ -84,6 +84,14 @@ const SHEETS: Sheet[] = [
     size: [128, 128],
   },
   {
+    // Tamaño en escena, detrás de la mesa: reescalado desde el original, no desde el de 128.
+    kind: 'blocks',
+    source: 'assets/raw/encargado.png.jpeg',
+    outDir: 'assets/sprites/lender-scene',
+    names: ['calm', 'uneasy', 'deformed'],
+    size: [96, 96],
+  },
+  {
     // Fondo cian. A 150 px, el tamaño con el que se dibuja en la escena.
     kind: 'blocks',
     source: 'assets/raw/ruleta.png.jpeg',

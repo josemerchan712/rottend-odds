@@ -1,5 +1,4 @@
 import { CONFIG } from '../game/config';
-import { debtProgress } from '../game/debt';
 import { lenderPhase } from '../game/lender';
 import { fadeAlpha, type Room, type RoomState } from '../game/rooms';
 import type { GameState, SpinResult } from '../game/state';
@@ -8,7 +7,7 @@ import { formatNumber } from '../util/format';
 import { Effects } from './effects';
 import { RouletteView } from './rouletteView';
 import { ready, type PlayerFrame, type Sprites } from './sprites';
-import { ARM_SPOT, chipAt, WHEEL_CENTER, zoneAt, type Zone } from './casinoLayout';
+import { ARM_SPOT, chipAt, LENDER_SIZE, LENDER_SPOT, WHEEL_CENTER, zoneAt, type Zone } from './casinoLayout';
 import { drawChips, drawStrip, drawTapete } from './tapeteView';
 import { isBetTypeUnlocked, stateChips, type SelectorChip } from '../game/betting';
 
@@ -18,12 +17,15 @@ export const SCENE_HEIGHT = 360;
 
 const TRASH_SIZE = 32;
 const PLAYER_SIZE = 64;
-const PORTRAIT_SIZE = 128;
 const CROUCH_SECONDS = 0.14;
 const LIFT_SECONDS = 0.3;
 const FLOAT_SECONDS = 1.1;
 const CLEANER_SPEED = 220; // px/s en la escena
 const ARM_REACH_SECONDS = 0.25;
+/** Segundos que el Encargado mira hacia la rueda tras una tirada. */
+const LOOK_SECONDS = 1.6;
+/** Fracción superior del sprite que se desplaza al "girar la cabeza". */
+const HEAD_FRACTION = 0.56;
 /** Una apuesta perdida es "grande" (tiembla la pantalla) si se jugó al menos esta fracción del saldo. */
 const BIG_LOSS_FRACTION = 0.25;
 
@@ -34,11 +36,6 @@ const BIG_LOSS_FRACTION = 0.25;
 export const DOORS: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
   casino: { x: 30, y: 88, width: 62, height: 168, label: 'TRASTIENDA' },
   trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'CASINO' },
-};
-
-/** Posiciones en la escena de 640x360 (sección 9.2), ajustadas al fondo de la mesa 1. */
-const LAYOUT = {
-  portrait: { x: SCENE_WIDTH - PORTRAIT_SIZE - 6, y: 6 },
 };
 
 /** Lo que hay bajo el ratón en el casino (para el tooltip y el clic). */
@@ -52,11 +49,7 @@ const COLORS = {
   hover: 'rgba(201, 164, 67, 0.35)',
   text: '#c9a443',
   shadow: 'rgba(0, 0, 0, 0.55)',
-  frame: '#0b0908',
   frameEdge: '#3a2f1e',
-  debtBack: '#1a1410',
-  debtFill: '#9a2a22',
-  debtFill2: '#b0602a',
 };
 
 interface FloatingText {
@@ -82,6 +75,9 @@ export class Scene {
   private floats: FloatingText[] = [];
   private cleanerShown: { x: number; y: number; facing: 1 | -1; walk: number } | null = null;
   private armReach = 0;
+  /** Reloj de la respiración del Encargado y giro de cabeza hacia la rueda tras una tirada. */
+  private lenderTime = 0;
+  private lenderLook = 0;
   private seenBets: number | null = null;
   /** Número de la última apuesta cuyo resultado ya se ha mostrado. */
   revealedBets = 0;
@@ -168,7 +164,6 @@ export class Scene {
     this.drawFloats();
     ctx.restore();
 
-    if (rooms.current === 'casino') this.drawPortrait(state);
     const fade = fadeAlpha(rooms);
     if (fade > 0) {
       ctx.fillStyle = `rgba(0, 0, 0, ${fade})`;
@@ -184,6 +179,7 @@ export class Scene {
     const version = state.debtPaid ? 'broken' : 'healthy';
     this.roulette.draw(ctx, this.sprites.roulette.get(version), version, WHEEL_CENTER.x, WHEEL_CENTER.y);
     drawStrip(ctx, this.shownSpins(state));
+    this.drawLender(state);
     const target = this.casinoTarget(state);
     drawTapete(ctx, state, target?.kind === 'zone' ? target.zone : null);
     drawChips(ctx, state, this.sprites, target?.kind === 'chip' ? target.position : null);
@@ -300,6 +296,7 @@ export class Scene {
     const balanceBefore = state.balance - latest.delta;
     const bigLoss = latest.outcome === 'pierde' && latest.bet >= balanceBefore * BIG_LOSS_FRACTION;
     if (latest.bettor === 'ayudante') this.armReach = ARM_REACH_SECONDS;
+    this.lenderLook = LOOK_SECONDS;
     const interrupted = this.roulette.start({ spin: latest, number: bets, bigLoss });
     if (interrupted) this.revealedBets = Math.max(this.revealedBets, interrupted.number);
   }
@@ -307,6 +304,8 @@ export class Scene {
   private advance(state: GameState, dt: number): void {
     this.effects.update(dt);
     this.armReach = Math.max(0, this.armReach - dt);
+    this.lenderTime += dt;
+    this.lenderLook = Math.max(0, this.lenderLook - dt);
     const landed = this.roulette.update(dt);
     if (landed) {
       this.revealedBets = Math.max(this.revealedBets, landed.number);
@@ -358,25 +357,36 @@ export class Scene {
     ctx.fillRect(0, 240, SCENE_WIDTH, SCENE_HEIGHT - 240);
   }
 
-  /** Retrato del Encargado en la esquina, con su fase según la deuda, y la barra de deuda debajo. */
-  private drawPortrait(state: GameState): void {
+  /**
+   * El Encargado, detrás de la mesa y a un lado de la rueda, supervisando. Foco tenue encima,
+   * respiración de 1 px y la cabeza (la parte de arriba del sprite) girada 2 px hacia la rueda
+   * cuando alguien apuesta. El tapete se dibuja después y le tapa el torso.
+   */
+  private drawLender(state: GameState): void {
     const ctx = this.ctx;
-    const { x, y } = LAYOUT.portrait;
-    ctx.fillStyle = COLORS.frame;
-    ctx.fillRect(x - 3, y - 3, PORTRAIT_SIZE + 6, PORTRAIT_SIZE + 16);
-    ctx.fillStyle = COLORS.frameEdge;
-    ctx.fillRect(x - 3, y - 3, PORTRAIT_SIZE + 6, 1);
-    ctx.fillRect(x - 3, y + PORTRAIT_SIZE + 12, PORTRAIT_SIZE + 6, 1);
-    const img = this.sprites.lender.get(lenderPhase(state));
-    if (ready(img)) ctx.drawImage(img, x, y, PORTRAIT_SIZE, PORTRAIT_SIZE);
-    const barY = y + PORTRAIT_SIZE + 4;
-    ctx.fillStyle = COLORS.debtBack;
-    ctx.fillRect(x, barY, PORTRAIT_SIZE, 5);
-    const width = Math.round(PORTRAIT_SIZE * debtProgress(state));
-    ctx.fillStyle = COLORS.debtFill;
-    ctx.fillRect(x, barY, width, 5);
-    ctx.fillStyle = COLORS.debtFill2;
-    ctx.fillRect(x, barY, width, 2);
+    const img = this.sprites.lenderScene.get(lenderPhase(state));
+    const left = Math.round(LENDER_SPOT.x - LENDER_SIZE / 2);
+    const breath = Math.round(Math.sin(this.lenderTime * 1.7));
+    const top = LENDER_SPOT.y - LENDER_SIZE + breath;
+
+    // Foco de luz tenue.
+    const light = ctx.createRadialGradient(LENDER_SPOT.x, top + 30, 4, LENDER_SPOT.x, top + 30, 62);
+    light.addColorStop(0, 'rgba(225, 190, 120, 0.16)');
+    light.addColorStop(1, 'rgba(225, 190, 120, 0)');
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = light;
+    ctx.fillRect(LENDER_SPOT.x - 62, top - 32, 124, 124);
+    ctx.restore();
+
+    if (!ready(img)) return;
+    // Giro de cabeza: sube rápido y vuelve despacio.
+    const look = this.lenderLook > 0 ? Math.min(1, (LOOK_SECONDS - this.lenderLook) / 0.15, this.lenderLook / 0.5) : 0;
+    const headShift = -Math.round(2 * look); // la rueda está a su izquierda
+    const headHeight = Math.round(LENDER_SIZE * HEAD_FRACTION);
+    const scale = img.naturalWidth / LENDER_SIZE;
+    ctx.drawImage(img, 0, headHeight * scale, img.naturalWidth, (LENDER_SIZE - headHeight) * scale, left, top + headHeight, LENDER_SIZE, LENDER_SIZE - headHeight);
+    ctx.drawImage(img, 0, 0, img.naturalWidth, headHeight * scale, left + headShift, top, LENDER_SIZE, headHeight);
   }
 
   private drawFloats(): void {

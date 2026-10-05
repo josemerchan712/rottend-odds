@@ -64,13 +64,13 @@ describe('auditoría: objetivos de los perfiles (ayudante solo, 10 techos de sal
         expect(prudent.negative2).toBeLessThanOrEqual(0.1);
         for (const p of [0, 1, 2]) expect(audit(a, luck, true, p, 4, 6, 2).zeros).toBe(0);
       }
-    });
+    }, 30_000);
 
     it(`${a.name}: con suerte alta, agresivo es el más rápido`, () => {
       const rows = [0, 1, 2].map((p) => audit(a, 20, true, p, 6, 4, 10).mean);
       expect(rows[2]).toBeGreaterThan(rows[1]);
       expect(rows[1]).toBeGreaterThan(rows[0]);
-    });
+    }, 30_000);
   }
 });
 

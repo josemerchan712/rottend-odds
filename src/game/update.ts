@@ -5,6 +5,7 @@ import { updateCoin, type CoinTick } from './coin/table';
 import { updateDice, type DiceTick } from './dice/table';
 import { updateSlots, type SlotsTick } from './slots/table';
 import type { GameState, SpinResult } from './state';
+import { trackZeros } from './summary';
 import { updateWork, type Collected } from './work';
 
 export interface Tick {
@@ -31,7 +32,9 @@ export function updateGame(state: GameState, dt: number, rng: Rng): Tick {
   state.playTime += dt;
   const cleaned = updateWork(state, dt, rng);
   const helper = updateHelper(state, dt, rng);
-  return { cleaned, helper, slots: updateSlots(state, dt, rng), dice: updateDice(state, dt, rng), cards: updateCards(state, dt, rng), coin: updateCoin(state, dt, rng) };
+  const tick = { cleaned, helper, slots: updateSlots(state, dt, rng), dice: updateDice(state, dt, rng), cards: updateCards(state, dt, rng), coin: updateCoin(state, dt, rng) };
+  trackZeros(state);
+  return tick;
 }
 
 /** Como updateGame, pero solo devuelve lo recogido por el limpiador de la mesa 1. */

@@ -90,6 +90,8 @@ export interface GameState {
     jackpots: number;
     jackpotsCapped: number;
     workEarned: number;
+    /** Veces que el saldo de alguna mesa se quedó por debajo de la apuesta mínima (pantalla final). */
+    zeros: number;
   };
 }
 
@@ -114,6 +116,6 @@ export function createInitialState(): GameState {
     dice: createDiceState(),
     cards: createCardsState(),
     coin: createCoinState(),
-    stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0 },
+    stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0, zeros: 0 },
   };
 }

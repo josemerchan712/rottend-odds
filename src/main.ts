@@ -2,6 +2,7 @@ import '@fontsource/vt323';
 import './ui/style.css';
 import { createApi, ONLINE_ENABLED, type CloudSave, type TokenResponse } from './api/client';
 import { mountEnding, renderEnding } from './ui/ending';
+import { mountTextLayer } from './ui/sceneText';
 import { gameSummary, isGameFinished } from './game/summary';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
@@ -120,6 +121,7 @@ app.innerHTML = `
   <div class="root" data-ref="root">
     <div class="stage" data-ref="stage">
       <canvas class="scene" data-ref="scene" aria-label="Mesa 1: el casino"></canvas>
+      <canvas class="scene-text" data-ref="sceneText" aria-hidden="true"></canvas>
       <div class="screen game" data-screen="game" hidden></div>
       <div class="screen" data-screen="menu"></div>
       <div class="screen" data-screen="settings" hidden></div>
@@ -147,6 +149,7 @@ const screens = Object.fromEntries(
   ]),
 ) as Record<Screen, HTMLElement>;
 const crt = mountCrt(stage);
+mountTextLayer(app.querySelector<HTMLCanvasElement>('[data-ref="sceneText"]')!);
 const relayout = () => layoutStage(root, stage);
 window.addEventListener('resize', relayout);
 document.addEventListener('fullscreenchange', relayout);

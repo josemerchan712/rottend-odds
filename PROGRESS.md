@@ -4,6 +4,46 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 6 (bloques 1-4: texto legible, barra superior, aciertos de los ayudantes, rediseño de la mesa 5)
+
+Remoto: `origin`. Push al final de cada bloque, nunca con force. Simulaciones de una en una, con --quick.
+
+### Hecho
+
+- [x] **B1 Texto legible en todas las mesas.**
+  - Causa: el texto del canvas salía de máscaras umbralizadas a 1 píxel por unidad (sesión 5) y los números del
+    tapete de una fuente bitmap de 3x5: a 9-12 px VT323 quedaba en glifos de 3x5 (el 2 parecía un 7) y el CRT
+    pasaba por encima. Los botones desactivados eran dorado al 35% sobre oscuro (casi negro).
+  - Ahora todo el texto de escena va por `src/ui/sceneText.ts`: VT323 con `fillText` a resolución física en una
+    **capa de texto propia** (segundo canvas) encima del CRT y debajo del HUD. Elegido frente a HTML superpuesto:
+    misma nitidez (mismo motor de fuentes y tamaño físico) y sigue a la escena en el mismo fotograma (temblor,
+    flotantes, cartas). Orden de capas: escena → CRT → texto → HUD/menús (el CRT ya no tapa ningún texto).
+  - Tamaños: mínimo 14 px (altura de mayúscula 8 unidades; VT323 ≈ 0,6 × tamaño, medido); números del tapete,
+    de las fichas y flotantes 16 px; palos de las cartas 22 px. Contorno oscuro de 1 unidad en el texto sobre la
+    escena. Contraste ≥ 4,5:1 en todos los estilos (también botones desactivados: caja apagada, borde punteado).
+  - Inventario (estilo → dónde): `label` contadores (POZO, BANCA, APUESTA/EN JUEGO, PREMIOS…), `muted` etiquetas
+    secundarias (RACHA, RELANZ., DESCARTES, MANOS, OTRA VEZ, pagos de los objetivos), `value` valores encendidos
+    (TÚ 21, racha, 7·7·7 posible, RET, ELIGE UN DADO, D), `danger` (TE HAS PASADO), `button/buttonHover/
+    buttonDisabled` (TIRAR, ACEPTAR, REPARTIR, PEDIR, PLANTARSE, APOSTAR, SEGUIR, RETIRARSE, OTRA VEZ),
+    `numberOnDark/numberOnBone/zoneOnFelt` (tapete: números, NEGRO/BLANCO, docenas), `chip/chipSelected/
+    chipDisabled/chipTag` (fichas y TODO), `float/floatBad` (+N, −N, JACKPOT), `cardInk/cardRed/cardPip/
+    cardPipRed` (cartas), `locked` (BLOQ.).
+  - Colisiones: TODO a la izquierda de su ficha (en su línea); zombi desplazado para no taparlo; tapete de la
+    ruleta más alto (celdas 16x14); bandeja de los dados 184x72 y objetivos de 54x32 (dos líneas); tabla de premios
+    de la tragaperras 116x112; paño de la mesa 5 262x78; contadores separados de los bordes.
+  - Verificado en el navegador en las cinco mesas (1280x720, dpr 1; en ventana): texto nítido y legible, igual que
+    el HUD. dpr 1,5/2 y pantalla completa no se pueden emular en el panel: la escala entera ya tiene test (11
+    tamaños × 7 dpr) y el texto se rasteriza a la resolución física, así que escala igual. Test nuevo
+    `tests/sceneText.test.ts` (tamaño mínimo y contraste de cada estilo; ninguna escena dibuja texto por su cuenta).
+
+### Pendiente
+
+- B2 barra superior que cambia de tamaño
+- B3 aciertos de los ayudantes (auditoría con el motor real)
+- B4 rediseño de la mesa 5 (herencias, dos monedas, monedas del escritorio)
+
+---
+
 ## Sesión 5 (bloques 1-6: sin trastienda en 2-4, auditoría de ayudantes, texto nítido, mesa 5, publicación, sonido)
 
 Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con force.

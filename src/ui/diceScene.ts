@@ -11,7 +11,7 @@ import { Effects } from './effects';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
-import { fillPixelText } from './pixelText';
+import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
 
 /**
@@ -23,14 +23,14 @@ import { prepareCanvas } from './stage';
  */
 const COUNTER_TOP = 204;
 const LENDER = { x: 322, top: 110, size: 96 };
-export const TRAY = { x: 232, y: 222, width: 176, height: 58 };
-export const ROLL_BUTTON = { x: 418, y: 236, width: 58, height: 18 };
-export const ACCEPT_BUTTON = { x: 418, y: 258, width: 58, height: 14 };
-const TARGET_ROW = { x: 196, y: 290, width: 50, height: 18, gap: 2 };
+export const TRAY = { x: 228, y: 220, width: 184, height: 72 };
+export const ROLL_BUTTON = { x: 420, y: 230, width: 64, height: 22 };
+export const ACCEPT_BUTTON = { x: 420, y: 258, width: 64, height: 20 };
+const TARGET_ROW = { x: 192, y: 300, width: 54, height: 32, gap: 2 };
 const DIE_SIZE = 32;
 const DIE_REST = [
-  { x: TRAY.x + 58, y: TRAY.y + 14 },
-  { x: TRAY.x + 98, y: TRAY.y + 12 },
+  { x: TRAY.x + 60, y: TRAY.y + 20 },
+  { x: TRAY.x + 100, y: TRAY.y + 18 },
 ];
 const GHOST_SPOT = { x: 556, y: 330 };
 const ROLL_SECONDS = 0.75;
@@ -274,20 +274,20 @@ export class DiceScene {
     ctx.fillStyle = '#24331b';
     ctx.fillRect(t.x, t.y, t.width, t.height);
     // Racha de dobles seises: tres casillas.
-    label(ctx, 'RACHA 6·6', t.x + 4, t.y + 6, '#8f8670', 9, 'left');
+    drawText(ctx, 'muted', 'RACHA 6·6', t.x + 5, t.y + 9, 'left');
     for (let i = 0; i < CONFIG.dice.jackpot.streak; i++) {
       ctx.fillStyle = i < dice.streak ? '#d4ad48' : '#3b4f28';
-      ctx.fillRect(t.x + 48 + i * 9, t.y + 3, 7, 6);
+      ctx.fillRect(t.x + 60 + i * 9, t.y + 5, 7, 7);
     }
-    label(ctx, `${dice.streak}/${CONFIG.dice.jackpot.streak}`, t.x + 78, t.y + 6, dice.streak > 0 ? '#f0d27a' : '#8f8670', 9, 'left');
-    label(ctx, `POZO ${formatNumber(Math.min(dice.pot, DICE_JACKPOT_CAP))}`, t.x + t.width - 4, t.y + 6, '#e3dcc6', 9, 'right');
+    drawText(ctx, dice.streak > 0 ? 'value' : 'muted', `${dice.streak}/${CONFIG.dice.jackpot.streak}`, t.x + 90, t.y + 9, 'left');
+    drawText(ctx, 'label', `POZO ${formatNumber(Math.min(dice.pot, DICE_JACKPOT_CAP))}`, t.x + t.width - 5, t.y + 9, 'right');
     // Cargas de relanzamiento.
     const max = maxRerolls(dice.upgrades.luck);
-    label(ctx, 'RELANZ.', t.x + 4, t.y + t.height - 6, '#8f8670', 9, 'left');
+    drawText(ctx, 'muted', 'RELANZ.', t.x + 5, t.y + t.height - 9, 'left');
     for (let i = 0; i < max; i++) {
       ctx.fillStyle = i < dice.rerolls.charges ? '#c0473d' : '#3a2f1e';
       ctx.beginPath();
-      ctx.arc(t.x + 44 + i * 8, t.y + t.height - 6, 2.5, 0, Math.PI * 2);
+      ctx.arc(t.x + 52 + i * 8, t.y + t.height - 9, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
     // Los dados.
@@ -315,7 +315,7 @@ export class DiceScene {
         }
       }
     }
-    if (open && !this.rollInFlight()) label(ctx, 'CLIC EN UN DADO', t.x + t.width - 4, t.y + t.height - 6, '#f0d27a', 9, 'right');
+    if (open && !this.rollInFlight()) drawText(ctx, 'value', 'ELIGE UN DADO', t.x + t.width - 5, t.y + t.height - 9, 'right');
   }
 
   private drawTargets(state: GameState, hit: DiceTargetHit | null): void {
@@ -337,38 +337,20 @@ export class DiceScene {
         ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.width - 1, r.height - 1);
       }
       const payout = def.payout === Math.floor(def.payout) ? `${def.payout}:1` : `${String(def.payout).replace('.', ',')}:1`;
-      label(ctx, def.short, r.x + r.width / 2, r.y + 5, locked ? '#5a5245' : selected ? '#f0d27a' : '#e3dcc6', 9);
-      label(ctx, locked ? 'BLOQ.' : payout, r.x + r.width / 2, r.y + 13, locked ? '#5a5245' : '#8f8670', 9);
+      drawText(ctx, locked ? 'locked' : selected ? 'value' : 'label', def.short, r.x + r.width / 2, r.y + 10);
+      drawText(ctx, locked ? 'locked' : 'muted', locked ? 'BLOQ.' : payout, r.x + r.width / 2, r.y + 23);
     });
   }
 
   private drawButtons(state: GameState, hit: DiceTargetHit | null): void {
     const ctx = this.ctx;
-    const button = (r: typeof ROLL_BUTTON, text: string, hovered: boolean, color: string) => {
-      ctx.fillStyle = '#0b0908';
-      ctx.fillRect(r.x - 1, r.y - 1, r.width + 2, r.height + 2);
-      ctx.fillStyle = hovered ? '#8a2f2a' : color;
-      ctx.fillRect(r.x, r.y, r.width, r.height);
-      label(ctx, text, r.x + r.width / 2, r.y + r.height / 2, hovered ? '#f0d27a' : '#d4ad48', r.height > 15 ? 12 : 9);
-    };
-    button(ROLL_BUTTON, this.rollInFlight() ? '...' : 'TIRAR', hit?.kind === 'roll', '#5e1f1b');
-    if (openRoll(state.dice) && !this.rollInFlight()) button(ACCEPT_BUTTON, 'ACEPTAR', hit?.kind === 'accept', '#2e261c');
+    const busy = this.rollInFlight();
+    drawButton(ctx, ROLL_BUTTON, busy ? '...' : 'TIRAR', busy ? 'disabled' : hit?.kind === 'roll' ? 'hover' : 'active');
+    if (openRoll(state.dice) && !busy) drawButton(ctx, ACCEPT_BUTTON, 'ACEPTAR', hit?.kind === 'accept' ? 'hover' : 'active');
   }
 
   private drawFloats(): void {
-    const ctx = this.ctx;
-    ctx.font = '12px VT323, monospace';
-    ctx.textAlign = 'center';
-    for (const f of this.floats) {
-      const fx = Math.round(f.x);
-      const fy = Math.round(f.y - f.age * 18);
-      ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-      fillPixelText(ctx, f.text, fx + 1, fy + 1);
-      ctx.fillStyle = f.color;
-      fillPixelText(ctx, f.text, fx, fy);
-    }
-    ctx.globalAlpha = 1;
+    drawFloatTexts(this.ctx, this.floats, FLOAT_SECONDS);
   }
 
   private drawSprite(img: HTMLImageElement | undefined, x: number, y: number, size: number, facing: 1 | -1, offsetY = 0): void {
@@ -387,12 +369,3 @@ export class DiceScene {
   }
 }
 
-function label(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 11, align: CanvasTextAlign = 'center'): void {
-  ctx.font = `${size}px VT323, monospace`;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  fillPixelText(ctx, value, x + 1, y + 1.5);
-  ctx.fillStyle = color;
-  fillPixelText(ctx, value, x, y + 0.5);
-}

@@ -8,7 +8,7 @@ import type { GameState } from '../game/state';
 import { formatNumber } from '../util/format';
 import { chipAt } from './casinoLayout';
 import { Effects } from './effects';
-import { fillPixelText } from './pixelText';
+import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { ready, type Sprites } from './sprites';
 import { prepareCanvas } from './stage';
@@ -24,14 +24,14 @@ import { drawChipColumn } from './tapeteView';
 const DESK_TOP = 236;
 const LENDER = { x: 320, top: 142, size: 96 };
 const COIN = { x: 320, y: 222, size: 48 };
-export const PANEL = { x: 196, y: 262, width: 248, height: 66 };
+export const PANEL = { x: 190, y: 258, width: 262, height: 78 };
 const STACK = { x: 404, y: 252 };
 export const ZONES5 = {
-  bet: { x: PANEL.x + 8, y: PANEL.y + 38, width: 112, height: 20, label: 'APOSTAR [Esp]' },
-  more: { x: PANEL.x + 8, y: PANEL.y + 38, width: 112, height: 20, label: 'SEGUIR [Esp]' },
-  stop: { x: PANEL.x + 128, y: PANEL.y + 38, width: 112, height: 20, label: 'RETIRARSE [R]' },
-  second: { x: PANEL.x + 8, y: PANEL.y + 38, width: 112, height: 20, label: 'OTRA VEZ [S]' },
-  accept: { x: PANEL.x + 128, y: PANEL.y + 38, width: 112, height: 20, label: 'ACEPTAR [Esp]' },
+  bet: { x: PANEL.x + 8, y: PANEL.y + 50, width: 120, height: 22, label: 'APOSTAR [Esp]' },
+  more: { x: PANEL.x + 8, y: PANEL.y + 50, width: 120, height: 22, label: 'SEGUIR [Esp]' },
+  stop: { x: PANEL.x + 134, y: PANEL.y + 50, width: 120, height: 22, label: 'RETIRARSE [R]' },
+  second: { x: PANEL.x + 8, y: PANEL.y + 50, width: 120, height: 22, label: 'OTRA VEZ [S]' },
+  accept: { x: PANEL.x + 134, y: PANEL.y + 50, width: 120, height: 22, label: 'ACEPTAR [Esp]' },
 };
 const IMP_SPOT = { x: 560, y: 334 };
 const FLIP_SECONDS = 0.9;
@@ -305,7 +305,7 @@ export class CoinScene {
       ctx.fillStyle = i % 2 ? '#c9a443' : '#a8841f';
       ctx.fillRect(STACK.x - 8, y, 16, 2);
     }
-    if (chain.wins > 0) label(ctx, formatNumber(chainValue(chain.stake, chain.wins)), STACK.x, STACK.y - coins * 3 - 8, '#f0d27a', 10);
+    if (chain.wins > 0) drawText(ctx, 'value', formatNumber(chainValue(chain.stake, chain.wins)), STACK.x, STACK.y - coins * 3 - 10);
     void state;
   }
 
@@ -326,35 +326,27 @@ export class CoinScene {
     // Indicador de la cadena: 10 casillas.
     const max = CONFIG.coin.chain.maxWins;
     for (let i = 0; i < max; i++) {
-      const x = p.x + 8 + i * 13;
+      const x = p.x + 8 + i * 12;
       ctx.fillStyle = '#0b0908';
-      ctx.fillRect(x, p.y + 7, 11, 9);
+      ctx.fillRect(x, p.y + 6, 10, 10);
       ctx.fillStyle = i < wins && !this.flipping() ? '#d4ad48' : i < wins ? '#8a6a2a' : '#3a2a1e';
-      ctx.fillRect(x + 1, p.y + 8, 9, 7);
+      ctx.fillRect(x + 1, p.y + 7, 8, 8);
     }
-    label(ctx, `${wins}/${max}`, p.x + 8 + max * 13 + 4, p.y + 12, '#e3dcc6', 10, 'left');
-    label(ctx, `POZO ${formatNumber(Math.min(coin.pot, COIN_JACKPOT_CAP))}`, p.x + p.width - 6, p.y + 12, wins >= 7 ? '#f0d27a' : '#8f8670', 9, 'right');
+    drawText(ctx, 'label', `${wins}/${max}`, p.x + 8 + max * 12 + 4, p.y + 12, 'left');
+    drawText(ctx, wins >= 7 ? 'value' : 'muted', `POZO ${formatNumber(Math.min(coin.pot, COIN_JACKPOT_CAP))}`, p.x + p.width - 6, p.y + 12, 'right');
     // En juego y segundas oportunidades.
     const stakeText = open && chain ? `EN JUEGO ${formatNumber(chainValue(chain.stake, chain.wins))}` : `APUESTA ${formatNumber(selectedCoinChip(coin).amount)}`;
-    label(ctx, stakeText, p.x + 8, p.y + 27, '#e3dcc6', 10, 'left');
-    label(ctx, 'OTRA VEZ', p.x + 150, p.y + 27, '#8f8670', 9, 'left');
+    drawText(ctx, 'label', stakeText, p.x + 8, p.y + 31, 'left');
     const seconds = maxSeconds(coin.upgrades.luck);
+    drawText(ctx, 'muted', 'OTRA VEZ', p.x + p.width - 10 - seconds * 7, p.y + 31, 'right');
     for (let i = 0; i < seconds; i++) {
       ctx.fillStyle = i < coin.seconds.charges ? '#c9a443' : '#3a2f1e';
-      ctx.fillRect(p.x + 192 + i * 7, p.y + 25, 5, 5);
+      ctx.fillRect(p.x + p.width - 6 - (seconds - i) * 7, p.y + 28, 5, 5);
     }
 
     const busy = this.flipping();
-    const zone = (z: (typeof ZONES5)[keyof typeof ZONES5], active: boolean, hovered: boolean) => {
-      ctx.strokeStyle = active ? (hovered ? '#f0d27a' : '#d4ad48') : 'rgba(212, 173, 72, 0.25)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(z.x + 0.5, z.y + 0.5, z.width - 1, z.height - 1);
-      if (hovered) {
-        ctx.fillStyle = 'rgba(212, 173, 72, 0.15)';
-        ctx.fillRect(z.x + 1, z.y + 1, z.width - 2, z.height - 2);
-      }
-      label(ctx, z.label, z.x + z.width / 2, z.y + z.height / 2, active ? (hovered ? '#f0d27a' : '#d4ad48') : 'rgba(212, 173, 72, 0.35)', 11);
-    };
+    const zone = (z: (typeof ZONES5)[keyof typeof ZONES5], active: boolean, hovered: boolean) =>
+      drawButton(ctx, z, z.label, !active ? 'disabled' : hovered ? 'hover' : 'active');
     if (!open) {
       zone(ZONES5.bet, !busy, hit?.kind === 'bet');
       zone(ZONES5.stop, false, false);
@@ -368,20 +360,7 @@ export class CoinScene {
   }
 
   private drawFloats(): void {
-    const ctx = this.ctx;
-    ctx.font = '12px VT323, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    for (const f of this.floats) {
-      const fx = Math.round(f.x);
-      const fy = Math.round(f.y - f.age * 18);
-      ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-      fillPixelText(ctx, f.text, fx + 1, fy + 1);
-      ctx.fillStyle = f.color;
-      fillPixelText(ctx, f.text, fx, fy);
-    }
-    ctx.globalAlpha = 1;
+    drawFloatTexts(this.ctx, this.floats, FLOAT_SECONDS);
   }
 
   private drawSprite(img: HTMLImageElement | undefined, x: number, y: number, size: number): void {
@@ -390,12 +369,3 @@ export class CoinScene {
   }
 }
 
-function label(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 11, align: CanvasTextAlign = 'center'): void {
-  ctx.font = `${size}px VT323, monospace`;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  fillPixelText(ctx, value, x + 1, y + 1.5);
-  ctx.fillStyle = color;
-  fillPixelText(ctx, value, x, y + 0.5);
-}

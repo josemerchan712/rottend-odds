@@ -9,9 +9,11 @@
  * - el HTML usa `zoom` = k/dpr (la variable `--u`): se maqueta y se rasteriza ya a su tamaño final,
  *   y cada unidad de CSS es k píxeles físicos exactos;
  * - el canvas tiene la resolución física (640k x 360k), dibuja con la transformación k, sin
- *   suavizado, y el texto sale de máscaras sin antialias (pixelText.ts);
- * - la capa CRT va aparte, encima, sin eventos ni filtros sobre el contenido.
+ *   suavizado; el texto va en su propia capa con VT323 a resolución física (sceneText.ts);
+ * - la capa CRT va aparte, justo encima de la escena y por debajo del texto y del HUD, sin eventos ni filtros.
  */
+import { clearTextLayer } from './sceneText';
+
 export const STAGE_WIDTH = 640;
 export const STAGE_HEIGHT = 360;
 
@@ -71,6 +73,7 @@ export function prepareCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingCon
   }
   ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.imageSmoothingEnabled = false;
+  clearTextLayer(w, h);
 }
 
 export function isFullscreen(): boolean {
@@ -107,7 +110,10 @@ export function mountCrt(stage: HTMLElement): { setLevel(level: CrtLevel): void;
   layer.className = 'crt';
   layer.setAttribute('aria-hidden', 'true');
   layer.innerHTML = '<div class="crt-grain"></div><div class="crt-scan"></div><div class="crt-vignette"></div>';
-  stage.append(layer);
+  // Justo encima de la escena: por debajo de la capa de texto y del HUD (el CRT no tapa el texto).
+  const scene = stage.querySelector('.scene');
+  if (scene) scene.after(layer);
+  else stage.append(layer);
 
   // Textura de grano generada una vez (128x128) y desplazada al azar en cada frame.
   const tile = document.createElement('canvas');

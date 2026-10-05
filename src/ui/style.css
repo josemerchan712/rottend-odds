@@ -265,7 +265,17 @@ kbd {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
+  z-index: 1;
+}
+
+/* Capa de texto de las escenas (sceneText.ts): encima del CRT, debajo del HUD y los menús. */
+.scene-text {
+  position: absolute;
+  inset: 0;
+  width: 640px;
+  height: 360px;
+  pointer-events: none;
+  z-index: 2;
 }
 .crt > div { position: absolute; inset: 0; }
 /* Suave (por defecto): se nota el tubo sin ensuciar el texto. Fuerte: el aspecto de antes. */

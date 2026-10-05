@@ -17,7 +17,7 @@ export const ARM_SPOT = { x: 478, y: 270 };
 export const STRIP = { x: 162, y: 58, step: 14 };
 
 /** El tapete, dibujado sobre el fieltro de la mesa. */
-export const TAPETE = { x: 192, y: 200, width: 256, height: 62 };
+export const TAPETE = { x: 192, y: 200, width: 256, height: 76 };
 
 export interface Rect {
   x: number;
@@ -34,7 +34,8 @@ export interface Zone extends Rect {
   type: BetType;
 }
 
-const NUMBER_GRID = { x: 250, y: 204, cols: 12, rows: 3, cell: { width: 16, height: 10 } };
+// Celdas de 16x14: los números van a 16 px (altura de mayúscula 10), legibles a cualquier escala.
+const NUMBER_GRID = { x: 250, y: 204, cols: 12, rows: 3, cell: { width: 16, height: 14 } };
 
 /** Número de la cuadrícula: columnas de tres, como en un tapete real (fila de arriba 3, 6... 36). */
 export function numberAt(col: number, row: number): number {
@@ -43,8 +44,8 @@ export function numberAt(col: number, row: number): number {
 
 function buildZones(): Zone[] {
   const zones: Zone[] = [
-    { id: 'negro', label: 'NEGRO', type: 'color', choice: { type: 'color', color: 'negro' }, x: 196, y: 204, width: 48, height: 26 },
-    { id: 'blanco', label: 'BLANCO', type: 'color', choice: { type: 'color', color: 'blanco' }, x: 196, y: 232, width: 48, height: 26 },
+    { id: 'negro', label: 'NEGRO', type: 'color', choice: { type: 'color', color: 'negro' }, x: 196, y: 204, width: 48, height: 34 },
+    { id: 'blanco', label: 'BLANCO', type: 'color', choice: { type: 'color', color: 'blanco' }, x: 196, y: 240, width: 48, height: 34 },
   ];
   for (let d = 1; d <= 3; d++) {
     zones.push({
@@ -53,9 +54,9 @@ function buildZones(): Zone[] {
       type: 'dozen',
       choice: { type: 'dozen', dozen: d as 1 | 2 | 3 },
       x: NUMBER_GRID.x + (d - 1) * 64,
-      y: 236,
+      y: 248,
       width: 64,
-      height: 22,
+      height: 26,
     });
   }
   for (let col = 0; col < NUMBER_GRID.cols; col++) {

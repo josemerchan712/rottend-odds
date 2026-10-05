@@ -10,7 +10,7 @@ import { ready, type PlayerFrame, type Sprites } from './sprites';
 import { ARM_SPOT, chipAt, LENDER_SIZE, LENDER_SPOT, WHEEL_CENTER, zoneAt, type Zone } from './casinoLayout';
 import { drawChips, drawStrip, drawTapete } from './tapeteView';
 import { isBetTypeUnlocked, stateChips, type SelectorChip } from '../game/betting';
-import { fillPixelText } from './pixelText';
+import { drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
 
 /** Resolución interna de la escena (sección 8 del diseño). */
@@ -272,12 +272,7 @@ export class Scene {
     ctx.setLineDash([3, 2]);
     ctx.strokeRect(d.x + 0.5, d.y + 0.5, d.width - 1, d.height - 1);
     ctx.setLineDash([]);
-    ctx.font = '12px VT323, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.shadow;
-    fillPixelText(ctx, d.label, d.x + d.width / 2 + 1, d.y - 3);
-    ctx.fillStyle = COLORS.text;
-    fillPixelText(ctx, d.label, d.x + d.width / 2, d.y - 4);
+    drawText(ctx, 'label', d.label, d.x + d.width / 2, d.y - 8);
     this.canvas.style.cursor = 'pointer';
   }
 
@@ -402,19 +397,7 @@ export class Scene {
   }
 
   private drawFloats(): void {
-    const ctx = this.ctx;
-    ctx.font = '12px VT323, monospace';
-    ctx.textAlign = 'center';
-    for (const f of this.floats) {
-      const fx = Math.round(f.x);
-      const fy = Math.round(f.y - f.age * 18);
-      ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
-      ctx.fillStyle = COLORS.shadow;
-      fillPixelText(ctx, f.text, fx + 1, fy + 1);
-      ctx.fillStyle = f.color;
-      fillPixelText(ctx, f.text, fx, fy);
-    }
-    ctx.globalAlpha = 1;
+    drawFloatTexts(this.ctx, this.floats, FLOAT_SECONDS);
   }
 
   /** Dibuja un sprite con la base en (x, y). Si aún no ha cargado, un marcador. */

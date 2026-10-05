@@ -12,7 +12,7 @@ import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { reelAt, SlotsView } from './slotsView';
 import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
-import { fillPixelText } from './pixelText';
+import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
 
 /**
@@ -27,8 +27,8 @@ export const MACHINE = { x: 220, y: 88, width: 200, height: 252 };
 export const LEVER = { x: 385, y: 160, width: 36, height: 86 };
 export const SPIN_BUTTON = { x: 276, y: 268, width: 88, height: 18 };
 const LENDER = { x: 320, top: 20, size: 96 };
-const ZOMBIE_SPOT = { x: 112, y: 332 };
-const PAYTABLE = { x: 434, y: 118, width: 92, height: 92 };
+const ZOMBIE_SPOT = { x: 84, y: 332 }; // a la izquierda de la etiqueta TODO de las fichas
+const PAYTABLE = { x: 430, y: 112, width: 116, height: 112 };
 const PLAYER_SIZE = 64;
 const FLOAT_SECONDS = 1.2;
 const ZOMBIE_BOB_SECONDS = 0.3;
@@ -252,13 +252,7 @@ export class SlotsScene {
   private drawSpinButton(hovered: boolean): void {
     const ctx = this.ctx;
     const b = SPIN_BUTTON;
-    ctx.fillStyle = '#0b0908';
-    ctx.fillRect(b.x - 1, b.y - 1, b.width + 2, b.height + 2);
-    ctx.fillStyle = hovered ? '#8a2f2a' : '#5e1f1b';
-    ctx.fillRect(b.x, b.y, b.width, b.height);
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.fillRect(b.x, b.y, b.width, 2);
-    text(ctx, this.reels.busy ? '...' : 'TIRAR', b.x + b.width / 2, b.y + b.height / 2, hovered ? '#f0d27a' : '#d4ad48', 12);
+    drawButton(ctx, b, this.reels.busy ? '...' : 'TIRAR [Esp]', this.reels.busy ? 'disabled' : hovered ? 'hover' : 'active');
   }
 
   /** Tabla de premios con el pozo del jackpot. */
@@ -272,32 +266,20 @@ export class SlotsScene {
     ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.width - 1, p.height - 1);
     const diamond = this.sprites.slots.get('diamante');
     const cx = p.x + p.width / 2;
-    text(ctx, 'PREMIOS', cx, p.y + 8, '#d4ad48', 11);
-    if (ready(diamond)) for (let i = 0; i < 3; i++) ctx.drawImage(diamond, p.x + 18 + i * 19, p.y + 15, 16, 16);
-    text(ctx, 'x1000', cx, p.y + 38, '#f0d27a', 11);
+    drawText(ctx, 'value', 'PREMIOS', cx, p.y + 10);
+    if (ready(diamond)) for (let i = 0; i < 3; i++) ctx.drawImage(diamond, cx - 28 + i * 19, p.y + 19, 16, 16);
+    drawText(ctx, 'value', 'x1000', cx, p.y + 45);
     const pot = Math.min(state.slots.pot, JACKPOT_CAP);
-    text(ctx, `POZO ${formatNumber(pot)}`, cx, p.y + 49, '#e3dcc6', 10);
-    text(ctx, 'TRES IGUALES x10', cx, p.y + 63, '#e3dcc6', 10);
-    text(ctx, 'DOS IGUALES x1,5', cx, p.y + 74, '#e3dcc6', 10);
-    if (state.slots.upgrades.hold > 0) text(ctx, 'CLIC: RETENER', cx, p.y + 85, '#8f8670', 9);
+    drawText(ctx, 'label', `POZO ${formatNumber(pot)}`, cx, p.y + 59);
+    drawText(ctx, 'label', 'TRES IGUALES x10', cx, p.y + 75);
+    drawText(ctx, 'label', 'DOS IGUALES x1,5', cx, p.y + 89);
+    if (state.slots.upgrades.hold > 0) drawText(ctx, 'muted', 'CLIC: RETENER', cx, p.y + 103);
   }
 
   // ---------------------------------------------------------------------------
 
   private drawFloats(): void {
-    const ctx = this.ctx;
-    ctx.font = '12px VT323, monospace';
-    ctx.textAlign = 'center';
-    for (const f of this.floats) {
-      const fx = Math.round(f.x);
-      const fy = Math.round(f.y - f.age * 18);
-      ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-      fillPixelText(ctx, f.text, fx + 1, fy + 1);
-      ctx.fillStyle = f.color;
-      fillPixelText(ctx, f.text, fx, fy);
-    }
-    ctx.globalAlpha = 1;
+    drawFloatTexts(this.ctx, this.floats, FLOAT_SECONDS);
   }
 
   private drawSprite(img: HTMLImageElement | undefined, x: number, y: number, size: number, facing: 1 | -1, offsetY = 0): void {
@@ -316,12 +298,3 @@ export class SlotsScene {
   }
 }
 
-function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 11): void {
-  ctx.font = `${size}px VT323, monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  fillPixelText(ctx, value, x + 1, y + 1.5);
-  ctx.fillStyle = color;
-  fillPixelText(ctx, value, x, y + 0.5);
-}

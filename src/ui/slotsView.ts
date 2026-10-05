@@ -1,7 +1,7 @@
 import { CONFIG } from '../game/config';
 import type { Reels, SlotSpin } from '../game/slots/state';
 import { ready, type Sprites } from './sprites';
-import { fillPixelText } from './pixelText';
+import { drawText } from './sceneText';
 
 /**
  * Los tres carretes de la tragaperras, que giran de verdad: cada uno es una tira de símbolos que
@@ -132,7 +132,7 @@ export class SlotsView {
         ctx.strokeStyle = '#d4ad48';
         ctx.lineWidth = 2;
         ctx.strokeRect(r.x + 1, r.y + 1, r.width - 2, r.height - 2);
-        label(ctx, 'RET', r.x + r.width / 2, r.y + r.height + 6, '#d4ad48');
+        drawText(ctx, 'value', 'RET', r.x + r.width / 2, r.y + r.height + 8);
       } else if (holdable && hovered === i && !s) {
         ctx.strokeStyle = 'rgba(212, 173, 72, 0.5)';
         ctx.lineWidth = 1;
@@ -176,12 +176,3 @@ function flashColor(outcome: SlotSpin['outcome']): string {
   return 'rgba(200, 190, 150, 1)';
 }
 
-function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string): void {
-  ctx.font = '10px VT323, monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  fillPixelText(ctx, text, x + 1, y + 1);
-  ctx.fillStyle = color;
-  fillPixelText(ctx, text, x, y);
-}

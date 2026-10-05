@@ -3,7 +3,7 @@ import { slotColor } from '../game/roulette';
 import type { GameState, SpinResult } from '../game/state';
 import { chipBase, STRIP, TAPETE, ZONES, type Zone } from './casinoLayout';
 import { ready, type Sprites } from './sprites';
-import { fillPixelText } from './pixelText';
+import { drawText, type TextStyleName } from './sceneText';
 
 const C = {
   felt: '#24331b',
@@ -19,33 +19,6 @@ const C = {
   lockShade: 'rgba(8, 6, 4, 0.66)',
   hover: '#d4ad48',
 };
-
-/** Dígitos de 3x5 píxeles para los números del tapete (nítidos a cualquier escala). */
-const DIGITS: Record<string, string[]> = {
-  '0': ['###', '#.#', '#.#', '#.#', '###'],
-  '1': ['.#.', '##.', '.#.', '.#.', '###'],
-  '2': ['###', '..#', '###', '#..', '###'],
-  '3': ['###', '..#', '.##', '..#', '###'],
-  '4': ['#.#', '#.#', '###', '..#', '..#'],
-  '5': ['###', '#..', '###', '..#', '###'],
-  '6': ['###', '#..', '###', '#.#', '###'],
-  '7': ['###', '..#', '.#.', '.#.', '.#.'],
-  '8': ['###', '#.#', '###', '#.#', '###'],
-  '9': ['###', '#.#', '###', '..#', '###'],
-};
-
-function drawDigits(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, color: string): void {
-  const width = text.length * 4 - 1;
-  let x = Math.round(cx - width / 2);
-  const y = Math.round(cy - 2.5);
-  ctx.fillStyle = color;
-  for (const ch of text) {
-    DIGITS[ch]?.forEach((row, r) => {
-      for (let c = 0; c < 3; c++) if (row[c] === '#') ctx.fillRect(x + c, y + r, 1, 1);
-    });
-    x += 4;
-  }
-}
 
 /** Candado de 7x8 píxeles. */
 function drawLock(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
@@ -63,20 +36,13 @@ function drawLock(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
   ctx.fillRect(x + 3, y + 6, 2, 2);
 }
 
-function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 11): void {
-  ctx.font = `${size}px VT323, monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = color;
-  fillPixelText(ctx, value, x, y + 0.5);
-}
 
-function zoneColors(zone: Zone): { fill: string; ink: string } {
-  if (zone.id === 'negro') return { fill: C.black, ink: C.bone };
-  if (zone.id === 'blanco') return { fill: C.bone, ink: C.black };
-  if (zone.type === 'dozen') return { fill: C.feltEdge, ink: C.text };
+function zoneColors(zone: Zone): { fill: string; ink: TextStyleName } {
+  if (zone.id === 'negro') return { fill: C.black, ink: 'numberOnDark' };
+  if (zone.id === 'blanco') return { fill: C.bone, ink: 'numberOnBone' };
+  if (zone.type === 'dozen') return { fill: C.feltEdge, ink: 'zoneOnFelt' };
   const n = zone.choice.type === 'number' ? zone.choice.number : 0;
-  return n % 2 === 1 ? { fill: C.black, ink: C.bone } : { fill: C.bone, ink: C.black };
+  return n % 2 === 1 ? { fill: C.black, ink: 'numberOnDark' } : { fill: C.bone, ink: 'numberOnBone' };
 }
 
 /** El tapete sobre el fieltro: zonas, números, candados y el resaltado de la zona bajo el ratón. */
@@ -93,11 +59,12 @@ export function drawTapete(ctx: CanvasRenderingContext2D, state: GameState, hove
     const { fill, ink } = zoneColors(zone);
     ctx.fillStyle = fill;
     ctx.fillRect(zone.x + 1, zone.y + 1, zone.width - 2, zone.height - 2);
-    if (zone.type === 'number') drawDigits(ctx, zone.label, zone.x + zone.width / 2, zone.y + zone.height / 2, ink);
-    else if (zone.type === 'dozen') {
+    const cx = zone.x + zone.width / 2;
+    const cy = zone.y + zone.height / 2 + 1;
+    if (zone.type === 'dozen') {
       const d = zone.choice.type === 'dozen' ? zone.choice.dozen : 1;
-      text(ctx, `${d * 12 - 11}-${d * 12}`, zone.x + zone.width / 2, zone.y + zone.height / 2, ink);
-    } else text(ctx, zone.label, zone.x + zone.width / 2, zone.y + zone.height / 2, ink, 12);
+      drawText(ctx, ink, `${d * 12 - 11}-${d * 12}`, cx, cy);
+    } else drawText(ctx, ink, zone.label, cx, cy);
   }
 
   // Lo bloqueado, apagado y con candado.
@@ -149,7 +116,8 @@ export function drawChipColumn(
     const base = chipBase(i);
     const isSelected = chip.index === selectedIndex;
     const lift = isSelected ? 2 : 0;
-    ctx.globalAlpha = chip.affordable ? 1 : 0.35;
+    // Las que no alcanzan, atenuadas (la ficha); su cantidad sigue legible.
+    ctx.globalAlpha = chip.affordable ? 1 : 0.5;
     if (isSelected) {
       ctx.fillStyle = 'rgba(212, 173, 72, 0.35)';
       ctx.beginPath();
@@ -159,14 +127,10 @@ export function drawChipColumn(
     const img = sprites.chips.get(CHIP_SPRITES[chip.index] ?? 'chip-1');
     if (ready(img)) ctx.drawImage(img, Math.round(base.x - 16), Math.round(base.y - 32 - lift), 32, 32);
     const labelY = base.y - 15 - lift;
-    const label = chip.all ? `${chipLabel(chip)}` : chipLabel(chip);
-    ctx.fillStyle = C.frameDark;
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) text(ctx, label, base.x + dx, labelY + dy, C.frameDark, 12);
-    text(ctx, label, base.x, labelY, isSelected || i === hoveredIndex ? C.gold : C.text, 12);
-    if (chip.all) {
-      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) text(ctx, 'TODO', base.x + dx, base.y - 34 - lift + dy, C.frameDark, 10);
-      text(ctx, 'TODO', base.x, base.y - 34 - lift, C.gold, 10);
-    }
+    ctx.globalAlpha = 1;
+    drawText(ctx, !chip.affordable ? 'chipDisabled' : isSelected || i === hoveredIndex ? 'chipSelected' : 'chip', chipLabel(chip), base.x, labelY);
+    // TODO a la izquierda de la ficha, en su misma línea: no se pisa con la cantidad ni con la ficha de arriba.
+    if (chip.all) drawText(ctx, 'chipTag', 'TODO', base.x - 18, labelY, 'right');
     ctx.globalAlpha = 1;
   });
 }

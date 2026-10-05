@@ -12,7 +12,7 @@ import { Effects } from './effects';
 import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
-import { fillPixelText } from './pixelText';
+import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
 
 /**
@@ -42,7 +42,6 @@ const FLIP_SECONDS = 0.14;
 const STAGGER = 0.2;
 const FLOAT_SECONDS = 1.2;
 const TEXT = '#c9a443';
-const RED = '#a3261e';
 const INK = '#141110';
 
 export type CardsTarget =
@@ -324,10 +323,10 @@ export class CardsScene {
     if (hand) {
       const playerShown = this.player.filter((c) => c.faceUp).map((c) => c.card);
       const dealerShown = this.dealer.filter((c) => c.faceUp).map((c) => c.card);
-      if (dealerShown.length) label(ctx, `BANCA ${handTotal(dealerShown).total}`, DEALER_ROW.x + 150, DEALER_ROW.y + 40, '#e3dcc6', 10, 'right');
+      if (dealerShown.length) drawText(ctx, 'label', `BANCA ${handTotal(dealerShown).total}`, DEALER_ROW.x + 182, DEALER_ROW.y + 38, 'right');
       if (playerShown.length) {
         const t = handTotal(playerShown);
-        label(ctx, `TÚ ${t.total}${t.soft && t.total < 21 ? ' (BLANDO)' : ''}`, PLAYER_ROW.x + 150, PLAYER_ROW.y + 40, t.total > 21 ? '#c0473d' : '#f0d27a', 10, 'right');
+        drawText(ctx, t.total > 21 ? 'danger' : 'value', `TÚ ${t.total}${t.soft && t.total < 21 ? ' BLANDO' : ''}`, PLAYER_ROW.x + 182, PLAYER_ROW.y + 38, 'right');
       }
       // Descarte: la última carta del jugador se resalta.
       if (open && cards.hand!.canDiscard && cards.discards.charges > 0 && !this.dealing()) {
@@ -337,23 +336,15 @@ export class CardsScene {
         ctx.strokeRect(last.x - 2, last.y - 2, CARD.width + 4, CARD.height + 4);
         // Etiqueta "D" (descartar) en la esquina de la carta.
         ctx.fillStyle = '#5e1f1b';
-        ctx.fillRect(last.x + CARD.width - 8, last.y - 6, 10, 9);
-        label(ctx, 'D', last.x + CARD.width - 3, last.y - 2, '#f0d27a', 9);
+        ctx.fillRect(last.x + CARD.width - 10, last.y - 9, 13, 13);
+        drawText(ctx, 'value', 'D', last.x + CARD.width - 3, last.y - 2);
       }
-      if (open && cards.hand!.status === 'pasado' && !this.dealing()) label(ctx, 'TE HAS PASADO', PLAYER_ROW.x + 150, PLAYER_ROW.y + 28, '#c0473d', 10, 'right');
+      if (open && cards.hand!.status === 'pasado' && !this.dealing()) drawText(ctx, 'danger', 'TE HAS PASADO', PLAYER_ROW.x + 182, PLAYER_ROW.y + 24, 'right');
     }
 
     // Zonas impresas en el tapete.
-    const zone = (z: (typeof ZONES4)[keyof typeof ZONES4], active: boolean, hovered: boolean) => {
-      ctx.strokeStyle = active ? (hovered ? '#f0d27a' : '#d4ad48') : 'rgba(212, 173, 72, 0.25)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(z.x + 0.5, z.y + 0.5, z.width - 1, z.height - 1);
-      if (hovered) {
-        ctx.fillStyle = 'rgba(212, 173, 72, 0.15)';
-        ctx.fillRect(z.x + 1, z.y + 1, z.width - 2, z.height - 2);
-      }
-      label(ctx, z.label, z.x + z.width / 2, z.y + z.height / 2, active ? (hovered ? '#f0d27a' : '#d4ad48') : 'rgba(212, 173, 72, 0.35)', 11);
-    };
+    const zone = (z: (typeof ZONES4)[keyof typeof ZONES4], active: boolean, hovered: boolean) =>
+      drawButton(ctx, z, z.label, !active ? 'disabled' : hovered ? 'hover' : 'active');
     const busy = this.dealing();
     zone(ZONES4.deal, !open && !busy, hit?.kind === 'deal');
     if (open && cards.hand!.status === 'pasado') zone(ZONES4.accept, !busy, hit?.kind === 'accept');
@@ -362,18 +353,18 @@ export class CardsScene {
 
     // Contadores: manos, descartes, pozo y 7·7·7.
     const s = cards.stats;
-    label(ctx, `MANOS ${s.hands} · GANADAS ${s.wins}`, f.x + 4, f.y + f.height + 8, '#8f8670', 9, 'left');
+    drawText(ctx, 'muted', `MANOS ${s.hands} · GANADAS ${s.wins}`, f.x + 2, f.y + f.height + 11, 'left');
     const max = maxDiscards(cards.upgrades.luck);
-    label(ctx, 'DESCARTES', f.x + 120, f.y + f.height + 8, '#8f8670', 9, 'left');
+    drawText(ctx, 'muted', 'DESCARTES', f.x + f.width - 56, f.y + f.height + 11, 'right');
     for (let i = 0; i < max; i++) {
       ctx.fillStyle = i < cards.discards.charges ? '#c0473d' : '#3a2f1e';
       ctx.beginPath();
-      ctx.arc(f.x + 166 + i * 7, f.y + f.height + 8, 2.5, 0, Math.PI * 2);
+      ctx.arc(f.x + f.width - 50 + i * 7, f.y + f.height + 11, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
     const sevens = hand ? hand.player.filter(isSeven).length : 0;
     const sevenOn = open && sevens >= 2 && hand!.player.length <= 3;
-    label(ctx, `7·7·7 POZO ${formatNumber(Math.min(cards.pot, CARDS_JACKPOT_CAP))}`, f.x + f.width - 2, f.y - 6, sevenOn ? '#f0d27a' : '#8f8670', 9, 'right');
+    drawText(ctx, sevenOn ? 'value' : 'muted', `7·7·7 POZO ${formatNumber(Math.min(cards.pot, CARDS_JACKPOT_CAP))}`, f.x + 2, f.y - 9, 'left');
   }
 
   /** Cara de una carta dibujada en código (32x48): papel viejo, índices y palo grande. */
@@ -390,25 +381,12 @@ export class CardsScene {
     ctx.fillRect(x + 2 + (card % 5) * 4, y + h - 8 - (card % 3) * 3, 5, 3);
     ctx.fillRect(x + w - 8 - (card % 4), y + 3 + (card % 6), 4, 2);
     const red = suit(card) === 1 || suit(card) === 2;
-    const color = red ? RED : INK;
     const glyph = ['♠', '♥', '♦', '♣'][suit(card)];
     const r = cardLabel(card);
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
-    ctx.font = '11px VT323, monospace';
-    ctx.fillStyle = color;
-    fillPixelText(ctx, r, x + 3, y + 1);
-    ctx.font = '9px VT323, monospace';
-    fillPixelText(ctx, glyph, x + 3, y + 10);
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    ctx.font = '11px VT323, monospace';
-    fillPixelText(ctx, r, x + w - 3, y + h - 1);
+    drawText(ctx, red ? 'cardRed' : 'cardInk', r, x + 2, y + 1, 'left', 'top');
+    drawText(ctx, red ? 'cardRed' : 'cardInk', r, x + w - 2, y + h, 'right', 'bottom');
     // Palo grande en el centro (figuras: una corona encima).
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '20px VT323, monospace';
-    fillPixelText(ctx, glyph, x + w / 2, y + h / 2 + 1);
+    drawText(ctx, red ? 'cardPipRed' : 'cardPip', glyph, x + w / 2, y + h / 2 + 3);
     if (rank(card) >= 10) {
       ctx.fillStyle = '#a8841f';
       ctx.fillRect(x + w / 2 - 5, y + 13, 10, 2);
@@ -419,19 +397,7 @@ export class CardsScene {
   }
 
   private drawFloats(): void {
-    const ctx = this.ctx;
-    ctx.font = '12px VT323, monospace';
-    ctx.textAlign = 'center';
-    for (const f of this.floats) {
-      const fx = Math.round(f.x);
-      const fy = Math.round(f.y - f.age * 18);
-      ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-      fillPixelText(ctx, f.text, fx + 1, fy + 1);
-      ctx.fillStyle = f.color;
-      fillPixelText(ctx, f.text, fx, fy);
-    }
-    ctx.globalAlpha = 1;
+    drawFloatTexts(this.ctx, this.floats, FLOAT_SECONDS);
   }
 
   private drawSprite(img: HTMLImageElement | undefined, x: number, y: number, size: number, facing: 1 | -1, offsetY = 0): void {
@@ -450,12 +416,3 @@ export class CardsScene {
   }
 }
 
-function label(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, color: string, size = 11, align: CanvasTextAlign = 'center'): void {
-  ctx.font = `${size}px VT323, monospace`;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  fillPixelText(ctx, value, x + 1, y + 1.5);
-  ctx.fillStyle = color;
-  fillPixelText(ctx, value, x, y + 0.5);
-}

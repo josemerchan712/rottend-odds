@@ -1,5 +1,5 @@
 {
-  "saveVersion": 11,
+  "saveVersion": 12,
   "debt": { "amount": 10000000 },
   "upgrades": {
     "luck": { "baseCost": 3, "growth": 1.55, "maxLevel": 20 },
@@ -62,7 +62,7 @@
   "coin": {
     "debt": { "amount": 10000000 },
     "upgrades": {
-      "luck": { "baseCost": 560, "growth": 1.25, "maxLevel": 20 },
+      "luck": { "baseCost": 600, "growth": 1.25, "maxLevel": 20 },
       "maxBet": { "baseCost": 350, "growth": 2, "maxLevel": 10 },
       "imp": { "baseCost": 1200, "growth": 1, "maxLevel": 1 },
       "helperSpeed": { "baseCost": 700, "growth": 1.6, "maxLevel": 15 },

@@ -84,6 +84,21 @@ const migrations: Record<number, (state: Json) => Json> = {
     stats.paidAt = tables.map((paid) => (paid === true ? -1 : 0));
     return { ...state, stats, endingSeen: (state.coin as Json | undefined)?.debtPaid === true };
   },
+  // v12: mesa 5 con multiplicadores acumulativos (sesión 8). La fatiga de las cadenas pasa a ser la caída
+  // de la probabilidad (`decay`); las cadenas a medias se cobran con la regla antigua (settleCoinChains).
+  11: (state) => {
+    const coin = isRecord(state.coin) ? { ...state.coin } : null;
+    if (!coin) return state;
+    const rename = (chain: unknown) => {
+      if (!isRecord(chain)) return chain;
+      const { fatigue, ...rest } = chain;
+      return { ...rest, decay: Number(fatigue) || 0 };
+    };
+    coin.chain = rename(coin.chain);
+    if (isRecord(coin.helper)) coin.helper = { ...coin.helper, chain: rename(coin.helper.chain) };
+    if (Array.isArray(coin.recentChains)) coin.recentChains = coin.recentChains.map(rename);
+    return { ...state, coin };
+  },
 };
 
 /** Mejoras de trabajo que existían en las mesas 2 a 4 hasta el guardado v7, con sus costes de entonces. */
@@ -131,7 +146,8 @@ export function deserialize(raw: string): SaveFile | null {
     version++;
   }
 
-  state = settleCoinChains(state);
+  // Las cadenas guardadas antes de la v12 se cobran con la regla antigua (×2 por cara).
+  state = settleCoinChains(state, parsed.version < 12);
   const merged = mergeDefaults(createInitialState() as unknown as Json, state) as unknown as GameState;
   const savedAt = typeof parsed.savedAt === 'number' ? parsed.savedAt : 0;
   return { version: SAVE_VERSION, savedAt, state: sanitize(merged) };
@@ -298,7 +314,7 @@ function sanitizeCards(state: GameState): void {
  * acumulado; si estaba en una cruz, se pierde. Se hace antes de fusionar con los valores por defecto
  * (que descartan los objetos donde el valor por defecto es null).
  */
-function settleCoinChains(state: Json): Json {
+function settleCoinChains(state: Json, legacy: boolean): Json {
   const coin = state.coin;
   if (!isRecord(coin)) return state;
   const copy: Json = { ...coin };
@@ -307,9 +323,12 @@ function settleCoinChains(state: Json): Json {
   for (const raw of [copy.chain, helper?.chain]) {
     if (!isRecord(raw) || raw.status !== 'decidir') continue;
     const stake = Math.min(Math.max(Number(raw.stake) || 0, 0), CONFIG.coin.debt.amount);
-    const wins = Math.min(Math.max(Math.floor(Number(raw.wins) || 0), 0), CONFIG.coin.chain.maxWins);
+    // Antes de la v12 una cadena llegaba a 10 caras y cada una doblaba lo acumulado.
+    const wins = Math.min(Math.max(Math.floor(Number(raw.wins) || 0), 0), legacy ? 10 : CONFIG.coin.chain.maxWins);
     const value = Number(raw.value);
-    if (wins > 0) balance += Number.isFinite(value) && value > 0 ? Math.min(value, CONFIG.coin.debt.amount * CONFIG.coin.chain.payoutCapDebtFraction) : chainValue(stake, wins);
+    const cap = CONFIG.coin.debt.amount * CONFIG.coin.chain.payoutCapDebtFraction;
+    const fallback = legacy ? Math.min(stake * 2 ** wins, cap) : chainValue(stake, wins);
+    if (wins > 0) balance += Number.isFinite(value) && value > 0 ? Math.min(value, cap) : fallback;
   }
   copy.balance = balance;
   copy.chain = null;

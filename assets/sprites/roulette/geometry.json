@@ -1,0 +1,24 @@
+{
+  "source": "assets/raw/ruleta_limpia.png.jpg",
+  "size": 172,
+  "healthy": {
+    "sourcePx": {
+      "outer": 648,
+      "woodInner": 463,
+      "cone": 252
+    },
+    "outer": 86,
+    "woodInner": 61.4,
+    "cone": 33.4
+  },
+  "broken": {
+    "sourcePx": {
+      "outer": 638,
+      "woodInner": 456,
+      "cone": 248
+    },
+    "outer": 86,
+    "woodInner": 61.5,
+    "cone": 33.4
+  }
+}

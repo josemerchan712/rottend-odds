@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { crop, findBlocks, fitNearest, removeBackground, removeSpecks, trimBrightEdges, type RgbaImage } from '../scripts/pipeline/image';
+import { readFileSync } from 'node:fs';
+import sharp from 'sharp';
+import {
+  annulus,
+  crop,
+  findBlocks,
+  findSeparator,
+  fitNearest,
+  measureWheel,
+  removeBackground,
+  removeSpecks,
+  splitAtSeparator,
+  trimBrightEdges,
+  type RadialSample,
+  type RgbaImage,
+} from '../scripts/pipeline/image';
 
 const MAGENTA = [240, 0, 240];
 const BLOOD = [130, 20, 25];
@@ -125,5 +140,55 @@ describe('pipeline de assets', () => {
     expect(trimBrightEdges({ width: w, height: h, data })).toEqual({ x: 0, y: 0, width: w - 2, height: h - 3 });
     const dark = new Uint8ClampedArray(w * h * 4).fill(10);
     expect(trimBrightEdges({ width: w, height: h, data: dark })).toEqual({ x: 0, y: 0, width: w, height: h });
+  });
+
+  it('separa dos dibujos por la línea del medio (magenta o negra) y la deja fuera', () => {
+    const w = 40;
+    const h = 10;
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) data.set(x === 19 || x === 20 ? [250, 5, 250, 255] : [0, 230, 240, 255], (y * w + x) * 4);
+    const img = { width: w, height: h, data };
+    expect(findSeparator(img, [255, 0, 255])).toEqual([19, 21]);
+    const [left, right] = splitAtSeparator(img, [255, 0, 255], 1);
+    expect(left.x + left.width).toBeLessThanOrEqual(19);
+    expect(right.x).toBeGreaterThanOrEqual(21);
+    expect(findSeparator(img, [0, 0, 0])).toBeNull();
+  });
+
+  it('mide la rueda por sus dos filos dorados y la máscara anular solo deja el aro', () => {
+    // Perfil sintético de radio 100: cono claro hasta 35 (filo en 34), casillas oscuras, filo del aro en 72.
+    const profile: RadialSample[] = Array.from({ length: 101 }, (_, r) => ({ r, opaque: 1, spread: 0, sat: 0, lum: r === 34 || r === 72 || r === 73 ? 200 : r < 34 ? 120 : r < 72 ? 40 : 90 }));
+    const g = measureWheel(profile, 100);
+    expect(g.cone).toBe(35);
+    expect(g.woodInner).toBe(71);
+    const ring = annulus({ width: 21, height: 21, data: new Uint8ClampedArray(21 * 21 * 4).fill(255) }, 10.5, 10.5, 6, 10);
+    expect(ring.data[(10 * 21 + 10) * 4 + 3]).toBe(0); // centro fuera
+    expect(ring.data[(10 * 21 + 2) * 4 + 3]).toBe(255); // en el aro
+  });
+
+  it('la rueda exportada: el aro no tiene nada dentro de su radio interior ni el cono fuera del suyo (sin bola, punto rojo ni ceros pintados)', async () => {
+    const geometry = JSON.parse(readFileSync('assets/sprites/roulette/geometry.json', 'utf8'));
+    for (const version of ['healthy', 'broken'] as const) {
+      const g = geometry[version];
+      for (const part of ['wood', 'cone'] as const) {
+        const { data, info } = await sharp(`assets/sprites/roulette/${version}-${part}.png`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        const c = info.width / 2;
+        let inRing = 0;
+        let red = 0;
+        for (let y = 0; y < info.height; y++) {
+          for (let x = 0; x < info.width; x++) {
+            const i = (y * info.width + x) * 4;
+            if (data[i + 3] === 0) continue;
+            const r = Math.hypot(x + 0.5 - c, y + 0.5 - c);
+            // Entre el cono y el aro (el anillo de casillas) no puede quedar nada del arte.
+            if (r > g.cone + 1 && r < g.woodInner - 1) inRing++;
+            // El punto rojo de la bola pintada era rojo puro.
+            if (data[i] > 200 && data[i + 1] < 60 && data[i + 2] < 60) red++;
+          }
+        }
+        expect(inRing, `${version}-${part}`).toBe(0);
+        expect(red, `${version}-${part}`).toBe(0);
+      }
+    }
   });
 });

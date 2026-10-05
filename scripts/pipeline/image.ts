@@ -303,3 +303,117 @@ export function trimBrightEdges(img: RgbaImage, threshold = 100, max = 8): Box {
   const right = count((i) => mean(img.width - 1 - i, 0, 0, 1, img.height));
   return { x: left, y: top, width: img.width - left - right, height: img.height - top - bottom };
 }
+
+/**
+ * Columnas del separador vertical entre dos dibujos de una hoja (una línea magenta o negra hacia el
+ * centro): el tramo de columnas del 40-60% del ancho cuyo color medio está a menos de `tolerance`
+ * del color dado. Devuelve [primera, última+1], o null si no hay línea.
+ */
+export function findSeparator(img: RgbaImage, color: Rgb, tolerance = 90): [number, number] | null {
+  const { width: w, height: h } = img;
+  const hits: number[] = [];
+  for (let x = Math.floor(w * 0.4); x < Math.ceil(w * 0.6); x++) {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (let y = 0; y < h; y++) {
+      const c = px(img, y * w + x);
+      r += c[0];
+      g += c[1];
+      b += c[2];
+    }
+    if (dist([r / h, g / h, b / h], color) < tolerance) hits.push(x);
+  }
+  if (hits.length === 0) return null;
+  return [Math.min(...hits), Math.max(...hits) + 1];
+}
+
+/** Las dos mitades de una hoja con un separador vertical, sin el separador ni `margin` px a cada lado. */
+export function splitAtSeparator(img: RgbaImage, color: Rgb, margin = 4): [Box, Box] {
+  const sep = findSeparator(img, color);
+  const [a, b] = sep ?? [Math.floor(img.width / 2), Math.floor(img.width / 2)];
+  const left: Box = { x: margin, y: margin, width: a - 2 * margin, height: img.height - 2 * margin };
+  const right: Box = { x: b + margin, y: margin, width: img.width - b - 2 * margin, height: img.height - 2 * margin };
+  return [left, right];
+}
+
+export interface RadialSample {
+  r: number;
+  /** Fracción de píxeles opacos a ese radio. */
+  opaque: number;
+  /** Luminancia media (0-255) y su desviación entre ángulos: el anillo de casillas varía mucho. */
+  lum: number;
+  spread: number;
+  /** Saturación media (max - min de los canales). */
+  sat: number;
+}
+
+/** Perfil radial desde (cx, cy): una muestra por radio entero, 360 ángulos. */
+export function radialProfile(img: RgbaImage, cx: number, cy: number, maxR: number): RadialSample[] {
+  const out: RadialSample[] = [];
+  for (let r = 0; r <= maxR; r++) {
+    const lums: number[] = [];
+    let opaque = 0;
+    let sat = 0;
+    const n = 360;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      const x = Math.round(cx + Math.cos(a) * r);
+      const y = Math.round(cy + Math.sin(a) * r);
+      if (x < 0 || y < 0 || x >= img.width || y >= img.height) continue;
+      const i = y * img.width + x;
+      if (img.data[i * 4 + 3] === 0) continue;
+      opaque++;
+      const c = px(img, i);
+      lums.push(0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]);
+      sat += Math.max(...c) - Math.min(...c);
+    }
+    const mean = lums.reduce((s, v) => s + v, 0) / Math.max(lums.length, 1);
+    const spread = Math.sqrt(lums.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(lums.length, 1));
+    out.push({ r, opaque: opaque / 360, lum: mean, spread, sat: sat / Math.max(opaque, 1) });
+  }
+  return out;
+}
+
+/** Deja opaco solo lo que está entre los radios `inner` y `outer` desde (cx, cy). Devuelve una copia. */
+export function annulus(img: RgbaImage, cx: number, cy: number, inner: number, outer: number): RgbaImage {
+  const data = new Uint8ClampedArray(img.data);
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      const r = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (r < inner || r > outer) data[(y * img.width + x) * 4 + 3] = 0;
+    }
+  }
+  return { width: img.width, height: img.height, data };
+}
+
+export interface WheelGeometry {
+  /** Radio exterior del aro de madera (px de la imagen cuadrada). */
+  outer: number;
+  /** Radio interior del aro de madera: aquí empieza el anillo de casillas (incluye el filo dorado del aro). */
+  woodInner: number;
+  /** Radio del cono central con su filo dorado. */
+  cone: number;
+}
+
+/**
+ * Mide la rueda en su perfil radial: el cono y el aro están separados del anillo de casillas por dos
+ * filos dorados, que son los máximos de luminancia en el 30-48% y en el 62-82% del radio. El cono
+ * acaba donde su filo vuelve a oscurecerse; el aro empieza donde su filo se enciende.
+ */
+export function measureWheel(profile: readonly RadialSample[], outer: number): WheelGeometry {
+  const peak = (from: number, to: number) => {
+    let best = Math.round(from);
+    for (let r = Math.round(from); r <= Math.round(to) && r < profile.length; r++) if (profile[r].lum > profile[best].lum) best = r;
+    return best;
+  };
+  const coneRim = peak(outer * 0.3, outer * 0.48);
+  const woodRim = peak(outer * 0.62, outer * 0.82);
+  const half = (r: number, base: number) => (profile[r].lum + base) / 2;
+  const ringLum = profile[Math.round((coneRim + woodRim) / 2)].lum;
+  let cone = coneRim;
+  while (cone < woodRim && profile[cone].lum > half(coneRim, ringLum)) cone++;
+  let woodInner = woodRim;
+  while (woodInner > coneRim && profile[woodInner].lum > half(woodRim, ringLum)) woodInner--;
+  return { outer, woodInner, cone };
+}

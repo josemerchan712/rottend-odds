@@ -9,7 +9,7 @@
  * 3. Reescala con vecino más próximo al tamaño final.
  * 4. Exporta PNG con transparencia a assets/sprites/.
  */
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import sharp from 'sharp';
 import {
   crop,
@@ -19,7 +19,11 @@ import {
   opaqueBounds,
   removeBackground,
   removeSpecks,
+  annulus,
+  measureWheel,
+  radialProfile,
   resizeNearest,
+  splitAtSeparator,
   trimBrightEdges,
   type RgbaImage,
 } from './pipeline/image';
@@ -70,7 +74,33 @@ interface Background {
   trimEdges?: boolean;
 }
 
-type Sheet = BlockSheet | GridSheet | BoxSheet | Background;
+/**
+ * Rueda de la ruleta (sesión 8): hoja con dos ruedas (sana a la izquierda, rota a la derecha) separadas
+ * por una línea. De cada una solo se conserva el aro de madera y el cono con su pomo; el anillo de
+ * casillas (con la bola y los ceros pintados) se descarta y se dibuja en código.
+ */
+interface WheelSheet {
+  kind: 'wheel';
+  /** Patrones en orden de preferencia (el primero que exista). */
+  sources: string[];
+  separator: [number, number, number];
+  outDir: string;
+  names: [string, string];
+  /** Diámetro final del aro en la escena (unidades). */
+  size: number;
+}
+
+/** Dos sprites en una hoja separados por una línea (la bola y el marcador). */
+interface PairSheet {
+  kind: 'pair';
+  source: string;
+  separator: [number, number, number];
+  outDir: string;
+  names: [string, string];
+  sizes: [[number, number], [number, number]];
+}
+
+type Sheet = BlockSheet | GridSheet | BoxSheet | Background | WheelSheet | PairSheet;
 
 const SHEETS: Sheet[] = [
   {
@@ -105,12 +135,22 @@ const SHEETS: Sheet[] = [
     size: [96, 96],
   },
   {
-    // Fondo cian. A 150 px, el tamaño con el que se dibuja en la escena.
-    kind: 'blocks',
-    source: 'assets/raw/ruleta.png.jpeg',
+    // Fondo cian y línea magenta en medio. Si existe ruleta_aro (solo aro y cono), se usa esa.
+    kind: 'wheel',
+    sources: ['assets/raw/ruleta_aro.*', 'assets/raw/ruleta_limpia.*'],
+    separator: [255, 0, 255],
     outDir: 'assets/sprites/roulette',
     names: ['healthy', 'broken'],
-    size: [150, 150],
+    size: 172,
+  },
+  {
+    // Fondo magenta y línea negra en medio: la bola a la izquierda y el marcador a la derecha.
+    kind: 'pair',
+    source: 'assets/raw/bola_marcador.*',
+    separator: [0, 0, 0],
+    outDir: 'assets/sprites/roulette',
+    names: ['ball', 'marker'],
+    sizes: [[9, 9], [13, 13]],
   },
   {
     // Rejilla 4x3: dos filas de fichas (de sucia a brillante) y una fila más alta con dos pilas por
@@ -312,7 +352,73 @@ function cutOut(img: RgbaImage): RgbaImage {
   return crop(clean, box);
 }
 
+/** Rueda: separa las dos, quita el cian, la hace circular, mide sus radios y guarda aro y cono aparte. */
+async function processWheel(sheet: WheelSheet): Promise<void> {
+  const source = sheet.sources.map(resolveSource).find((s) => s !== null);
+  if (!source) throw new Error(`No existe ninguna de ${sheet.sources.join(', ')}`);
+  const img = await load(source);
+  const geometry: Record<string, unknown> = { source, size: sheet.size };
+  let ratios: { woodInner: number; cone: number } | null = null;
+  mkdirSync(sheet.outDir, { recursive: true });
+  for (const [i, box] of splitAtSeparator(img, sheet.separator).entries()) {
+    const name = sheet.names[i];
+    // Cian desde los bordes; huecos interiores solo si son casi idénticos al cian.
+    const clean = removeSpecks(removeBackground(crop(img, box), { holeTolerance: 60, holeFraction: 0.6 }), 200);
+    // Restos de cian en las grietas de la rueda rota (mezclados con la madera por el JPEG): el aro y el
+    // cono no tienen ningún color con verde y azul muy por encima del rojo, así que esos píxeles fuera.
+    for (let p = 0; p < clean.data.length; p += 4) {
+      const [r, g, b] = [clean.data[p], clean.data[p + 1], clean.data[p + 2]];
+      if (g > r + 60 && b > r + 60) clean.data[p + 3] = 0;
+    }
+    const bounds = opaqueBounds(clean)!;
+    // El dibujo no es un círculo perfecto (un 4% más alto que ancho): se lleva a un cuadrado para que gire bien.
+    const side = bounds.width;
+    const wheel = resizeNearest(crop(clean, bounds), side, side);
+    const c = side / 2;
+    // Las dos ruedas salen de la misma plantilla: se mide la sana (sus filos dorados se separan bien del
+    // anillo) y la rota usa las mismas proporciones (sus casillas desgastadas son tan claras como los filos).
+    const own = measureWheel(radialProfile(wheel, c, c, Math.floor(c)), c);
+    if (!ratios) ratios = { woodInner: own.woodInner / c, cone: own.cone / c };
+    const measured = { outer: c, woodInner: Math.round(ratios.woodInner * c), cone: Math.round(ratios.cone * c) };
+    const scale = sheet.size / side;
+    const wood = annulus(wheel, c, c, measured.woodInner, c + 1);
+    const cone = annulus(wheel, c, c, 0, measured.cone);
+    await save(resizeNearest(wood, sheet.size, sheet.size), `${sheet.outDir}/${name}-wood.png`);
+    await save(resizeNearest(cone, sheet.size, sheet.size), `${sheet.outDir}/${name}-cone.png`);
+    geometry[name] = {
+      sourcePx: { outer: Math.round(measured.outer), woodInner: measured.woodInner, cone: measured.cone },
+      outer: sheet.size / 2,
+      woodInner: Math.round(measured.woodInner * scale * 10) / 10,
+      cone: Math.round(measured.cone * scale * 10) / 10,
+    };
+    console.log(`${sheet.outDir}/${name}-wood.png y -cone.png  (radios en la imagen: aro ${Math.round(c)}, interior del aro ${measured.woodInner}, cono ${measured.cone})`);
+  }
+  writeFileSync(`${sheet.outDir}/geometry.json`, `${JSON.stringify(geometry, null, 2)}
+`);
+}
+
+/** Pareja: dos sprites separados por una línea; fuera la línea y el fondo de cada mitad. */
+async function processPair(sheet: PairSheet): Promise<void> {
+  const source = resolveSource(sheet.source);
+  if (!source) throw new Error(`No existe ${sheet.source}`);
+  const img = await load(source);
+  mkdirSync(sheet.outDir, { recursive: true });
+  for (const [i, box] of splitAtSeparator(img, sheet.separator, 12).entries()) {
+    const sprite = cutOut(crop(img, box));
+    await save(fitNearest(sprite, ...sheet.sizes[i]), `${sheet.outDir}/${sheet.names[i]}.png`);
+    console.log(`${sheet.outDir}/${sheet.names[i]}.png  (${sprite.width}x${sprite.height})`);
+  }
+}
+
 for (const sheet of SHEETS) {
+  if (sheet.kind === 'wheel') {
+    await processWheel(sheet);
+    continue;
+  }
+  if (sheet.kind === 'pair') {
+    await processPair(sheet);
+    continue;
+  }
   const source = resolveSource(sheet.source);
   if (!source) {
     if (sheet.kind === 'background' && sheet.optional) {

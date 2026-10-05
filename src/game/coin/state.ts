@@ -4,9 +4,9 @@ import type { Bettor } from '../state';
 export type CoinFace = 'cara' | 'cruz';
 
 /**
- * Una cadena de doble o nada: se apuesta una cantidad y se lanza la moneda; con CARA lo acumulado se
- * multiplica (×2 la justa, ×3 la cargada) y se decide retirarse o seguir, con CRUZ se pierde todo
- * (salvo Relanzar o Cero dorado).
+ * Una cadena de la mesa 5: se apuesta una cantidad y se lanza la moneda; con CARA lo acumulado se
+ * multiplica por el factor del paso (×3, ×4, ×5... con CHAIN_FACTOR_OFFSET 2; la cargada ×1,5 eso) y se
+ * decide retirarse o seguir, con CRUZ se pierde todo (salvo Relanzar o Cero dorado).
  */
 export interface CoinChain {
   bettor: Bettor;
@@ -14,10 +14,10 @@ export interface CoinChain {
   stake: number;
   /** Lo que vale ahora (apuesta × multiplicadores de las caras, con el tope de la casa). */
   value: number;
-  /** Caras seguidas: pasos de la cadena (0-10; la cargada también cuenta uno). */
+  /** Caras seguidas: pasos de la cadena (hasta maxWins; la cargada también cuenta uno). */
   wins: number;
-  /** Caras que han cansado la suerte (las que se ganaron con Retener no cuentan). */
-  fatigue: number;
+  /** Pasos de caída de la probabilidad: las caras que lleva, menos las que congeló Retener. */
+  decay: number;
   /** 'decidir': tras una cara, retirarse o seguir. 'fallo': tras una cruz, relanzar, cero dorado o aceptar. 'fin': resuelta. */
   status: 'decidir' | 'fallo' | 'fin';
   /** Las caras y cruces que han salido, en orden (sin las repetidas con Relanzar). */
@@ -28,7 +28,7 @@ export interface CoinChain {
   lastChance: number;
   /** Cargas que le quedan a esta cadena de cada herencia (se llenan al empezarla). */
   charges: Record<HeirloomId, number>;
-  /** Retener armado: el próximo acierto no suma fatiga. */
+  /** Retener armado: el siguiente lanzamiento cae un paso menos (solo ese). */
   holdArmed: boolean;
   /** Marcar: el resultado (número 0-1) del próximo lanzamiento, ya decidido y a la vista, o null. */
   mark: number | null;
@@ -57,7 +57,7 @@ export interface CoinState {
   chain: CoinChain | null;
   /** El diablillo coronado: su temporizador, su perfil, su cadena y dónde piensa retirarse. */
   helper: { timer: number; profile: number; chain: CoinChain | null; stopAt: number };
-  /** Pozo del jackpot (cadena completa de 10 caras). */
+  /** Pozo del jackpot (cadena completa). */
   pot: number;
   passiveCarry: number;
   recentChains: CoinChain[];

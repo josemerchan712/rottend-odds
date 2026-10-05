@@ -5,6 +5,11 @@ const SUFFIXES = ['', 'K', 'M', 'B', 'T'];
  * Trunca en lugar de redondear: 9.999.999 se muestra 9,99M, nunca 10,0M,
  * para que la barra de deuda no prometa algo que aún no tienes.
  */
+/** Un factor de la mesa 5: ×4 o ×4,5 (la cargada). */
+export function formatFactor(factor: number): string {
+  return `×${Number.isInteger(factor) ? factor : factor.toFixed(1).replace('.', ',')}`;
+}
+
 export function formatNumber(value: number): string {
   if (!Number.isFinite(value)) return '∞';
   if (value < 0) return '-' + formatNumber(-value);

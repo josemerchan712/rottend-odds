@@ -158,9 +158,9 @@ export function selectImpProfile(coin: CoinState, index: number): boolean {
 
 /**
  * Resultados de una cadena que se retira en `stop` caras con la moneda justa, para el criterio común.
- * Cuenta las herencias que usa el diablillo: Retener (las primeras caras no cansan) y Relanzar (tras
- * una cruz, si ya lleva alguna cara, mientras le queden cargas en la cadena). Cero dorado y Marcar no
- * se cuentan (decisión prudente).
+ * Cuenta las herencias que usa el diablillo: Retener (congela la caída un paso en cada paso mientras le
+ * queden cargas) y Relanzar (tras una cruz, si ya lleva alguna cara, mientras le queden cargas). Cero
+ * dorado y Marcar no se cuentan (decisión prudente).
  */
 function chainOutcomes(coin: CoinState, stop: number, stake: number, bonus: number): Outcome[] {
   const fraction = stake / coinCeiling(coin);
@@ -168,11 +168,12 @@ function chainOutcomes(coin: CoinState, stop: number, stake: number, bonus: numb
   let rerolls = heirloomCharges(coin, 'reroll');
   let reach = 1;
   for (let w = 0; w < stop; w++) {
-    // Retener se arma tras la primera cara: la primera cansa y las `holds` siguientes no.
-    const fatigue = w === 0 ? 0 : 1 + Math.max(0, w - 1 - holds);
-    const p = flipChance(coin.upgrades.luck, coin.upgrades.temple, fatigue, fraction, bonus);
+    // Retener se arma desde la primera cara, una carga por paso: los `holds` primeros pasos tras ella
+    // tienen la probabilidad del paso anterior.
+    const decay = w > 0 && w <= holds ? w - 1 : w;
+    const p = flipChance(coin.upgrades.luck, coin.upgrades.temple, decay, fraction, bonus);
     if (w > 0 && rerolls > 0) {
-      const pRe = flipChance(coin.upgrades.luck, coin.upgrades.temple, fatigue + C.heirlooms.reroll.extraFatigue, fraction, bonus);
+      const pRe = flipChance(coin.upgrades.luck, coin.upgrades.temple, decay + C.heirlooms.reroll.extraSteps, fraction, bonus);
       reach *= p + (1 - p) * pRe;
       rerolls--;
     } else reach *= p;

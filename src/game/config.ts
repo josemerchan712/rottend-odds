@@ -13,6 +13,13 @@ export const GAME_AUTHOR = 'José María Merchán Martos';
 export const REPO_URL: string | null = null;
 
 /**
+ * Mesa 5 (sesión 8): cada acierto de la cadena multiplica lo acumulado por un factor creciente,
+ * f_i = i + CHAIN_FACTOR_OFFSET (con 2: ×3, ×4, ×5...; apostando 2: 6, 24, 120, 720...). Con 1 serían
+ * ×2, ×3, ×4. La lógica, la interfaz y los tests dependen solo de esta constante.
+ */
+export const CHAIN_FACTOR_OFFSET = 2;
+
+/**
  * Todos los números del diseño en un solo sitio.
  * La lógica lee de aquí; para ajustar el equilibrio solo se toca este archivo...
  * salvo los números que también usa el servidor para validar (deuda, versión del guardado y
@@ -447,15 +454,36 @@ export const CONFIG = {
    */
   coin: {
     /**
-     * Suerte: probabilidad de cara del primer lanzamiento, de `base` (por debajo del 50%: la casa) a
-     * `cap` con suerte máxima (curva 1,6), menos la penalización por apostar fuerte y la fatiga.
+     * Probabilidad (sesión 8): la de un paso con factor f es `ventaja / f` (1/f sería el juego justo). La
+     * ventaja va de `base` (por debajo de 1: la casa gana) a `cap` con suerte máxima (curva 1,6), menos
+     * la penalización por apostar fuerte. Nunca por encima de `maxChance` ni por debajo de `floor`.
      */
-    luck: { base: 0.47, cap: 0.97, curveExponent: 1.6, floor: 0.05 },
-    /** Cada cara seguida baja la probabilidad del siguiente lanzamiento; el temple lo reduce. */
-    fatigue: { perWin: 0.05, templeReductionPerLevel: 0.006 },
-    risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
-    /** Como mucho 10 caras por cadena; una cadena paga como mucho el 25% de la deuda. */
-    chain: { maxWins: 10, payoutCapDebtFraction: 0.25 },
+    luck: { base: 0.9, cap: 2, curveExponent: 1.6, floor: 0.02, maxChance: 0.95 },
+    /**
+     * La caída de la probabilidad con cada paso sustituye a la fatiga: el denominador del paso es
+     * f_1 × (f / f_1)^γ, con γ = 1 − `templeSofteningPerLevel` × temple (el temple suaviza la caída), y
+     * la ventaja se multiplica por `edgePerStep` en cada paso de caída. Sin esto último, con suerte la
+     * ventaja pasaba de 1 en todos los pasos y "seguir siempre" empataba con la mejor estrategia.
+     */
+    decay: { templeSofteningPerLevel: 0.04, edgePerStep: 0.75 },
+    /**
+     * Penalización por apostar fuerte (fracción del techo), restada a la ventaja. Sesión 8: más alta con
+     * suerte (0,15 frente a 0,04): con pagos crecientes, apostar siempre el techo entero salía gratis y
+     * "siempre TODO" era la estrategia más rápida.
+     */
+    risk: { penaltyFactorAtMinLuck: 0.35, penaltyFactorAtMaxLuck: 0.3, penaltyExponent: 1.5 },
+    /**
+     * Factores ×(i + offset). Cadena completa de `maxWins` aciertos (con offset 2: ×3·4·5·6·7 = ×2.520):
+     * con 10 (×239.500.800) el tope del 25% de la deuda se alcanzaba al tercer o cuarto acierto y el resto
+     * de la cadena no tenía sentido. Una cadena paga como mucho el 25% de la deuda.
+     */
+    chain: { factorOffset: CHAIN_FACTOR_OFFSET, maxWins: 4, payoutCapDebtFraction: 0.25 },
+    /**
+     * Aciertos en los que habla el Dueño (disparadores chain3, chain6 y chain9, nombres de la cadena de 10
+     * de antes; 0 = no habla). Con la cadena de 4: a los 2 aciertos y a los 3 (a uno del jackpot); el de en
+     * medio no tiene sitio.
+     */
+    milestones: { chain3: 2, chain6: 0, chain9: 3 },
     /**
      * Herencias (sesión 6): cada mesa saldada presta su mecánica a la mesa 5 como una herramienta con
      * cargas por cadena (nivel 0-3 = cargas; se recargan al empezar cada cadena, no con el tiempo). Se
@@ -463,30 +491,31 @@ export const CONFIG = {
      * - Cero dorado (ruleta): tras una cruz, salva la cadena devolviendo `refund` (25%) de lo acumulado.
      * Costes por moneda, a la escala de cada mesa (al llegar a la mesa 5 sus ayudantes llevan cientos de
      * millones): el nivel 1 se paga al llegar y el 2 hacia la mitad de la mesa.
-     * - Retener (tragaperras): el siguiente acierto no suma fatiga.
-     * - Relanzar (dados): repite un lanzamiento fallido (la antigua "segunda oportunidad"); el repetido
-     *   cuenta `extraFatigue` caras más de fatiga (sin eso, una carga casi duplicaba las cadenas completas).
+     * - Retener (tragaperras): congela la caída un paso: el siguiente lanzamiento (y los que vengan) tiene
+     *   la probabilidad del paso anterior, aunque paga el factor del suyo.
+     * - Relanzar (dados): repite un lanzamiento fallido; el repetido tiene la probabilidad de `extraSteps`
+     *   pasos más adelante (más difícil: si no, una carga casi duplicaba las cadenas largas).
      * - Marcar (cartas): enseña el resultado del siguiente lanzamiento antes de decidir.
      */
     heirlooms: {
       zero: { name: 'Cero dorado', key: 'Z', refund: 0.25, ...shared.coin.heirlooms.zero },
       hold: { name: 'Retener', key: 'H', ...shared.coin.heirlooms.hold },
-      reroll: { name: 'Relanzar', key: 'S', extraFatigue: 8, ...shared.coin.heirlooms.reroll },
+      reroll: { name: 'Relanzar', key: 'S', extraSteps: 3, ...shared.coin.heirlooms.reroll },
       mark: { name: 'Marcar', key: 'C', ...shared.coin.heirlooms.mark },
     },
     /**
-     * Moneda cargada (se desbloquea con una mejora): `ratio` de la probabilidad de la justa (mismo valor
-     * esperado base: 2 × p = 3 × 2/3 p), paga ×3 y cuenta como un paso; la suerte la mejora hasta un
-     * `luckBonusMax` más, como la docena y el número de la ruleta.
+     * Moneda cargada (se desbloquea con una mejora): `ratio` de la probabilidad de la justa y paga el
+     * factor del paso por `payoutBoost` (mismo valor esperado base: f × p = 1,5 f × 2/3 p); cuenta como
+     * un paso. La suerte la mejora hasta un `luckBonusMax` más, como la docena y el número de la ruleta.
      */
-    loaded: { ratio: 2 / 3, payout: 3, luckBonusMax: 0.06 },
+    loaded: { ratio: 2 / 3, payoutBoost: 1.5, luckBonusMax: 0.06 },
     /** Jackpot: completar las 10 caras. Paga el pozo (semilla 400.000 de la casa, +35% de cada apuesta), como mucho el 25% de la deuda. Sesión 6: con semilla 50 y +6% el pozo valía poco y el jackpot no llegaba al 1% del oro. */
-    jackpot: { potSeed: 400_000, potContribution: 0.35, payoutCapDebtFraction: 0.25 },
+    jackpot: { potSeed: 1_000_000, potContribution: 0.5, payoutCapDebtFraction: 0.25 },
     /**
      * Techo: 3 × 2,5^nivel (máximo 28.610). Más bajo que en las otras mesas porque una cadena multiplica
      * la apuesta por 8-16: con techo 15 el final era una explosión de segundos (tramo final de 6 s).
      */
-    bet: { minBet: 1, baseMaxBet: 3, maxBetMultiplierPerLevel: 2.5 },
+    bet: { minBet: 1, baseMaxBet: 2, maxBetMultiplierPerLevel: 2.5 },
     helper: {
       /** Segundos entre lanzamientos (o decisiones) del diablillo. */
       baseInterval: 2,

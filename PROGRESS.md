@@ -122,9 +122,49 @@ Tabla (suerte media, alta y máxima; con suerte baja casi todos esperan, salvo e
 | Diablillo (mesa 5) | máx | normal | 96% → 96% | 45.6 · 44.6 · 48.0 | 100% | 1% | 4 caras 96%, perdida 4% → 4 caras 96%, perdida 4% |
 | Diablillo (mesa 5) | máx | agresivo | 72% → 72% | 617.6 · 431.9 · 781.9 | 100% | 3% | 8 caras 72%, perdida 28%, 7 caras 0% → 8 caras 72%, perdida 28%, 7 caras 0% |
 
-### Pendiente
+- [x] **B4 Rediseño de la mesa 5** (detalle y tablas en GAME_DESIGN 4f).
+  - **Herencias** en vez de la segunda oportunidad: Cero dorado (ruleta, Z), Retener (tragaperras, H), Relanzar
+    (dados, S), Marcar (cartas, C). Nivel 0-3 = cargas por cadena, se rellenan al empezar cada cadena. Cajón
+    **Herencias** (E) que cobra en la moneda de la mesa de origen; botones en el paño; el diablillo las usa.
+  - **Dos monedas** antes de cada lanzamiento (Q): justa ×2, cargada ×3 (mejora de 5.000) con probabilidad
+    `base · 2/3 · (1 + 0,06 · suerte)`; misma fatiga para las dos.
+  - **Monedas del escritorio**: montón del jugador y de la casa, el Dueño empuja al ganar y barre al perder;
+    líneas del Dueño en los hitos 3/6/9 (disparadores `chain3/6/9`, 5 líneas cada uno, vacíos en las mesas 1-4).
+  - Guardado v10 (migración desde v9), `shared/config.json`, servidor v10 con validación de herencias y moneda,
+    `?dev=mesa5` con moneda de las otras mesas para probar el cajón. plausibility.json regenerada (--full).
+  - Calibración (40 partidas, --quick): (d) **11:37**, tramo final 0:25, jackpot 4% (bj 9%); mesas 1-5 **58:44**.
+    Herencias solas frente a (c) sin ellas (17:43): −5,6% / −11,3% / −17,2% / −11,3%.
+  - Probado en el navegador: compra de las cuatro herencias, cargada desbloqueada, cadena con Marcar (sale
+    «MARCADA: CRUZ», retirada a tiempo) y cargas rellenas en la siguiente cadena. Rótulo «sin herencia» bajo las
+    herramientas se solapaba: ahora «—».
 
-- B4 rediseño de la mesa 5 (herencias, dos monedas, monedas del escritorio)
+## Cierre de la sesión 6
+
+- **Texto ilegible**: el texto del canvas se rasterizaba a 1 píxel por unidad (máscaras umbralizadas y una fuente
+  bitmap de 3x5) y el CRT pasaba por encima. Ahora va a resolución física en su propia capa sobre el CRT, con
+  tamaño mínimo de 14 px y contraste ≥ 4,5:1.
+- **Barra que cambiaba de tamaño**: el contenido no cabía en 640 unidades y los elementos flex encogían y partían
+  su texto en dos líneas; además, al volver de otra pestaña se recolocaba el escenario con medidas transitorias
+  (tamaño 0 / dpr temporal). Ahora `nowrap`, modo compacto y una escala pura que ignora medidas imposibles.
+- **Auditoría de ayudantes**: tabla antes/después en B3 (arriba). Lo que cambió: camarero prudente 10-44% → 72-98%
+  de aciertos, normal 13-39% → 56-85%; diablillo normal con suerte media 15% → 48%, agresivo 3% → 22%; zombi
+  prudente con suerte media ahora juega (0% → 78%). Crupier y esqueleto ya estaban bien.
+- **Números cambiados y por qué**:
+  - Mesa 5 suerte 400 → 560 de base: para que con herencias medias la mesa siga en ~12 min.
+  - Pozo: semilla 50 → 400.000 y aportación 6% → 35%: el jackpot aportaba < 1% (una cadena completa temprana se
+    llevaba un pozo diminuto); ahora 4-9%.
+  - Segundas oportunidades fuera (y su recarga); herencias con costes en cientos de millones de la moneda de origen
+    (las otras mesas acumulan eso con sus ayudantes al llegar aquí); Cero dorado devuelve 25%; Relanzar con 8 caras
+    más de fatiga y solo con alguna cara (con 2-4 y sin esa condición era casi obligatoria).
+  - Cargada: ratio 2/3, pago ×3, +6% con la suerte, fatiga igual que la justa.
+  - Ayudantes (B3): paradas del diablillo normal 3-4 → 1-4, agresivo 5-10 → 2-10; el prudente se queda en la más segura (1).
+- **Decisiones por mi cuenta**: capa de canvas propia para el texto (no HTML); abreviaturas del HUD compacto;
+  probabilidad mínima por perfil (50/40/libre) en vez de tocar pagos; aviso del ayudante con neto de 2,5 s;
+  Relanzar y Cero dorado solo protegen lo acumulado (no la apuesta inicial); Marcar enseña la cara con la moneda
+  elegida en ese momento; tramo final de 25 s no alcanza los 45-90 s: propuesta mínima anotada en GAME_DESIGN 4f.4
+  (tope por cadena al 10%), sin aplicar; `?dev=mesa5` con 1.000M en cada mesa para probar las herencias.
+- **Tests y push**: cliente 287 en verde (`npx vitest run`, `npx tsc` limpio); servidor 28 en verde
+  (`./mvnw -q test`). Push de los cuatro bloques a `origin/main` sin force. Sin desplegar.
 
 ---
 

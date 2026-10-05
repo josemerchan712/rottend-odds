@@ -8,13 +8,13 @@ import {
   COIN_JACKPOT_CAP,
   coinCeiling,
   coinChips,
-  coinMultiplier,
   continueChain,
   flipChance,
   heirloomCharges,
   loadedUnlocked,
   markedFace,
   startChain,
+  stepMultiplier,
   useGoldenZero,
   useMark,
   useReroll,
@@ -37,7 +37,7 @@ import { CARDS_STRATEGIES, runCards } from './cardsEngine';
 import { DEFAULT_PLAYER, phaseOf, type Phase, type PlayerModel } from './engine';
 
 /**
- * Simulación de la mesa 5 (doble o nada, sesión 6: herencias y dos monedas): empieza al pagar la deuda
+ * Simulación de la mesa 5 (sesión 8: multiplicadores acumulativos; herencias y dos monedas): empieza al pagar la deuda
  * de la mesa 4 (estado real de una partida (d) de la mesa 4, misma semilla) y juega hasta reunir los
  * 10M de oro. Las mesas 1-4 siguen solas (sus ayudantes ganan la moneda con la que se compran las
  * herencias); la 4 alimenta la conversión. Cada decisión gasta una acción (0,5 s) y entre lanzamientos
@@ -101,12 +101,23 @@ export function table4Start(seed: number): { state: GameState; time: number } {
 function migrateStart(state: GameState): GameState {
   const coin = state.coin as CoinState & { seconds?: unknown };
   delete coin.seconds;
+  // Cadenas guardadas con la fatiga de antes (sesión 8: `decay`).
+  for (const c of [coin.chain, coin.helper.chain, ...coin.recentChains]) {
+    if (c && (c as { fatigue?: number }).fatigue !== undefined) {
+      c.decay = (c as { fatigue?: number }).fatigue ?? 0;
+      delete (c as { fatigue?: number }).fatigue;
+    }
+  }
   coin.heirlooms ??= { zero: 0, hold: 0, reroll: 0, mark: 0 };
   coin.coinChoice ??= 'justa';
   coin.upgrades.loaded ??= 0;
   coin.stats.heirloomsUsed ??= 0;
   coin.stats.loadedFlips ??= 0;
   coin.pot = Math.max(coin.pot, CONFIG.coin.jackpot.potSeed);
+  // Contadores del libro de cuentas (sesión 7) que no tenían los estados de la caché.
+  state.stats.paidAt ??= [-1, -1, -1, -1, 0];
+  state.endingSeen ??= false;
+  for (const stats of [state.stats, state.slots.stats, state.dice.stats, state.cards.stats, coin.stats]) stats.won ??= 0;
   return state;
 }
 
@@ -219,15 +230,16 @@ export function runCoin(strategy: CoinStrategy, seed: number, player: PlayerMode
     if (chain && chain.status !== 'fin') {
       if (chain.status === 'decidir') {
         let choice = strategy.decide(state, chain);
-        if (strategy.useHeirlooms && choice !== 'stop') {
-          // Retener en cuanto puede; con 2+ caras, Marcar antes de seguir: si sale cruz, se retira
-          // (o prueba la otra moneda si con ella sale cara).
-          armHold(coin, chain);
+        if (strategy.useHeirlooms) {
+          // Con 2+ caras, Marcar antes de decidir (también si iba a retirarse: mirar es gratis): con cara
+          // sigue con la moneda que acierta; con cruz, se retira. Retener en cuanto sigue.
           if (chain.wins >= 2 && chain.charges.mark > 0 && chain.mark === null) useMark(coin, chain, rng);
-          if (chain.mark !== null && markedFace(coin, chain, 0, choice) === 'cruz') {
-            const other: CoinKind = choice === 'justa' ? 'cargada' : 'justa';
-            choice = loadedUnlocked(coin) && markedFace(coin, chain, 0, other) === 'cara' ? other : 'stop';
+          if (chain.mark !== null) {
+            const preferred: CoinKind = choice === 'stop' ? 'justa' : choice;
+            const other: CoinKind = preferred === 'justa' ? 'cargada' : 'justa';
+            choice = markedFace(coin, chain, 0, preferred) === 'cara' ? preferred : loadedUnlocked(coin) && markedFace(coin, chain, 0, other) === 'cara' ? other : 'stop';
           }
+          if (choice !== 'stop') armHold(coin, chain);
         }
         if (choice !== 'stop') {
           if (sinceFlip < player.betInterval) continue;
@@ -272,7 +284,7 @@ export function runCoin(strategy: CoinStrategy, seed: number, player: PlayerMode
 }
 
 // ---------------------------------------------------------------------------
-// Estrategia óptima: programación dinámica sobre moneda y parada (crecimiento logarítmico)
+// Estrategia óptima: programación dinámica sobre moneda y parada (apuesta con Kelly, parada con valor esperado)
 
 interface PlanInput {
   coin: CoinState;
@@ -280,35 +292,50 @@ interface PlanInput {
   rest: number;
   kinds: readonly CoinKind[];
   heirlooms: boolean;
+  /** Exponente de la utilidad (0 = logaritmo). */
+  alpha: number;
 }
 
 type Plan = { v: number; act: CoinKind | 'stop' };
 
 /**
- * Mejor jugada desde una cadena con `wins` caras, `value` acumulado y `fatigue`: retirarse o seguir con
- * una moneda. Cuenta Retener (las caras con carga no cansan), Relanzar (una cruz se repite) y Cero
- * dorado (una cruz devuelve la mitad), una vez cada uno. Devuelve el valor (log del saldo) y la jugada.
+ * Utilidad del saldo para la programación dinámica: (W^α − 1)/α; α = 0 es el logaritmo. Sesión 8: la
+ * apuesta se elige con el logaritmo (Kelly: con el valor esperado apostaba todo, quebraba y tardaba más) y
+ * retirarse o seguir con el valor esperado (α = 1): con pagos que crecen tanto, decidir la parada con el
+ * logaritmo era demasiado prudente para la meta (llegar a 10M cuanto antes).
  */
-function plan(input: PlanInput, wins: number, value: number, fatigue: number, hold: number, reroll: boolean, zero: boolean, memo: Map<string, Plan>): Plan {
-  const key = `${wins}|${value}|${fatigue}|${hold}|${reroll ? 1 : 0}|${zero ? 1 : 0}`;
+const STAKE_ALPHA = 0;
+const STOP_ALPHA = 1;
+const utilityOf = (w: number, alpha: number) => (alpha === 0 ? Math.log(Math.max(w, 1)) : (Math.max(w, 1) ** alpha - 1) / alpha);
+
+/**
+ * Mejor jugada desde una cadena con `wins` caras, `value` acumulado y `decay` pasos de caída: retirarse
+ * o seguir con una moneda. Cuenta Retener (con carga, ese lanzamiento cae un paso menos),
+ * Relanzar (una cruz se repite, más difícil) y Cero dorado (una cruz devuelve una parte), una vez cada
+ * uno. Devuelve el valor (log del saldo) y la jugada.
+ */
+function plan(input: PlanInput, wins: number, value: number, decay: number, hold: number, reroll: boolean, zero: boolean, memo: Map<string, Plan>): Plan {
+  const key = `${wins}|${value}|${decay}|${hold}|${reroll ? 1 : 0}|${zero ? 1 : 0}`;
   const hit = memo.get(key);
   if (hit) return hit;
   const { coin, stake, rest } = input;
+  const utility = (w: number) => utilityOf(w, input.alpha);
   const fraction = stake / coinCeiling(coin);
   const pot = Math.min(coin.pot, COIN_JACKPOT_CAP);
-  let best: Plan = { v: wins > 0 ? Math.log(rest + 1 + value) : -Infinity, act: 'stop' };
-  const lossBase = Math.log(rest + 1);
+  let best: Plan = { v: wins > 0 ? utility(rest + 1 + value) : -Infinity, act: 'stop' };
+  const lossBase = utility(rest + 1);
   for (const kind of input.kinds) {
-    const p = flipChance(coin.upgrades.luck, coin.upgrades.temple, fatigue, fraction, 0, kind);
-    const next = Math.min(value * coinMultiplier(kind), CHAIN_CAP);
-    const usesHold = input.heirlooms && hold > 0 && wins > 0;
+    const usesHold = input.heirlooms && hold > 0 && wins > 0 && decay > 0;
+    const d = decay - (usesHold ? 1 : 0);
+    const p = flipChance(coin.upgrades.luck, coin.upgrades.temple, d, fraction, 0, kind);
+    const next = Math.min(value * stepMultiplier(wins + 1, kind), CHAIN_CAP);
     const w2 = wins + 1;
     let winV: number;
-    if (w2 >= CONFIG.coin.chain.maxWins) winV = Math.log(rest + 1 + next + pot);
-    else if (next >= CHAIN_CAP) winV = Math.log(rest + 1 + next);
-    else winV = plan(input, w2, next, fatigue + (usesHold ? 0 : 1), hold - (usesHold ? 1 : 0), reroll, zero, memo).v;
-    const saved = input.heirlooms && zero && wins > 0 ? Math.log(rest + 1 + value * CONFIG.coin.heirlooms.zero.refund) : lossBase;
-    const pRe = input.heirlooms && reroll ? flipChance(coin.upgrades.luck, coin.upgrades.temple, fatigue + CONFIG.coin.heirlooms.reroll.extraFatigue, fraction, 0, kind) : 0;
+    if (w2 >= CONFIG.coin.chain.maxWins) winV = utility(rest + 1 + next + pot);
+    else if (next >= CHAIN_CAP) winV = utility(rest + 1 + next);
+    else winV = plan(input, w2, next, decay + 1, hold - (usesHold ? 1 : 0), reroll, zero, memo).v;
+    const saved = input.heirlooms && zero && wins > 0 ? utility(rest + 1 + value * CONFIG.coin.heirlooms.zero.refund) : lossBase;
+    const pRe = input.heirlooms && reroll ? flipChance(coin.upgrades.luck, coin.upgrades.temple, d + CONFIG.coin.heirlooms.reroll.extraSteps, fraction, 0, kind) : 0;
     const lossV = input.heirlooms && reroll && wins > 0 ? pRe * winV + (1 - pRe) * saved : saved;
     const v = p * winV + (1 - p) * lossV;
     if (v > best.v) best = { v, act: kind };
@@ -317,21 +344,21 @@ function plan(input: PlanInput, wins: number, value: number, fatigue: number, ho
   return best;
 }
 
-function planFor(state: GameState, chain: CoinChain | null, stake: number, kinds: readonly CoinKind[], heirlooms: boolean): Plan {
+function planFor(state: GameState, chain: CoinChain | null, stake: number, kinds: readonly CoinKind[], heirlooms: boolean, alpha = STOP_ALPHA): Plan {
   const coin = state.coin;
   const allowed = kinds.filter((k) => k === 'justa' || loadedUnlocked(coin));
-  const input: PlanInput = { coin, stake, rest: chain ? coin.balance : coin.balance - stake, kinds: allowed.length ? allowed : ['justa'], heirlooms };
+  const input: PlanInput = { coin, stake, rest: chain ? coin.balance : coin.balance - stake, kinds: allowed.length ? allowed : ['justa'], heirlooms, alpha };
   const charges = chain?.charges ?? { zero: heirloomCharges(coin, 'zero'), hold: heirloomCharges(coin, 'hold'), reroll: heirloomCharges(coin, 'reroll'), mark: 0 };
-  return plan(input, chain?.wins ?? 0, chain?.value ?? stake, chain?.fatigue ?? 0, charges.hold, charges.reroll > 0, charges.zero > 0, new Map());
+  return plan(input, chain?.wins ?? 0, chain?.value ?? stake, chain?.decay ?? 0, charges.hold, charges.reroll > 0, charges.zero > 0, new Map());
 }
 
 function bestStake(state: GameState, kinds: readonly CoinKind[], heirlooms: boolean): number | null {
   const coin = state.coin;
-  const now = Math.log(coin.balance + 1);
+  const now = utilityOf(coin.balance + 1, STAKE_ALPHA);
   let best: { amount: number; g: number } | null = null;
   for (const chip of coinChips(coin)) {
     if (!chip.affordable || chip.amount < 1) continue;
-    const g = planFor(state, null, chip.amount, kinds, heirlooms).v - now;
+    const g = planFor(state, null, chip.amount, kinds, heirlooms, STAKE_ALPHA).v - now;
     if (g > (best?.g ?? 0)) best = { amount: chip.amount, g };
   }
   return best?.amount ?? null;
@@ -398,7 +425,7 @@ export const COIN_STRATEGIES: CoinStrategy[] = [
   },
   {
     id: 'b',
-    label: '(b) Siempre TODO, justa, sigue hasta 10',
+    label: '(b) Siempre TODO, justa, sigue hasta el final',
     chooseStake: allIn,
     decide: () => 'justa',
     useHeirlooms: true,
@@ -410,8 +437,12 @@ export const COIN_STRATEGIES: CoinStrategy[] = [
   optimal('bj', '(bj) Siempre justa (óptima), herencias medias', FAIR, MEDIUM),
   { ...optimal('bc', '(bc) Siempre cargada (óptima), herencias medias', LOADED, MEDIUM), priority: ['loaded', 'luck'] as const },
   {
-    ...optimal('b3', '(b3) Apuesta óptima, sigue hasta 10, herencias medias', BOTH, MEDIUM),
+    ...optimal('b3', '(b3) Apuesta óptima, sigue hasta el final, herencias medias', BOTH, MEDIUM),
     decide: (s, chain) => asKind(planFor(s, chain, chain?.stake ?? bestStake(s, BOTH, true) ?? 1, BOTH, true).act),
+  },
+  {
+    ...optimal('bn', '(bn) Apuesta óptima, sigue hasta 3 aciertos, herencias medias', BOTH, MEDIUM),
+    decide: (s, chain) => ((chain?.wins ?? 0) >= 3 ? 'stop' : asKind(planFor(s, chain, chain?.stake ?? bestStake(s, BOTH, true) ?? 1, BOTH, true).act)),
   },
   {
     ...optimal('b4', '(b4) Apuesta óptima, se retira a la primera, herencias medias', BOTH, MEDIUM),

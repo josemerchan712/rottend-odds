@@ -127,15 +127,15 @@ const SHEETS: Sheet[] = [
     size: [32, 32],
   },
   {
-    // 5 ayudantes en paneles: el brazo mecánico del crupier (mesa 1) y el empleado zombi (mesa 2).
+    // 5 ayudantes en paneles: brazo (mesa 1), zombi (2), camarero (3), esqueleto (4) y diablillo coronado (5).
     kind: 'grid',
     source: 'assets/raw/ayudantes.png.jpeg',
     outDir: 'assets/sprites/helpers',
     // Los paneles no miden lo mismo: el del brazo llega hasta x≈445 y el del zombi hasta x≈707.
-    columns: [0, 446, 708, 1022, 1310],
+    columns: [0, 446, 708, 1022, 1310, 1600],
     rows: [0, 320],
     inset: 10,
-    names: ['arm', 'zombie', 'ghost', 'skeleton'],
+    names: ['arm', 'zombie', 'ghost', 'skeleton', 'imp'],
     size: [64, 64],
   },
   {
@@ -219,6 +219,30 @@ const SHEETS: Sheet[] = [
     kind: 'background',
     source: 'assets/raw/fondo-mesa4.png.jpeg',
     out: 'assets/sprites/backgrounds/mesa4.png',
+    size: [640, 360],
+  },
+  {
+    // Mesa 5: la moneda (cara: el rey coronado; cruz: la calavera), para girarla en la escena.
+    kind: 'boxes',
+    source: 'assets/raw/moneda.*',
+    outDir: 'assets/sprites/coin',
+    boxes: [
+      { name: 'cara', x: 200, y: 160, width: 1100, height: 1120, size: [48, 48] },
+      { name: 'cruz', x: 1600, y: 160, width: 1110, height: 1120, size: [48, 48] },
+    ],
+  },
+  {
+    // Prestamista de la mesa 5, a tamaño de escena (sentado tras el escritorio).
+    kind: 'blocks',
+    source: 'assets/raw/dueno.png.jpeg',
+    outDir: 'assets/sprites/lender5-scene',
+    names: ['calm', 'uneasy', 'deformed'],
+    size: [96, 96],
+  },
+  {
+    kind: 'background',
+    source: 'assets/raw/fondo-mesa5.png.jpeg',
+    out: 'assets/sprites/backgrounds/mesa5.png',
     size: [640, 360],
   },
   {

@@ -44,6 +44,8 @@ public class GameRules {
     /** Mesa 5 (doble o nada): solo lo que hace falta para la validación estructural. */
     private final Map<String, Upgrade> coinUpgrades;
     private final int coinHelperProfiles;
+    /** Herencias de la mesa 5: id → nivel máximo (cargas por cadena). */
+    private final Map<String, Integer> coinHeirlooms;
 
     public GameRules(ObjectMapper mapper) throws IOException {
         String configText = read("shared/config.json");
@@ -69,6 +71,9 @@ public class GameRules {
         JsonNode coin = config.path("coin");
         this.coinUpgrades = Collections.unmodifiableMap(readUpgrades(coin.path("upgrades")));
         this.coinHelperProfiles = coin.path("helperProfiles").asInt();
+        Map<String, Integer> heirlooms = new LinkedHashMap<>();
+        coin.path("heirlooms").fields().forEachRemaining(e -> heirlooms.put(e.getKey(), e.getValue().path("maxLevel").asInt()));
+        this.coinHeirlooms = Collections.unmodifiableMap(heirlooms);
         JsonNode w = config.path("work");
         this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(),
                 w.path("maxItemValue").asDouble(), w.path("bagValuePerLevel").asDouble());
@@ -79,7 +84,7 @@ public class GameRules {
             throw new IllegalStateException("shared/plausibility.json no corresponde a shared/config.json: "
                     + "regenérala con `npm run plausibility`");
         }
-        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty() || cardsUpgrades.isEmpty() || coinUpgrades.isEmpty()) {
+        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty() || cardsUpgrades.isEmpty() || coinUpgrades.isEmpty() || coinHeirlooms.isEmpty()) {
             throw new IllegalStateException("shared/config.json incompleto");
         }
     }
@@ -187,5 +192,9 @@ public class GameRules {
 
     public int coinHelperProfiles() {
         return coinHelperProfiles;
+    }
+
+    public Map<String, Integer> coinHeirlooms() {
+        return coinHeirlooms;
     }
 }

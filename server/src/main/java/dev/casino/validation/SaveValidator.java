@@ -135,8 +135,10 @@ public class SaveValidator {
                 "el camarero fantasma", rules.diceHelperProfiles(), "mesa 2"), debtPaid && slotsPaid, errors);
         boolean cardsPaid = parseTable(state.path("cards"), new TableSpec("cards", "mesa 4", rules.cardsUpgrades(), "skeleton",
                 "el esqueleto barajador", rules.cardsHelperProfiles(), "mesa 3"), debtPaid && slotsPaid && dicePaid, errors);
+        boolean coinOpen = debtPaid && slotsPaid && dicePaid && cardsPaid;
         parseTable(state.path("coin"), new TableSpec("coin", "mesa 5", rules.coinUpgrades(), "imp",
-                "el diablillo coronado", rules.coinHelperProfiles(), "mesa 4"), debtPaid && slotsPaid && dicePaid && cardsPaid, errors);
+                "el diablillo coronado", rules.coinHelperProfiles(), "mesa 4"), coinOpen, errors);
+        parseCoinExtras(state.path("coin"), coinOpen, errors);
         JsonNode active = state.path("activeTable");
         if (!active.isMissingNode() && (!active.isInt() || active.asInt() < 1 || active.asInt() > 5)) {
             errors.add("activeTable: debe ser 1, 2, 3, 4 o 5");
@@ -209,6 +211,44 @@ public class SaveValidator {
         if (started && !previousPaid) tableErrors.add("hay progreso en la " + spec.label() + " sin la deuda de la " + spec.previous() + " pagada");
         for (String error : tableErrors) errors.add(spec.field() + "." + error);
         return paid.asBoolean(false);
+    }
+
+    /**
+     * Mesa 5: herencias (enteros de 0 al nivel máximo, solo con la mesa abierta) y moneda elegida
+     * (justa o cargada; la cargada solo con su mejora). Faltar es válido: el cliente lo rellena.
+     */
+    private void parseCoinExtras(JsonNode coin, boolean open, List<String> errors) {
+        if (!coin.isObject()) return;
+        JsonNode heirlooms = coin.path("heirlooms");
+        if (!heirlooms.isMissingNode()) {
+            if (!heirlooms.isObject()) {
+                errors.add("coin.heirlooms: debe ser un objeto");
+            } else {
+                heirlooms.fieldNames().forEachRemaining(id -> {
+                    if (!rules.coinHeirlooms().containsKey(id)) errors.add("coin.heirlooms." + id + ": herencia desconocida");
+                });
+                for (var e : rules.coinHeirlooms().entrySet()) {
+                    JsonNode level = heirlooms.path(e.getKey());
+                    if (level.isMissingNode()) continue;
+                    if (!level.isIntegralNumber() || !level.canConvertToInt()) {
+                        errors.add("coin.heirlooms." + e.getKey() + ": debe ser un entero");
+                    } else if (level.asInt() < 0 || level.asInt() > e.getValue()) {
+                        errors.add("coin.heirlooms." + e.getKey() + ": nivel " + level.asInt() + " fuera de 0-" + e.getValue());
+                    } else if (level.asInt() > 0 && !open) {
+                        errors.add("coin.heirlooms." + e.getKey() + ": la mesa 5 no está abierta");
+                    }
+                }
+            }
+        }
+        JsonNode choice = coin.path("coinChoice");
+        if (!choice.isMissingNode()) {
+            String kind = choice.isTextual() ? choice.asText() : "";
+            if (!kind.equals("justa") && !kind.equals("cargada")) {
+                errors.add("coin.coinChoice: debe ser justa o cargada");
+            } else if (kind.equals("cargada") && coin.path("upgrades").path("loaded").asInt(0) < 1) {
+                errors.add("coin.coinChoice: la moneda cargada requiere su mejora");
+            }
+        }
     }
 
     private static double number(JsonNode state, String field, List<String> errors) {

@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(9));
+                .andExpect(jsonPath("$.saveVersion").value(10));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -266,9 +266,27 @@ class SaveControllerTest extends ApiTestSupport {
         Map<String, Object> coinUps = SaveFixtures.coinUpgrades();
         coinUps.put("luck", 4);
         coinUps.put("imp", 1);
-        state.put("coin", SaveFixtures.coin(3_000, 60, coinUps, false));
+        Map<String, Object> coin = SaveFixtures.coin(3_000, 60, coinUps, false);
+        ((Map<String, Object>) coin.get("heirlooms")).put("mark", 2);
+        state.put("coin", coin);
         state.put("activeTable", 5);
         putSave(token, null, ok).andExpect(status().isOk());
+
+        // Herencias fuera de rango o desconocidas, y la moneda cargada sin su mejora.
+        Map<String, Object> badCoin = SaveFixtures.coin(3_000, 60, coinUps, false);
+        Map<String, Object> heirlooms = (Map<String, Object>) badCoin.get("heirlooms");
+        heirlooms.put("zero", 9);
+        heirlooms.put("hold", 1.5);
+        heirlooms.put("trampa", 1);
+        badCoin.put("coinChoice", "cargada");
+        state.put("coin", badCoin);
+        putSave(token, 1L, ok)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("coin.heirlooms.zero: nivel 9 fuera de 0-3"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("coin.heirlooms.hold: debe ser un entero"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("herencia desconocida"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("requiere su mejora"))));
+        state.put("coin", coin);
 
         // Progreso en la mesa 5 sin haber pagado la 4, y mejoras del diablillo sin el diablillo.
         Map<String, Object> bad = SaveFixtures.finished(8 * 60 + 30);

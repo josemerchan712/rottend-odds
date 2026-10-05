@@ -38,9 +38,17 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
   - Números: mesa 3 conversión k 0,3 → 0,38 (sin eso, 15:57 en vez de ~14). Mesas 1, 2 y 4 sin cambios.
   - Rendimiento: memoria del riesgo y del ingreso para el pasivo (las simulaciones iban 10× más lentas).
 
+- [x] **B3 Texto nítido.** Capa que emborronaba: sobre todo el **canvas** (640x360 estirado por CSS, con
+  `fillText` antialias a 1 px por unidad: el 92-100% de los píxeles del texto eran grises) y el HTML dentro de
+  `transform: scale(k/dpr)`; encima, el grano CRT al 60% y una capa CRT muerta en el canvas. Ahora: escenario
+  con `zoom` = k/dpr (`--u`, esquina alineada a píxel físico), canvas a resolución física 640k x 360k con
+  transformación k y sin suavizado (99,98% de bloques k x k uniformes medidos en el navegador con dpr 1,5),
+  texto del canvas por máscaras umbralizadas (`src/ui/pixelText.ts`), CRT aparte con tres niveles
+  (Apagado/Suave/Fuerte, por defecto Suave, guardado en Ajustes v2) y recolocado al cambiar el dpr. Test de
+  escala entera (11 tamaños x 7 dpr). Comprobado en el navegador a 1280x720 con dpr 1 y 1,5.
+
 ### Pendiente
 
-- B3 texto nítido (canvas a resolución física, fuente bitmap, HTML con zoom entero, CRT de tres niveles)
 - B4 mesa 5 (doble o nada, el Dueño)
 - B5 final del juego y preparación para publicar (DEPLOY.md)
 - B6 sonido (opcional)

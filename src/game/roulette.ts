@@ -54,10 +54,17 @@ export function spin(state: GameState, req: SpinRequest, rng: Rng): SpinResult |
   return result;
 }
 
+/**
+ * Números negros de una ruleta europea (los rojos de la ruleta real son aquí blanco hueso). Sesión 8:
+ * con el orden europeo de la rueda, así negro y blanco se alternan alrededor del anillo (con la
+ * paridad no se alternaban). Siguen siendo 18 y 18: las probabilidades no cambian.
+ */
+export const BLACK_NUMBERS: ReadonlySet<number> = new Set([2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]);
+
 export function slotColor(slot: number): BetColor | 'verde' | 'dorado' {
   if (slot === -1) return 'dorado';
   if (slot === 0) return 'verde';
-  return slot % 2 === 1 ? 'negro' : 'blanco';
+  return BLACK_NUMBERS.has(slot) ? 'negro' : 'blanco';
 }
 
 /** Casillas ganadoras y perdedoras de cada apuesta, calculadas una vez (se tira muchas veces por segundo). */

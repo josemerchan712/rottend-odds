@@ -34,6 +34,38 @@ Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.
     pantalla completa (build de producción, Chrome sin interfaz): las cinco barras en modo completo en las cuatro
     combinaciones, 0 errores en consola. Hojas en `docs/capturas/sesion8/`.
 
+- [x] **B2 Arreglo de la ruleta.** No había `ruleta_aro.*`: se usa `ruleta_limpia.*` (el pipeline prefiere `ruleta_aro`
+  si aparece).
+  - **Qué se usa de la imagen**: solo el **aro de madera** (máscara anular desde su filo dorado interior hasta el borde)
+    y el **cono central con su pomo** (disco hasta su filo dorado), sano y roto. Radios medidos en la imagen
+    (rueda llevada a un círculo: el dibujo es un 4% más alto que ancho): aro exterior 648 px, interior del aro 463,
+    cono 252 (0,714 R y 0,389 R). La rota usa las proporciones de la sana (misma plantilla; sus casillas
+    desgastadas son tan claras como los filos y confunden la medida). Se descarta todo el anillo de casillas
+    (con la bola roja, la dorada y los dos ceros verdes). En la escena: radio 86, interior del aro 61, cono 33
+    (`assets/sprites/roulette/geometry.json`, lo escribe el pipeline). Bola (9 px) y marcador (13 px) salen de
+    `bola_marcador.*` como sprites aparte.
+  - **Pipeline**: `splitAtSeparator` (separa por la línea del medio, magenta o negra, y la deja fuera con margen),
+    cian quitado desde los bordes (huecos interiores solo si son casi idénticos al cian; además se borran los
+    píxeles con verde y azul muy por encima del rojo, restos del JPEG en las grietas de la rota), `radialProfile` +
+    `measureWheel` (los dos filos dorados son los máximos de luminancia en el 30-48% y el 62-82% del radio) y
+    `annulus`. Tests nuevos del pipeline (separador, medida, máscara, y que los sprites exportados no tienen nada
+    entre el cono y el aro ni rojo puro).
+  - **Qué se dibuja en código** (`src/ui/rouletteView.ts`): el anillo de **37 casillas** entre el cono y el aro
+    (de 39 a 61), en el **orden europeo**, 18 negras y 18 blanco hueso alternadas y un único cero verde, todas
+    iguales, con separadores y filos dorados; banda exterior con los números (VT323 14 px en la capa de texto, a lo
+    largo del radio) y fondo de casilla más oscuro donde cae la bola; la rota añade mugre, desconchones, arañazos
+    y verdín (generador con semilla). Aro, anillo y cono giran como una pieza; bola y marcador no giran (el
+    marcador, fijo arriba con la punta en el borde del anillo). Centro de la rueda en y 113 (antes 118) para que el
+    radio 86 quepa entre la barra y el tapete.
+  - **Decisiones**: para que negro y blanco se alternen en el orden europeo, los colores pasan a ser los de la
+    ruleta real (negros = negros, rojos = blanco hueso; `BLACK_NUMBERS`) en vez de la paridad, también en el
+    tapete; siguen 18 y 18, las probabilidades no cambian. El jackpot (Cero Dorado, sin casilla propia en 37) cae
+    en el cero con el destello dorado del anillo. Números a lo largo del radio: en horizontal («36» mide 14) no
+    caben en una casilla de 9 de arco; a lo largo del radio caben con 14 px.
+  - Tests: los 37 números (la bola se para en su casilla), orden europeo, un solo cero, alternancia, color igual
+    al lógico. Capturas sana y rota en reposo, girando y al caer, con dpr 1 y 1,5, en ventana y en pantalla
+    completa (build de producción), 0 errores: `docs/capturas/sesion8/ruleta-*.jpg`.
+
 ## Sesión 7 (pantalla de título y pantalla final: ROTTEN ODDS)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.

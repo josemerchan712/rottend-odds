@@ -73,6 +73,10 @@ export const STYLES = {
   provisionalTitle: { size: 48, color: '#c9a443', background: OUTLINE, outline: true },
   /** Epílogo del final: texto frío sobre la caja oscura de la franja inferior. */
   epilogue: { size: 16, color: '#e6e1d2', background: OUTLINE, outline: true },
+  /** Números de la rueda de la ruleta (14: lo mínimo; las casillas no dan para 16). */
+  wheelOnDark: { size: 14, color: '#efe6cc', background: '#141110', outline: false },
+  wheelOnBone: { size: 14, color: '#141110', background: '#cfc5a6', outline: false },
+  wheelOnGreen: { size: 14, color: '#efe6cc', background: '#2f5f24', outline: false },
   /** Etiquetas de objetivo bloqueado (dados) y similares sobre los paneles. */
   locked: { size: 14, color: '#a99c7c', background: PANEL, outline: false },
 } satisfies Record<string, TextStyle>;

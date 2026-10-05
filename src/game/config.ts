@@ -53,7 +53,7 @@ export const CONFIG = {
   },
 
   roulette: {
-    /** 0 verde y 1-36 (impares negro, pares blanco). */
+    /** 0 verde y 1-36 (negros y blancos como los negros y rojos de una ruleta europea: BLACK_NUMBERS). */
     slots: 37,
   },
 

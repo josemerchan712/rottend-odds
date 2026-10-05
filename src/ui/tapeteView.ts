@@ -42,7 +42,7 @@ function zoneColors(zone: Zone): { fill: string; ink: TextStyleName } {
   if (zone.id === 'blanco') return { fill: C.bone, ink: 'numberOnBone' };
   if (zone.type === 'dozen') return { fill: C.feltEdge, ink: 'zoneOnFelt' };
   const n = zone.choice.type === 'number' ? zone.choice.number : 0;
-  return n % 2 === 1 ? { fill: C.black, ink: 'numberOnDark' } : { fill: C.bone, ink: 'numberOnBone' };
+  return slotColor(n) === 'negro' ? { fill: C.black, ink: 'numberOnDark' } : { fill: C.bone, ink: 'numberOnBone' };
 }
 
 /** El tapete sobre el fieltro: zonas, números, candados y el resaltado de la zona bajo el ratón. */

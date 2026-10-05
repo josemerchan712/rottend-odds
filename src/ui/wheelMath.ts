@@ -1,21 +1,28 @@
 import { slotColor } from '../game/roulette';
 
 /**
- * Geometría de la ruleta dibujada (sin DOM, con tests). El anillo de casillas se dibuja encima de la
- * rueda del arte: así el color de la casilla en la que cae la bola es siempre el del resultado lógico.
+ * Geometría de la ruleta dibujada (sin DOM, con tests). Sesión 8: 37 casillas en el orden de una
+ * ruleta europea (un solo cero verde), en el sentido de las agujas del reloj desde arriba. El anillo se
+ * dibuja en código entre el aro de madera y el cono del arte, así que el número de la casilla en la que
+ * cae la bola es siempre el del resultado lógico.
  *
- * Orden de las casillas en el anillo, en el sentido de las agujas del reloj desde arriba:
- * el 0 verde, el Cero Dorado (casilla -1) y del 1 al 36 (impares negras, pares blancas).
+ * El jackpot (casilla -1, "Cero Dorado") no tiene casilla propia: la bola cae en el cero y el anillo
+ * destella en dorado.
  */
-export const POCKETS: readonly number[] = [0, -1, ...Array.from({ length: 36 }, (_, i) => i + 1)];
+export const POCKETS: readonly number[] = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 export const POCKET_ANGLE = (Math.PI * 2) / POCKETS.length;
 
 export type PocketColor = 'verde' | 'dorado' | 'negro' | 'blanco';
 
 const TAU = Math.PI * 2;
 
+/** Casilla del anillo donde se para la bola para ese resultado (el jackpot, en el cero). */
+export function landingSlot(slot: number): number {
+  return slot === -1 ? 0 : slot;
+}
+
 export function pocketIndex(slot: number): number {
-  const index = POCKETS.indexOf(slot);
+  const index = POCKETS.indexOf(landingSlot(slot));
   if (index < 0) throw new Error(`casilla desconocida: ${slot}`);
   return index;
 }

@@ -179,7 +179,7 @@ export class Scene {
     this.drawBackground();
     this.effects.drawLamps(ctx);
     const version = state.debtPaid ? 'broken' : 'healthy';
-    this.roulette.draw(ctx, this.sprites.roulette.get(version), version, WHEEL_CENTER.x, WHEEL_CENTER.y);
+    this.roulette.draw(ctx, this.sprites.roulette, version, WHEEL_CENTER.x, WHEEL_CENTER.y);
     drawStrip(ctx, this.shownSpins(state));
     this.drawLender(state);
     const target = this.casinoTarget(state);

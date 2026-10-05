@@ -31,7 +31,7 @@ export interface SpinResult {
   /** Probabilidad efectiva de ganar con la que se jugó. */
   winChance: number;
   outcome: SpinOutcome;
-  /** Casilla que salió: 0 = cero verde, 1-36 (impar negro, par blanco), -1 = Cero Dorado. */
+  /** Casilla que salió: 0 = cero verde, 1-36 (negro o blanco según BLACK_NUMBERS), -1 = Cero Dorado (jackpot). */
   slot: number;
   /** Cambio neto del saldo. */
   delta: number;

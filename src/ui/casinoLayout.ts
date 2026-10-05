@@ -9,7 +9,8 @@ import type { BetChoice } from '../game/state';
 export const CENTER_LEFT = 128;
 export const CENTER_RIGHT = 512;
 
-export const WHEEL_CENTER = { x: 250, y: 118 };
+/** Centro de la ruleta: con radio 86 cabe entre la barra (y 20) y el tapete (y 200). */
+export const WHEEL_CENTER = { x: 250, y: 113 };
 /** Base del Encargado (96 px), detrás de la mesa: el borde del tapete le tapa el torso. */
 export const LENDER_SPOT = { x: 392, y: 222 };
 export const LENDER_SIZE = 96;

@@ -1,6 +1,7 @@
 import { CONFIG } from '../game/config';
 import type { Reels, SlotSpin } from '../game/slots/state';
 import { ready, type Sprites } from './sprites';
+import { fillPixelText } from './pixelText';
 
 /**
  * Los tres carretes de la tragaperras, que giran de verdad: cada uno es una tira de símbolos que
@@ -180,7 +181,7 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  ctx.fillText(text, x + 1, y + 1);
+  fillPixelText(ctx, text, x + 1, y + 1);
   ctx.fillStyle = color;
-  ctx.fillText(text, x, y);
+  fillPixelText(ctx, text, x, y);
 }

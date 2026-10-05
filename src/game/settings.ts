@@ -2,8 +2,8 @@ import type { KeyValueStorage } from './save';
 
 /** Ajustes del jugador. Se guardan aparte de la partida: borrarla no los toca. */
 export interface Settings {
-  /** Filtro CRT: scanlines, viñeta, grano, parpadeo de luces y temblor. */
-  crtEnabled: boolean;
+  /** Filtro CRT: scanlines, viñeta y grano (suave o fuerte); apagado quita también parpadeo y temblor. */
+  crt: CrtSetting;
   /** Volumen general, 0-1. Aún sin audio. */
   volume: number;
   /** Pedir pantalla completa al pulsar Continuar o Nueva partida. */
@@ -12,10 +12,14 @@ export interface Settings {
   dialogues: boolean;
 }
 
-export const SETTINGS_VERSION = 1;
+export type CrtSetting = 'apagado' | 'suave' | 'fuerte';
+export const CRT_LEVELS: readonly CrtSetting[] = ['apagado', 'suave', 'fuerte'];
+
+/** v2: el filtro CRT pasa de sí/no a tres niveles (sí → suave, no → apagado). */
+export const SETTINGS_VERSION = 2;
 
 export function defaultSettings(): Settings {
-  return { crtEnabled: true, volume: 0.7, startFullscreen: false, dialogues: true };
+  return { crt: 'suave', volume: 0.7, startFullscreen: false, dialogues: true };
 }
 
 export function saveSettings(storage: KeyValueStorage, key: string, settings: Settings): boolean {
@@ -39,7 +43,8 @@ export function loadSettings(storage: KeyValueStorage, key: string): Settings {
   if (raw === null) return settings;
   try {
     const parsed = JSON.parse(raw)?.settings;
-    if (typeof parsed?.crtEnabled === 'boolean') settings.crtEnabled = parsed.crtEnabled;
+    if (CRT_LEVELS.includes(parsed?.crt)) settings.crt = parsed.crt;
+    else if (typeof parsed?.crtEnabled === 'boolean') settings.crt = parsed.crtEnabled ? 'suave' : 'apagado';
     if (typeof parsed?.startFullscreen === 'boolean') settings.startFullscreen = parsed.startFullscreen;
     if (typeof parsed?.dialogues === 'boolean') settings.dialogues = parsed.dialogues;
     if (typeof parsed?.volume === 'number' && Number.isFinite(parsed.volume)) {

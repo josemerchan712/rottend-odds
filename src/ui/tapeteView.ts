@@ -3,6 +3,7 @@ import { slotColor } from '../game/roulette';
 import type { GameState, SpinResult } from '../game/state';
 import { chipBase, STRIP, TAPETE, ZONES, type Zone } from './casinoLayout';
 import { ready, type Sprites } from './sprites';
+import { fillPixelText } from './pixelText';
 
 const C = {
   felt: '#24331b',
@@ -67,7 +68,7 @@ function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = color;
-  ctx.fillText(value, x, y + 0.5);
+  fillPixelText(ctx, value, x, y + 0.5);
 }
 
 function zoneColors(zone: Zone): { fill: string; ink: string } {

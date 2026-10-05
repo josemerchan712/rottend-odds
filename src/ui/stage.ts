@@ -1,26 +1,76 @@
 /**
  * El "escenario": un bloque de 640x360 unidades (la resolución interna) con la escena y todos los
- * menús HTML dentro, escalado con un factor ENTERO de píxeles físicos y centrado en el contenedor
- * raíz, que ocupa toda la ventana (barras negras si sobra). Así el pixel art, la fuente pixel y el
- * filtro CRT escalan juntos.
+ * menús HTML dentro, a un factor ENTERO k de píxeles físicos por unidad y centrado en el contenedor
+ * raíz, que ocupa toda la ventana (barras negras si sobra).
+ *
+ * Sesión 5 (texto nítido): antes se escalaba con `transform: scale(k/dpr)`, y el navegador
+ * rasterizaba el HTML y el canvas de 640x360 a su tamaño y después lo estiraba (texto borroso en
+ * pantalla completa y con dpr fraccionario). Ahora:
+ * - el HTML usa `zoom` = k/dpr (la variable `--u`): se maqueta y se rasteriza ya a su tamaño final,
+ *   y cada unidad de CSS es k píxeles físicos exactos;
+ * - el canvas tiene la resolución física (640k x 360k), dibuja con la transformación k, sin
+ *   suavizado, y el texto sale de máscaras sin antialias (pixelText.ts);
+ * - la capa CRT va aparte, encima, sin eventos ni filtros sobre el contenido.
  */
 export const STAGE_WIDTH = 640;
 export const STAGE_HEIGHT = 360;
 
+export interface StageLayout {
+  /** Píxeles físicos por unidad del escenario (entero, al menos 1). */
+  k: number;
+  /** Píxeles CSS por unidad (k / dpr): el zoom del escenario y la variable --u. */
+  u: number;
+  /** Esquina del escenario en píxeles CSS, en un píxel físico exacto. */
+  left: number;
+  top: number;
+}
+
+/** El mayor factor entero de píxeles físicos que cabe, y la esquina centrada alineada a píxel físico. */
+export function stageLayout(width: number, height: number, dpr: number): StageLayout {
+  const k = Math.max(1, Math.floor(Math.min((width * dpr) / STAGE_WIDTH, (height * dpr) / STAGE_HEIGHT)));
+  const left = Math.max(0, Math.floor((width * dpr - STAGE_WIDTH * k) / 2)) / dpr;
+  const top = Math.max(0, Math.floor((height * dpr - STAGE_HEIGHT * k) / 2)) / dpr;
+  return { k, u: k / dpr, left, top };
+}
+
 /** Factor de escala CSS para que cada unidad del escenario ocupe un número entero de píxeles físicos. */
 export function stageScale(width: number, height: number, dpr: number): number {
-  const k = Math.max(1, Math.floor(Math.min((width * dpr) / STAGE_WIDTH, (height * dpr) / STAGE_HEIGHT)));
-  return k / dpr;
+  return stageLayout(width, height, dpr).u;
+}
+
+let physicalScale = 1;
+
+/** Píxeles físicos por unidad del escenario ahora mismo (para el canvas). */
+export function stagePixelScale(): number {
+  return physicalScale;
 }
 
 export function layoutStage(root: HTMLElement, stage: HTMLElement): void {
   const { clientWidth: w, clientHeight: h } = root;
-  const scale = stageScale(w, h, window.devicePixelRatio || 1);
-  // Desplazamiento redondeado a píxel físico para no partir píxeles del juego.
-  const dpr = window.devicePixelRatio || 1;
-  const left = Math.round(((w - STAGE_WIDTH * scale) / 2) * dpr) / dpr;
-  const top = Math.round(((h - STAGE_HEIGHT * scale) / 2) * dpr) / dpr;
-  stage.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
+  const layout = stageLayout(w, h, window.devicePixelRatio || 1);
+  physicalScale = layout.k;
+  root.style.setProperty('--u', `${layout.u}px`);
+  stage.style.transform = '';
+  stage.style.zoom = String(layout.u);
+  // Con zoom, left y top del propio escenario también se multiplican por él.
+  stage.style.left = `${layout.left / layout.u}px`;
+  stage.style.top = `${layout.top / layout.u}px`;
+}
+
+/**
+ * Prepara el canvas de la escena para dibujar un fotograma: resolución física (640k x 360k),
+ * transformación k (se sigue dibujando en unidades de 640x360) y sin suavizado.
+ */
+export function prepareCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
+  const k = physicalScale;
+  const w = STAGE_WIDTH * k;
+  const h = STAGE_HEIGHT * k;
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 }
 
 export function isFullscreen(): boolean {
@@ -46,8 +96,13 @@ export async function enterFullscreen(root: HTMLElement): Promise<void> {
   }
 }
 
-/** Capa CRT en CSS sobre todo el escenario (escena y menús): scanlines, viñeta y grano animado. */
-export function mountCrt(stage: HTMLElement): { setEnabled(on: boolean): void; tick(): void } {
+export type CrtLevel = 'apagado' | 'suave' | 'fuerte';
+
+/**
+ * Capa CRT en CSS sobre todo el escenario (escena y menús): scanlines de 1 unidad (alineadas al
+ * píxel del juego), viñeta y grano animado. Tres niveles (data-crt en el escenario).
+ */
+export function mountCrt(stage: HTMLElement): { setLevel(level: CrtLevel): void; tick(): void } {
   const layer = document.createElement('div');
   layer.className = 'crt';
   layer.setAttribute('aria-hidden', 'true');
@@ -69,9 +124,10 @@ export function mountCrt(stage: HTMLElement): { setEnabled(on: boolean): void; t
 
   let enabled = true;
   return {
-    setEnabled(on) {
-      enabled = on;
-      layer.hidden = !on;
+    setLevel(level) {
+      enabled = level !== 'apagado';
+      layer.hidden = !enabled;
+      stage.dataset.crt = level;
     },
     tick() {
       if (enabled) grain.style.backgroundPosition = `${Math.floor(Math.random() * 128)}px ${Math.floor(Math.random() * 128)}px`;

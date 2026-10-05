@@ -268,9 +268,13 @@ kbd {
   z-index: 100;
 }
 .crt > div { position: absolute; inset: 0; }
-.crt-scan { background: repeating-linear-gradient(to bottom, transparent 0, transparent 1px, rgba(0, 0, 0, 0.22) 1px, rgba(0, 0, 0, 0.22) 2px); }
-.crt-vignette { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%); }
-.crt-grain { opacity: 0.6; image-rendering: pixelated; }
+/* Suave (por defecto): se nota el tubo sin ensuciar el texto. Fuerte: el aspecto de antes. */
+.crt-scan { background: repeating-linear-gradient(to bottom, transparent 0, transparent 1px, rgba(0, 0, 0, 0.1) 1px, rgba(0, 0, 0, 0.1) 2px); }
+.crt-vignette { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.35) 100%); }
+.crt-grain { opacity: 0.2; image-rendering: pixelated; }
+.stage[data-crt='fuerte'] .crt-scan { background: repeating-linear-gradient(to bottom, transparent 0, transparent 1px, rgba(0, 0, 0, 0.22) 1px, rgba(0, 0, 0, 0.22) 2px); }
+.stage[data-crt='fuerte'] .crt-vignette { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%); }
+.stage[data-crt='fuerte'] .crt-grain { opacity: 0.6; }
 
 /* Tooltip pixelado (tapete y fichas). */
 .tooltip {

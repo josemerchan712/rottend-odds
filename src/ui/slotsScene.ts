@@ -12,6 +12,8 @@ import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { reelAt, SlotsView } from './slotsView';
 import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
+import { fillPixelText } from './pixelText';
+import { prepareCanvas } from './stage';
 
 /**
  * La escena de la mesa 2 (tragaperras), en el mismo canvas de 640x360 que la mesa 1:
@@ -71,7 +73,7 @@ export class SlotsScene {
     private readonly sprites: Sprites,
   ) {
     this.ctx = canvas.getContext('2d')!;
-    this.effects = new Effects(SCENE_WIDTH, SCENE_HEIGHT);
+    this.effects = new Effects();
   }
 
   setEffectsEnabled(enabled: boolean): void {
@@ -119,7 +121,7 @@ export class SlotsScene {
     this.track(state);
     this.advance(state, dt);
     const ctx = this.ctx;
-    ctx.imageSmoothingEnabled = false;
+    prepareCanvas(this.canvas, ctx);
     const shake = this.effects.shakeOffset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
@@ -291,9 +293,9 @@ export class SlotsScene {
       const fy = Math.round(f.y - f.age * 18);
       ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-      ctx.fillText(f.text, fx + 1, fy + 1);
+      fillPixelText(ctx, f.text, fx + 1, fy + 1);
       ctx.fillStyle = f.color;
-      ctx.fillText(f.text, fx, fy);
+      fillPixelText(ctx, f.text, fx, fy);
     }
     ctx.globalAlpha = 1;
   }
@@ -319,7 +321,7 @@ function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  ctx.fillText(value, x + 1, y + 1.5);
+  fillPixelText(ctx, value, x + 1, y + 1.5);
   ctx.fillStyle = color;
-  ctx.fillText(value, x, y + 0.5);
+  fillPixelText(ctx, value, x, y + 0.5);
 }

@@ -8,7 +8,7 @@ import { CONFIG } from './game/config';
 import { continueGame, continueInfo, startNewGame } from './game/menu';
 import { defaultRng } from './game/rng';
 import { clearSave, deserialize, loadGame, saveGame, serialize } from './game/save';
-import { loadSettings, saveSettings } from './game/settings';
+import { CRT_LEVELS, loadSettings, saveSettings } from './game/settings';
 import type { GameState } from './game/state';
 import { startLoop } from './loop';
 import { bindControls, closeDrawers, toggleDrawer } from './ui/controls';
@@ -133,6 +133,18 @@ const crt = mountCrt(stage);
 const relayout = () => layoutStage(root, stage);
 window.addEventListener('resize', relayout);
 document.addEventListener('fullscreenchange', relayout);
+// Si cambia el dpr (otro monitor, zoom del navegador) sin redimensionar, también hay que recolocar.
+const watchDpr = () => {
+  matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
+    'change',
+    () => {
+      relayout();
+      watchDpr();
+    },
+    { once: true },
+  );
+};
+watchDpr();
 relayout();
 
 const menuUi = mountMenu(screens.menu);
@@ -554,10 +566,11 @@ function save(): void {
 }
 
 function applySettings(): void {
-  document.documentElement.dataset.crt = settings.crtEnabled ? 'on' : 'off';
-  crt.setEnabled(settings.crtEnabled);
+  document.documentElement.dataset.crt = settings.crt;
+  crt.setLevel(settings.crt);
   setVolume(settings.volume);
-  scene.setEffectsEnabled(settings.crtEnabled);
+  const effects = settings.crt !== 'apagado';
+  for (const s of [scene, slotsScene, diceScene, cardsScene]) s.setEffectsEnabled(effects);
   saveSettings(localStorage, settingsKey, settings);
 }
 
@@ -600,7 +613,7 @@ menuUi.ranking.addEventListener('click', () => {
 
 // Ajustes
 settingsUi.crt.addEventListener('change', () => {
-  settings.crtEnabled = settingsUi.crt.checked;
+  settings.crt = CRT_LEVELS.find((l) => l === settingsUi.crt.value) ?? 'suave';
   applySettings();
 });
 settingsUi.dialogues.addEventListener('change', () => {

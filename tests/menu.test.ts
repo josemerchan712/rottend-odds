@@ -57,19 +57,19 @@ describe('pantalla de inicio', () => {
 describe('ajustes', () => {
   it('sobreviven a borrar la partida', () => {
     const storage = memoryStorage();
-    saveSettings(storage, SETTINGS, { crtEnabled: false, volume: 0.25, startFullscreen: true, dialogues: false });
+    saveSettings(storage, SETTINGS, { crt: 'fuerte', volume: 0.25, startFullscreen: true, dialogues: false });
     saveGame(storage, GAME, stateWith({ balance: 5 }), 0);
     clearSave(storage, GAME);
     expect(continueInfo(storage, GAME)).toBeNull();
-    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.25, startFullscreen: true, dialogues: false });
+    expect(loadSettings(storage, SETTINGS)).toEqual({ crt: 'fuerte', volume: 0.25, startFullscreen: true, dialogues: false });
   });
 
   it('también sobreviven a empezar una partida nueva', () => {
     const storage = memoryStorage();
-    saveSettings(storage, SETTINGS, { crtEnabled: false, volume: 0.1, startFullscreen: false, dialogues: true });
+    saveSettings(storage, SETTINGS, { crt: 'apagado', volume: 0.1, startFullscreen: false, dialogues: true });
     saveGame(storage, GAME, stateWith(), 0);
     startNewGame(storage, GAME, () => true, 0);
-    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.1, startFullscreen: false, dialogues: true });
+    expect(loadSettings(storage, SETTINGS)).toEqual({ crt: 'apagado', volume: 0.1, startFullscreen: false, dialogues: true });
   });
 
   it('"Iniciar en pantalla completa" está desactivado por defecto y se guarda', () => {
@@ -77,7 +77,7 @@ describe('ajustes', () => {
     expect(loadSettings(storage, SETTINGS).startFullscreen).toBe(false);
     // Un guardado de ajustes antiguo, sin el campo, sigue cargando.
     storage.setItem(SETTINGS, JSON.stringify({ version: 1, settings: { crtEnabled: false, volume: 0.5 } }));
-    expect(loadSettings(storage, SETTINGS)).toEqual({ crtEnabled: false, volume: 0.5, startFullscreen: false, dialogues: true });
+    expect(loadSettings(storage, SETTINGS)).toEqual({ crt: 'apagado', volume: 0.5, startFullscreen: false, dialogues: true });
     saveSettings(storage, SETTINGS, { ...defaultSettings(), startFullscreen: true });
     expect(loadSettings(storage, SETTINGS).startFullscreen).toBe(true);
   });

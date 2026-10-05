@@ -15,7 +15,7 @@ export interface MenuUi {
 }
 
 export interface SettingsUi {
-  crt: HTMLInputElement;
+  crt: HTMLSelectElement;
   fullscreen: HTMLInputElement;
   dialogues: HTMLInputElement;
   volume: HTMLInputElement;
@@ -76,8 +76,12 @@ export function mountSettings(root: HTMLElement): SettingsUi {
     <section class="panel menu">
       <h1>Ajustes</h1>
       <label class="setting">
-        <input type="checkbox" data-ref="crt" />
         Filtro CRT
+        <select data-ref="crt">
+          <option value="apagado">Apagado</option>
+          <option value="suave">Suave</option>
+          <option value="fuerte">Fuerte</option>
+        </select>
       </label>
       <label class="setting">
         <input type="checkbox" data-ref="fullscreen" />
@@ -113,7 +117,7 @@ export function mountSettings(root: HTMLElement): SettingsUi {
 }
 
 export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: boolean): void {
-  ui.crt.checked = settings.crtEnabled;
+  ui.crt.value = settings.crt;
   ui.fullscreen.checked = settings.startFullscreen;
   ui.dialogues.checked = settings.dialogues;
   ui.volume.value = String(Math.round(settings.volume * 100));

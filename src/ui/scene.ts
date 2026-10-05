@@ -10,6 +10,8 @@ import { ready, type PlayerFrame, type Sprites } from './sprites';
 import { ARM_SPOT, chipAt, LENDER_SIZE, LENDER_SPOT, WHEEL_CENTER, zoneAt, type Zone } from './casinoLayout';
 import { drawChips, drawStrip, drawTapete } from './tapeteView';
 import { isBetTypeUnlocked, stateChips, type SelectorChip } from '../game/betting';
+import { fillPixelText } from './pixelText';
+import { prepareCanvas } from './stage';
 
 /** Resolución interna de la escena (sección 8 del diseño). */
 export const SCENE_WIDTH = 640;
@@ -91,11 +93,9 @@ export class Scene {
     readonly canvas: HTMLCanvasElement,
     private readonly sprites: Sprites,
   ) {
-    canvas.width = SCENE_WIDTH;
-    canvas.height = SCENE_HEIGHT;
     this.ctx = canvas.getContext('2d')!;
     this.ctx.imageSmoothingEnabled = false;
-    this.effects = new Effects(SCENE_WIDTH, SCENE_HEIGHT);
+    this.effects = new Effects();
   }
 
   /** Activa o desactiva todos los efectos de pantalla (ajuste "Filtro CRT"). */
@@ -155,7 +155,7 @@ export class Scene {
     this.trackSpins(state);
     this.advance(state, dt);
     const ctx = this.ctx;
-    ctx.imageSmoothingEnabled = false;
+    prepareCanvas(this.canvas, ctx);
 
     const shake = this.effects.shakeOffset();
     ctx.save();
@@ -275,9 +275,9 @@ export class Scene {
     ctx.font = '12px VT323, monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = COLORS.shadow;
-    ctx.fillText(d.label, d.x + d.width / 2 + 1, d.y - 3);
+    fillPixelText(ctx, d.label, d.x + d.width / 2 + 1, d.y - 3);
     ctx.fillStyle = COLORS.text;
-    ctx.fillText(d.label, d.x + d.width / 2, d.y - 4);
+    fillPixelText(ctx, d.label, d.x + d.width / 2, d.y - 4);
     this.canvas.style.cursor = 'pointer';
   }
 
@@ -410,9 +410,9 @@ export class Scene {
       const fy = Math.round(f.y - f.age * 18);
       ctx.globalAlpha = Math.max(0, 1 - f.age / FLOAT_SECONDS);
       ctx.fillStyle = COLORS.shadow;
-      ctx.fillText(f.text, fx + 1, fy + 1);
+      fillPixelText(ctx, f.text, fx + 1, fy + 1);
       ctx.fillStyle = f.color;
-      ctx.fillText(f.text, fx, fy);
+      fillPixelText(ctx, f.text, fx, fy);
     }
     ctx.globalAlpha = 1;
   }

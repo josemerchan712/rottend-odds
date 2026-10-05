@@ -1,6 +1,7 @@
 /**
- * Efectos de pantalla de la escena (sección 8): scanlines, viñeta, grano, parpadeo de las lámparas
- * del fondo y temblor. Solo se dibujan con el filtro CRT activado en Ajustes.
+ * Efectos de pantalla de la escena (sección 8): parpadeo de las lámparas del fondo y temblor. Se
+ * apagan con el filtro CRT en "Apagado". Las scanlines, la viñeta y el grano son la capa CRT de CSS
+ * (stage.ts), aparte del contenido.
  */
 
 /** Lámparas del fondo de la mesa 1, en coordenadas de la escena 640x360. */
@@ -19,48 +20,11 @@ interface Lamp {
 
 export class Effects {
   enabled = true;
-  private readonly scanlines: HTMLCanvasElement;
-  private readonly vignette: HTMLCanvasElement;
-  private readonly grain: HTMLCanvasElement[];
   private readonly lamps: Lamp[] = LAMPS.map((l, i) => ({ ...l, dip: 0, phase: i * 1.7 }));
   private time = 0;
   private shakeLeft = 0;
 
-  constructor(
-    private readonly width: number,
-    private readonly height: number,
-    private readonly random: () => number = Math.random,
-  ) {
-    this.scanlines = this.layer((ctx) => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-      for (let y = 1; y < height; y += 2) ctx.fillRect(0, y, width, 1);
-    });
-    this.vignette = this.layer((ctx) => {
-      const g = ctx.createRadialGradient(width / 2, height / 2, height * 0.35, width / 2, height / 2, width * 0.62);
-      g.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      g.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, width, height);
-    });
-    this.grain = Array.from({ length: 4 }, () =>
-      this.layer((ctx) => {
-        const img = ctx.createImageData(width, height);
-        for (let i = 0; i < width * height; i++) {
-          const v = this.random() * 255;
-          img.data.set([v, v, v, this.random() < 0.5 ? 18 : 0], i * 4);
-        }
-        ctx.putImageData(img, 0, 0);
-      }),
-    );
-  }
-
-  private layer(draw: (ctx: CanvasRenderingContext2D) => void): HTMLCanvasElement {
-    const canvas = document.createElement('canvas');
-    canvas.width = this.width;
-    canvas.height = this.height;
-    draw(canvas.getContext('2d')!);
-    return canvas;
-  }
+  constructor(private readonly random: () => number = Math.random) {}
 
   /** Temblor de pantalla (al perder una apuesta grande). */
   shake(): void {
@@ -107,15 +71,4 @@ export class Effects {
     }
   }
 
-  /** Capa CRT final: grano, scanlines y viñeta. */
-  drawOverlay(ctx: CanvasRenderingContext2D): void {
-    if (!this.enabled) return;
-    ctx.save();
-    ctx.globalAlpha = 0.6;
-    ctx.drawImage(this.grain[Math.floor(this.random() * this.grain.length)], 0, 0);
-    ctx.globalAlpha = 1;
-    ctx.drawImage(this.scanlines, 0, 0);
-    ctx.drawImage(this.vignette, 0, 0);
-    ctx.restore();
-  }
 }

@@ -4,6 +4,36 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 8 (bugs de interfaz, ruleta nueva, multiplicadores acumulativos en la mesa 5)
+
+Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.
+
+### Hecho
+
+- [x] **B1 Dos bugs de interfaz.**
+  - **Cajones.** Causa: cada cajón es un `aside` absoluto con su pestaña dentro; el segundo cajón del lado izquierdo
+    (Herencias, mesa 5) seguía anclado a `left: 0` con su pestaña a la altura de 112, así que con «Mesa» abierto
+    (cuerpo de 0 a 120) la pestaña de Herencias quedaba encima del contenido (Moneda cargada, Estadísticas).
+    Además el hueco transparente del cajón abierto podía tragarse los clics de otra pestaña. Arreglo (CSS): las
+    pestañas de un lado van apiladas (Mesa arriba, Herencias debajo); si hay un cajón abierto en ese lado, los
+    cerrados se desplazan 123 unidades (cuerpo de 120 + marco de 3), con lo que todas las pestañas quedan pegadas
+    al borde exterior del cajón abierto, o al borde de la pantalla si están todos cerrados. El cajón solo recibe el
+    ratón en su pestaña y su cuerpo. El abierto va por encima (z 11 frente a 10). Solo un cajón abierto por lado
+    (ya lo hacía `toggleDrawer5`); Esc cierra todos. Lado derecho (Ayuda) con la misma regla. Comprobado que
+    ningún texto de ningún cajón se corta (medido en el navegador en las cinco mesas) y en capturas.
+  - **Barra superior.** Causa: `fitHud` decidía el modo con el contenido de la mesa que se veía: «FICHAS NEGRAS
+    1,00B» (79 unidades) desbordaba la mesa 4 en 20 unidades y la pasaba a compacto; en la mesa 5 ya no se ve
+    «Pagar deuda» y cabía. La pantalla completa no da más ancho: el escenario mide siempre 640 unidades (escala
+    entera), así que el modo dependía solo del texto de cada mesa. Arreglo: las partes que cambian de una mesa a
+    otra tienen un ancho reservado en modo completo (saldo 88, pasivo 84, botones 164); el aviso del ayudante sale
+    debajo de la barra (no ocupa sitio en la fila); `fitHuds` mide las cinco barras en modo completo y aplica a
+    todas el mismo modo con `hudMode` (pura): completo si cabe la más ancha. Se mide al recolocar, al cargar la
+    fuente y como mucho una vez por segundo. Resultado: completo en las cinco mesas.
+  - Tests `tests/hud.test.ts` (modo idéntico en las cinco mesas para un mismo ancho, anchos reservados, regla de
+    los cajones). Capturas de las cinco mesas y de los tres cajones de la mesa 5 con dpr 1 y 1,5, en ventana y en
+    pantalla completa (build de producción, Chrome sin interfaz): las cinco barras en modo completo en las cuatro
+    combinaciones, 0 errores en consola. Hojas en `docs/capturas/sesion8/`.
+
 ## Sesión 7 (pantalla de título y pantalla final: ROTTEN ODDS)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.

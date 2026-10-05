@@ -6,14 +6,21 @@
  * Los navegadores solo dejan arrancar el audio tras un gesto del usuario: unlockAudio() se llama
  * desde el clic de "Continuar" o "Nueva partida" (y desde cualquier tecla o clic posterior).
  */
-export type Sfx = 'roulette' | 'chip' | 'reels' | 'dice' | 'card' | 'coin' | 'win' | 'lose' | 'jackpot' | 'whisper';
+export type Sfx = 'roulette' | 'chip' | 'reels' | 'dice' | 'card' | 'coin' | 'win' | 'lose' | 'jackpot' | 'whisper' | 'tick' | 'select';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let unlocked = false;
 let volume = 1;
 let muted = false;
-let ambient: { table: number; nodes: AudioNode[]; gain: GainNode } | null = null;
+let ambient: { table: AmbientId; nodes: AudioNode[]; gain: GainNode } | null = null;
+/** Intensidad del zumbido ambiente (0-1): la pantalla final la baja durante el epílogo. */
+let ambientLevel = 1;
+/** Volumen del zumbido a intensidad 1. */
+const AMBIENT_GAIN = 0.05;
+
+/** Sala del zumbido: una mesa (1-5) o la portada. */
+export type AmbientId = number | 'title';
 let noiseBuffer: AudioBuffer | null = null;
 
 /** Zumbido de cada sala: frecuencia base (Hz) y color del filtro. */
@@ -24,6 +31,8 @@ const ROOMS: Record<number, { freq: number; cutoff: number }> = {
   4: { freq: 58, cutoff: 300 },
   5: { freq: 41, cutoff: 220 },
 };
+/** Portada: más grave y más cerrado que cualquier mesa (el pasillo antes de entrar). */
+const TITLE_ROOM = { freq: 36, cutoff: 170 };
 
 function applyGain(): void {
   if (master && ctx) master.gain.setTargetAtTime(muted ? 0 : volume * 0.6, ctx.currentTime, 0.05);
@@ -157,6 +166,15 @@ export function sfx(kind: Sfx): void {
     case 'jackpot':
       [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) => tone(f, t + i * 0.08, 0.7, 0.13, 'triangle'));
       break;
+    case 'tick':
+      // Pasar por una opción del menú: un tic suave y corto.
+      tone(1900, t, 0.035, 0.05, 'triangle');
+      break;
+    case 'select':
+      // Elegir una opción: dos notas graves, secas.
+      tone(330, t, 0.12, 0.09, 'triangle');
+      tone(247, t + 0.06, 0.16, 0.08, 'triangle');
+      break;
     case 'whisper':
       // Un susurro: ruido con formantes que se mueven, lejos y bajo.
       burst(t, 1.4, 0.12, 'bandpass', 700, 9, 1100);
@@ -165,8 +183,16 @@ export function sfx(kind: Sfx): void {
   }
 }
 
-/** Zumbido ambiente de la sala (null = silencio). Cambia con un fundido. */
-export function setAmbient(table: number | null): void {
+/** Intensidad del zumbido (0-1), con un fundido lento. */
+export function setAmbientLevel(level: number): void {
+  const next = Math.min(Math.max(level, 0), 1);
+  if (Math.abs(next - ambientLevel) < 0.001) return;
+  ambientLevel = next;
+  if (ctx && ambient) ambient.gain.gain.setTargetAtTime(Math.max(0.0001, AMBIENT_GAIN * ambientLevel), ctx.currentTime, 0.8);
+}
+
+/** Zumbido ambiente de la sala o la portada (null = silencio). Cambia con un fundido. */
+export function setAmbient(table: AmbientId | null): void {
   if (!ctx || !master) return;
   if (ambient?.table === table) return;
   const t = ctx.currentTime;
@@ -177,10 +203,10 @@ export function setAmbient(table: number | null): void {
     ambient = null;
   }
   if (table === null) return;
-  const room = ROOMS[table] ?? ROOMS[1];
+  const room = table === 'title' ? TITLE_ROOM : (ROOMS[table] ?? ROOMS[1]);
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.0001, t);
-  gain.gain.setTargetAtTime(0.05, t, 0.6);
+  gain.gain.setTargetAtTime(Math.max(0.0001, AMBIENT_GAIN * ambientLevel), t, 0.6);
   const lp = ctx.createBiquadFilter();
   lp.type = 'lowpass';
   lp.frequency.value = room.cutoff;

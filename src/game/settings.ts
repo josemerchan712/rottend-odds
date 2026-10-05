@@ -4,12 +4,14 @@ import type { KeyValueStorage } from './save';
 export interface Settings {
   /** Filtro CRT: scanlines, viñeta y grano (suave o fuerte); apagado quita también parpadeo y temblor. */
   crt: CrtSetting;
-  /** Volumen general, 0-1. Aún sin audio. */
+  /** Volumen general, 0-1. */
   volume: number;
-  /** Pedir pantalla completa al pulsar Continuar o Nueva partida. */
+  /** Pedir pantalla completa al entrar (primer clic o tecla) y al pulsar Continuar o Nueva partida. */
   startFullscreen: boolean;
-  /** Diálogos del Encargado. */
+  /** Diálogos de los prestamistas. */
   dialogues: boolean;
+  /** Silencio (todo el sonido; también con la tecla N). */
+  muted: boolean;
 }
 
 export type CrtSetting = 'apagado' | 'suave' | 'fuerte';
@@ -19,7 +21,7 @@ export const CRT_LEVELS: readonly CrtSetting[] = ['apagado', 'suave', 'fuerte'];
 export const SETTINGS_VERSION = 2;
 
 export function defaultSettings(): Settings {
-  return { crt: 'suave', volume: 0.7, startFullscreen: false, dialogues: true };
+  return { crt: 'suave', volume: 0.7, startFullscreen: false, dialogues: true, muted: false };
 }
 
 export function saveSettings(storage: KeyValueStorage, key: string, settings: Settings): boolean {
@@ -47,6 +49,7 @@ export function loadSettings(storage: KeyValueStorage, key: string): Settings {
     else if (typeof parsed?.crtEnabled === 'boolean') settings.crt = parsed.crtEnabled ? 'suave' : 'apagado';
     if (typeof parsed?.startFullscreen === 'boolean') settings.startFullscreen = parsed.startFullscreen;
     if (typeof parsed?.dialogues === 'boolean') settings.dialogues = parsed.dialogues;
+    if (typeof parsed?.muted === 'boolean') settings.muted = parsed.muted;
     if (typeof parsed?.volume === 'number' && Number.isFinite(parsed.volume)) {
       settings.volume = Math.min(Math.max(parsed.volume, 0), 1);
     }

@@ -1,12 +1,14 @@
 import '@fontsource/vt323';
 import './ui/style.css';
 import { createApi, ONLINE_ENABLED, type CloudSave, type TokenResponse } from './api/client';
-import { mountEnding, renderEnding } from './ui/ending';
+import { creditsHeight, EndingScene, mountEnding, renderEndingUi, renderLedger } from './ui/ending';
+import { ENDING_LINES_ES } from './content/ending.es';
+import { advanceEnding, createEnding, endingAmbient, holdEnding, skipEnding, tickEnding, type EndingState } from './game/ending';
 import { mountTextLayer } from './ui/sceneText';
-import { gameSummary, isGameFinished } from './game/summary';
+import { gameSummary, summaryText, trackPaidAt } from './game/summary';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
-import { outcomeSound, setAmbient, setMuted, setVolume, sfx, unlockAudio } from './audio';
+import { outcomeSound, setAmbient, setAmbientLevel, setMuted, setVolume, sfx, unlockAudio } from './audio';
 import { CONFIG, GAME_TITLE } from './game/config';
 import { continueGame, continueInfo, menuItems, startNewGame } from './game/menu';
 import { defaultRng } from './game/rng';
@@ -151,7 +153,7 @@ app.innerHTML = `
       <div class="screen" data-screen="auth" hidden></div>
       <div class="screen" data-screen="sync" hidden></div>
       <div class="screen" data-screen="ranking" hidden></div>
-      <div class="screen" data-screen="ending" hidden></div>
+      <div class="screen ending-host" data-screen="ending" hidden></div>
       <div class="screen title" data-screen="notice" hidden>
         <section class="panel pixel-panel small-screen">
           <h1>${GAME_TITLE}</h1>
@@ -246,6 +248,7 @@ const diceScene = new DiceScene(sceneCanvas, sprites);
 const cardsScene = new CardsScene(sceneCanvas, sprites);
 const coinScene = new CoinScene(sceneCanvas, sprites);
 const titleScene = new TitleScene(sceneCanvas, sprites);
+const endingScene = new EndingScene(sceneCanvas, sprites);
 const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE', 3: 'EL BARMAN', 4: 'LA CRUPIER', 5: 'EL DUEÑO' } as const;
 const speech = new Speech(screens.game, SPEAKERS[1]);
 /** Cuándo habla el prestamista de cada mesa (se crean al entrar en la partida). */
@@ -386,7 +389,7 @@ function refreshMenu(): void {
 
 /** Pausa (Esc en la partida, sin cajones abiertos): Reanudar, Ajustes o Menú principal. */
 function setPaused(on: boolean): void {
-  if (on && (!state || screen !== 'game' || tableFade)) return;
+  if (on && (!state || screen !== 'game' || tableFade || ending)) return;
   paused = on;
   pauseUi.root.hidden = !on;
   if (on) pauseNav.reset();
@@ -670,7 +673,7 @@ window.addEventListener('keydown', (event) => {
     if (!event.repeat) enterTitle();
     return;
   }
-  if (screen === 'ending' && handleEndingKey(event)) return;
+  if (ending && (screen === 'ending' || screen === 'game') && handleEndingKey(event)) return;
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
   const nav = paused && screen === 'game' ? pauseNav : navs[screen];
   // Las flechas pueden repetirse al mantenerlas; lo demás, no.
@@ -1100,31 +1103,151 @@ coinUi.statsToggle.addEventListener('click', () => {
 });
 coinScene.onAwayResult = (chain) => toast5(chain.delta, chain.jackpot > 0);
 
-/** La última deuda: el Dueño dice su última línea y, al poco, sale la pantalla final. */
-function onFinalDebtPaid(): void {
-  // Primero la última línea del Dueño; al poco, la pantalla final.
-  window.setTimeout(() => {
-    if (!state || !isGameFinished(state)) return;
-    save();
-    renderEnding(endingUi, gameSummary(state));
-    state = null;
-    show('ending');
-  }, 4500);
-}
-endingUi.toMenu.addEventListener('click', () => show('menu'));
+// ---------------------------------------------------------------------------
+// Pantalla final (máquina de estados en game/ending.ts)
 
-/** "Ver final" desde el menú: la pantalla final con las estadísticas de la partida guardada. */
+/** El final en curso (null si no). */
+let ending: EndingState | null = null;
+/** Partida de la que salen las estadísticas del final (la que se juega, o la guardada con "Ver final"). */
+let endingGame: GameState | null = null;
+/** Hay una tecla mantenida (para saltar el final). */
+let keyHeld = false;
+/** Tapa la partida durante la última línea y el fundido: no se puede tocar nada. */
+const endingBlocker = document.createElement('div');
+endingBlocker.className = 'ending-blocker';
+endingBlocker.hidden = true;
+screens.game.append(endingBlocker);
+const endingNav = new MenuNav(endingUi.buttons, { horizontal: true });
+
+/** La última deuda: se marca el final como visto, el Dueño dice su última línea y empieza el final. */
+function onFinalDebtPaid(): void {
+  if (!state || state.endingSeen) return;
+  state.endingSeen = true;
+  trackPaidAt(state);
+  save();
+  closeDrawers5(coinUi);
+  startEnding(state, false);
+}
+
+function startEnding(game: GameState, replay: boolean): void {
+  ending = createEnding(replay);
+  endingGame = game;
+  keyHeld = false;
+  renderLedger(endingUi, gameSummary(game));
+  renderEndingUi(endingUi, ending);
+  endingBlocker.hidden = replay;
+  if (replay) {
+    setAmbient(5);
+    show('ending');
+  }
+}
+
+/** "Ver final" desde el menú: el final de la partida guardada, desde el epílogo. */
 function playEnding(): void {
   const saved = continueGame(localStorage, saveKey);
-  if (!saved) return;
-  renderEnding(endingUi, gameSummary(saved));
-  show('ending');
+  if (saved) startEnding(saved, true);
 }
 
+/** Avanza el final cada fotograma: fases, zumbido y paso de la partida a la pantalla final. */
+function updateEnding(dt: number): void {
+  if (!ending) return;
+  const before = ending.phase;
+  const height = endingUi.credits.hidden ? undefined : creditsHeight(endingUi);
+  tickEnding(ending, dt, ENDING_LINES_ES, { lineVisible: speech.speaking, creditsHeight: height });
+  holdEnding(ending, dt, keyHeld);
+  setAmbientLevel(endingAmbient(ending));
+  // Tras el fundido (o al saltar), de la mesa a la pantalla final.
+  if (screen === 'game' && ending.phase !== 'lastLine' && ending.phase !== 'fadeOut') {
+    speech.close();
+    endingBlocker.hidden = true;
+    show('ending');
+  }
+  if (ending.phase !== before) {
+    renderEndingUi(endingUi, ending);
+    if (ending.phase === 'buttons') endingNav.reset();
+  }
+}
+
+function finishEnding(): void {
+  ending = null;
+  endingGame = null;
+  keyHeld = false;
+  endingBlocker.hidden = true;
+  setAmbientLevel(1);
+}
+
+/** Teclas en el final: Esc salta, Intro/Espacio/clic avanzan, mantener una tecla salta; en los botones, el menú. */
 function handleEndingKey(event: KeyboardEvent): boolean {
-  if (event.key !== 'Escape') return false;
-  show('menu');
+  if (!ending) return false;
+  if (ending.phase === 'buttons') return endingNav.handleKey(event);
+  if (!event.repeat) keyHeld = true;
+  if (event.repeat) return true;
+  if (event.key === 'Escape') skipEnding(ending);
+  else if (event.key === 'Enter' || event.key === ' ') advanceEnding(ending, ENDING_LINES_ES);
+  else return true;
+  event.preventDefault();
+  renderEndingUi(endingUi, ending);
+  if (atButtons(ending)) endingNav.reset();
   return true;
+}
+/** ¿Está el final en los botones? (función aparte: avanzar el final cambia la fase). */
+function atButtons(e: EndingState): boolean {
+  return e.phase === 'buttons';
+}
+window.addEventListener('keyup', () => (keyHeld = false));
+window.addEventListener('blur', () => (keyHeld = false));
+screens.ending.addEventListener('click', (event) => {
+  if (!ending || ending.phase === 'buttons' || (event.target as HTMLElement).closest('button, a')) return;
+  advanceEnding(ending, ENDING_LINES_ES);
+  renderEndingUi(endingUi, ending);
+  if (atButtons(ending)) endingNav.reset();
+});
+endingUi.toMenu.addEventListener('click', () => {
+  if (state) save();
+  finishEnding();
+  state = null;
+  show('menu');
+});
+endingUi.keepPlaying.addEventListener('click', () => {
+  const game = endingGame;
+  finishEnding();
+  // Vuelve a la partida con todas las mesas activas (sin prestigio ni nada nuevo).
+  if (state && game === state) {
+    show('game');
+    return;
+  }
+  const savedAt = loadGame(localStorage, saveKey)?.savedAt ?? Date.now();
+  const saved = continueGame(localStorage, saveKey);
+  if (saved) enterGame(saved, { kind: 'resume', absenceSeconds: Math.max(0, (Date.now() - savedAt) / 1000) });
+  else show('menu');
+});
+endingUi.copy.addEventListener('click', async () => {
+  if (!endingGame) return;
+  const ok = await copyText(summaryText(gameSummary(endingGame)));
+  setText(endingUi.copyNote, ok ? 'Resumen copiado al portapapeles.' : 'No se pudo copiar el resumen.');
+});
+
+/** Copia un texto al portapapeles (sin servidor); si el navegador no deja, con un área de texto oculta. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.append(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
 }
 
 cardsScene.onAwayResult = (hand) => toast4(hand.delta, hand.jackpot > 0);
@@ -1474,11 +1597,15 @@ startLoop(
         updateTableFade(state, dt);
         updateDialogue(state, dt, entered);
       }
+      updateEnding(dt);
       lastDt = dt;
     },
     render: () => {
       crt.tick();
-      if (state && (screen === 'game' || settingsOverGame())) {
+      if (screen === 'ending' && ending) {
+        endingScene.render(lastDt, ending, ENDING_LINES_ES);
+        renderEndingUi(endingUi, ending);
+      } else if (state && (screen === 'game' || settingsOverGame())) {
         // En pausa (o con los Ajustes de la pausa encima) la escena se queda quieta.
         const dt = paused || screen !== 'game' ? 0 : lastDt;
         if (screen === 'game') renderHud(state);
@@ -1488,6 +1615,8 @@ startLoop(
         else if (state.activeTable === 4) cardsScene.render(state, dt, rooms);
         else coinScene.render(state, dt, rooms);
         if (screen === 'game') updateTooltip(state);
+        // Última deuda: el fundido a negro tapa la mesa (y el HUD) antes del epílogo.
+        if (ending && ending.phase === 'fadeOut') tableFadeEl.style.opacity = String(Math.min(1, ending.t / 1.5));
       } else if (TITLE_SCREENS.includes(screen)) {
         titleFade = Math.max(0, titleFade - lastDt / TITLE_FADE_SECONDS);
         titleScene.render(lastDt, { press: screen === 'press', fade: titleFade });

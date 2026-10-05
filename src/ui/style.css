@@ -385,14 +385,6 @@ kbd {
 .table-layer > * { pointer-events: auto; }
 .screen.game > .table-fade { pointer-events: none; }
 
-/* Pantalla final. */
-.ending { width: 360px; }
-.ending-text { line-height: 1.2; margin: 4px 0 6px; }
-.ending-stats { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
-.ending-stats td { padding: 1px 0; border-bottom: 1px solid var(--line); }
-.ending-stats td:last-child { text-align: right; color: var(--gold); }
-.ending a { color: var(--gold); }
-
 /* Aviso de pantallas pequeñas o táctiles. */
 .small-screen { width: 280px; text-align: center; }
 
@@ -529,3 +521,65 @@ kbd {
 /* El resaltado lo lleva .focused (ratón o teclado, uno solo a la vez): el hover genérico no pinta aparte. */
 .pixel-button:not(.focused):hover:not(:disabled),
 .title-option:not(.focused):hover { color: #e3dcc6; }
+
+/* ------------------------------------------------------------------------------------------
+ * Pantalla final (sesión 7): la escena va en el canvas; aquí el libro de cuentas, los créditos que
+ * suben, los botones y los avisos. Texto de 14 px como mínimo.
+ */
+.screen.ending-host { background: none; display: block; cursor: pointer; }
+.ending-screen { position: absolute; inset: 0; }
+.ending-blocker { position: absolute; inset: 0; z-index: 50; background: transparent; }
+
+/* Libro de cuentas: dos páginas de papel con renglones y margen rojo. */
+.ledger {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 576px;
+  padding: 8px 12px 6px;
+  color: #2a1d14;
+  background: #e3d9bd;
+  box-shadow:
+    0 0 0 1px #0b0908,
+    0 0 0 3px #5a3a1c,
+    0 0 0 4px #0b0908,
+    4px 4px 0 4px rgba(0, 0, 0, 0.5);
+}
+.ledger-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #8f1d16; margin-bottom: 4px; }
+.ledger-head h1 { margin: 0; font-size: 22px; font-weight: normal; color: #2a1d14; letter-spacing: 1px; }
+.ledger-head span { font-size: 16px; color: #8f1d16; letter-spacing: 2px; text-transform: uppercase; }
+.ledger-pages { display: flex; gap: 16px; }
+.ledger-page { flex: 1; padding-left: 10px; border-left: 1px solid #b0473a; }
+.ledger-page + .ledger-page { box-shadow: -9px 0 0 -8px #8a7a5c; }
+.ledger h2 { margin: 4px 0 0; font-size: 14px; color: #8f1d16; letter-spacing: 1px; }
+.ledger table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ledger td { padding: 0 2px; line-height: 17px; border-bottom: 1px solid #b8ab8a; white-space: nowrap; }
+.ledger td:last-child { text-align: right; color: #1a120c; }
+.ledger-foot { margin: 4px 0 0; font-size: 14px; color: #5a4a35; text-align: right; }
+
+/* Créditos que suben despacio. */
+.ending-credits { position: absolute; inset: 0; overflow: hidden; text-align: center; }
+.ending-credits-inner { position: absolute; left: 0; right: 0; top: 0; padding: 0 60px; will-change: transform; }
+.ending-credits-inner .credit-title { font-size: 30px; }
+.ending-credits-inner .credit-heading { margin-top: 18px; }
+.ending-thanks { margin-top: 30px !important; color: #b89c58 !important; }
+
+/* Botones finales. */
+.ending-buttons {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: 470px;
+  padding: 8px 12px 6px;
+  text-align: center;
+  background: rgba(16, 12, 9, 0.86);
+}
+.ending-button-row { display: flex; justify-content: center; gap: 10px; }
+.ending-button-row .pixel-button { text-align: center; }
+.ending-note { min-height: 14px; margin: 5px 0 0; font-size: 14px; color: #9fc06a; }
+
+.ending-hint { position: absolute; margin: 0; font-size: 14px; color: #a9a39a; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+.ending-hint.skip { right: 8px; top: 6px; }
+.ending-hint.click { right: 8px; bottom: 6px; }

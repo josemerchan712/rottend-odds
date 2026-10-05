@@ -38,6 +38,29 @@ Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.
     (con sesión) aunque no estaba en la lista; con el CRT apagado no hay oscilación; el clic en Volumen sube 10% y
     da la vuelta; borrar la partida desde la pausa deja la partida en curso cerrada (vuelve al menú al salir).
 
+- [x] **B2 Pantalla final.** Se activa al pagar al Dueño; máquina de estados pura `src/game/ending.ts` (tests en
+  `tests/ending.test.ts`): última línea del Dueño (espera a que se cierre su bocadillo, máx. 9 s) → 2 s → fundido a
+  negro (1,5 s) → epílogo → libro de cuentas → créditos → botones.
+  - Epílogo: `assets/sprites/screens/final.png` a pantalla completa (la luz de las puertas respira) y 4 líneas
+    (`src/content/ending.es.ts`, **pendientes de revisión**) a máquina de escribir (28 letras/s), una por clic o
+    sola a los 5 s, en una caja oscura semitransparente en la franja inferior (se parte en dos renglones; la sombra
+    se ve a través). Zumbido al 30% en el epílogo y el libro; vuelve entero en los créditos.
+  - Libro de cuentas (dos páginas de papel con margen rojo): tiempo total y por mesa, apuestas y % ganadas,
+    jackpots, veces a cero, ganado por mesa en su moneda y total, ayudantes comprados (de 5) y mejor racha de la
+    mesa 5. Contadores nuevos: `stats.won` en cada mesa (suma de los resultados positivos de las apuestas, jugador
+    y ayudante) y `stats.paidAt` (tiempo de juego al pagar cada deuda; las pagadas antes de v11 salen «—»).
+  - Créditos que suben (24 u/s; un clic los salta). Botones: Volver al menú, Seguir jugando (vuelve a la partida
+    con todas las mesas, sin nada nuevo), Copiar resumen (portapapeles, sin servidor; con alternativa si el
+    navegador no deja).
+  - Esc o mantener una tecla 1,2 s salta a los botones. `endingSeen` (finalVisto) se guarda al empezar el final:
+    no se repite al recargar ni al volver a la mesa; «Ver final» en el menú lo repite desde el epílogo.
+  - Guardado **v11** (migración: una partida ya terminada cuenta como final visto; mesas pagadas con tiempo
+    desconocido). Servidor v11: `endingSeen` booleano y solo con la deuda del Dueño pagada; `stats.paidAt` lista
+    de 5 tiempos (−1, 0 o hasta el tiempo total) y solo en mesas pagadas. plausibility.json regenerada (--full).
+  - Decisiones: los botones finales van en una barra baja (sin título) para no tapar la figura; durante la
+    última línea y el fundido la mesa queda bloqueada (no se puede apostar ni pausar); el libro espera un clic
+    (no avanza solo); «fichas totales ganadas» se muestra por mesa en su moneda y un total de todas juntas.
+
 ## Sesión 6 (bloques 1-4: texto legible, barra superior, aciertos de los ayudantes, rediseño de la mesa 5)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Simulaciones de una en una, con --quick.

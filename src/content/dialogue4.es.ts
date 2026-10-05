@@ -198,4 +198,8 @@ export const DIALOGUE4_ES: DialogueLines = {
       'Respire más bajo. Desordena las cartas.',
     ],
   },
+  // Hitos de la cadena: solo existen en la mesa 5.
+  chain3: {},
+  chain6: {},
+  chain9: {},
 };

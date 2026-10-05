@@ -22,7 +22,11 @@ export type DialogueTrigger =
   | 'phaseUneasy'
   | 'phaseDeformed'
   | 'debtPaid'
-  | 'silence';
+  | 'silence'
+  /** Mesa 5: la cadena llega a 3, 6 o 9 caras (las otras mesas no tienen líneas para estos). */
+  | 'chain3'
+  | 'chain6'
+  | 'chain9';
 
 /** Condición de ausencia de una línea de "volver a la partida": menos de una hora o una hora o más. */
 export type Absence = 'short' | 'long';
@@ -38,6 +42,9 @@ export const PRIORITY: Record<DialogueTrigger, number> = {
   newGame: 95,
   sessionResume: 95,
   jackpot: 90,
+  chain9: 88,
+  chain6: 78,
+  chain3: 72,
   phaseDeformed: 85,
   phaseUneasy: 80,
   buyCrupier: 70,

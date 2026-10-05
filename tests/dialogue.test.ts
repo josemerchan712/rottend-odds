@@ -25,6 +25,8 @@ const PHASED: DialogueTrigger[] = ['sessionResume', 'bigLoss', 'bigWin', 'jackpo
 /** Las mesas 2 en adelante no tienen trastienda: sin entrar/volver. */
 const PHASED_NO_BACKROOM = PHASED.filter((t) => t !== 'enterBackroom' && t !== 'returnCasino');
 const SINGLE: DialogueTrigger[] = ['newGame', 'buyCrupier', 'phaseUneasy', 'phaseDeformed', 'debtPaid'];
+/** Hitos de la cadena: solo la mesa 5. */
+const CHAIN: DialogueTrigger[] = ['chain3', 'chain6', 'chain9'];
 
 describe('contenido del diálogo de la mesa 2 (Tragaperras viviente)', () => {
   it('al menos 5 líneas por disparador y por fase, de 90 caracteres como mucho, distintas de las del Encargado', () => {
@@ -79,6 +81,8 @@ describe('contenido del diálogo de la mesa 5 (el Dueño)', () => {
       }
     }
     expect(DIALOGUE5_ES.debtPaid.any!.length).toBeGreaterThanOrEqual(5);
+    for (const t of CHAIN) expect(DIALOGUE5_ES[t].any!.length, t).toBeGreaterThanOrEqual(5);
+    for (const lines of [DIALOGUE_ES, DIALOGUE2_ES, DIALOGUE3_ES, DIALOGUE4_ES]) for (const t of CHAIN) expect(Object.keys(lines[t])).toHaveLength(0);
   });
 });
 

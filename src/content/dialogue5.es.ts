@@ -199,4 +199,31 @@ export const DIALOGUE5_ES: DialogueLines = {
       'No respires tan alto. Despiertas a los cimientos.',
     ],
   },
+  chain3: {
+    any: [
+      'Tres caras. Empiezas a jugar como se juega en esta casa.',
+      'Tres. La moneda te escucha. Por ahora.',
+      'Tres seguidas. Tu abuelo llegó a tres. Luego dejó de contar.',
+      'Bien. Tres caras y aún te tiemblan las manos. Eso me gusta.',
+      'Tres. El oro se amontona; mira cómo brilla delante de ti.',
+    ],
+  },
+  chain6: {
+    any: [
+      'Seis caras. Ya no es suerte, hijo. Es herencia.',
+      'Seis. Las paredes de la casa se han callado para mirarte.',
+      'Seis seguidas. Pocos hombres han visto tanto oro en un solo lanzamiento.',
+      'Seis. Ahora la casa te debe algo. No le gusta deber.',
+      'Seis caras. Retírate o sigue. Las dos cosas tienen precio.',
+    ],
+  },
+  chain9: {
+    any: [
+      'Nueve. Una más y la moneda será tuya para siempre.',
+      'Nueve caras. Hasta yo contengo el aliento.',
+      'Nueve. Mi padre llegó a nueve. Está colgado en el pasillo.',
+      'Nueve seguidas. La casa entera espera la décima.',
+      'Nueve. ¿Te atreves? Yo nunca me atreví.',
+    ],
+  },
 };

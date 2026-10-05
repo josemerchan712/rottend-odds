@@ -241,4 +241,8 @@ export const DIALOGUE_ES: DialogueLines = {
       'Respira más bajo. Me distraes.',
     ],
   },
+  // Hitos de la cadena: solo existen en la mesa 5.
+  chain3: {},
+  chain6: {},
+  chain9: {},
 };

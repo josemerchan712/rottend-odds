@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  *       tabla estadística considera posibles para ese tiempo de juego, o la deuda saldada antes del
  *       mínimo plausible.</li>
  * </ol>
- * Las mesas 2 (tragaperras), 3 (dados) y 4 (blackjack) solo pasan la capa 1: estructura, niveles de sus mejoras y
+ * Las mesas 2 (tragaperras), 3 (dados), 4 (blackjack) y 5 (doble o nada) solo pasan la capa 1: estructura, niveles de sus mejoras y
  * que no haya progreso en una sin la deuda de la anterior pagada. El ranking sigue siendo el de la mesa 1.
  */
 @Component
@@ -133,17 +133,21 @@ public class SaveValidator {
                 "el empleado zombi", rules.slotsHelperProfiles(), "mesa 1"), debtPaid, errors);
         boolean dicePaid = parseTable(state.path("dice"), new TableSpec("dice", "mesa 3", rules.diceUpgrades(), "ghost",
                 "el camarero fantasma", rules.diceHelperProfiles(), "mesa 2"), debtPaid && slotsPaid, errors);
-        parseTable(state.path("cards"), new TableSpec("cards", "mesa 4", rules.cardsUpgrades(), "skeleton",
+        boolean cardsPaid = parseTable(state.path("cards"), new TableSpec("cards", "mesa 4", rules.cardsUpgrades(), "skeleton",
                 "el esqueleto barajador", rules.cardsHelperProfiles(), "mesa 3"), debtPaid && slotsPaid && dicePaid, errors);
+        parseTable(state.path("coin"), new TableSpec("coin", "mesa 5", rules.coinUpgrades(), "imp",
+                "el diablillo coronado", rules.coinHelperProfiles(), "mesa 4"), debtPaid && slotsPaid && dicePaid && cardsPaid, errors);
         JsonNode active = state.path("activeTable");
-        if (!active.isMissingNode() && (!active.isInt() || active.asInt() < 1 || active.asInt() > 4)) {
-            errors.add("activeTable: debe ser 1, 2, 3 o 4");
+        if (!active.isMissingNode() && (!active.isInt() || active.asInt() < 1 || active.asInt() > 5)) {
+            errors.add("activeTable: debe ser 1, 2, 3, 4 o 5");
         } else if (active.asInt(1) == 2 && !debtPaid) {
             errors.add("activeTable: la mesa 2 requiere la deuda de la mesa 1 pagada");
         } else if (active.asInt(1) == 3 && !(debtPaid && slotsPaid)) {
             errors.add("activeTable: la mesa 3 requiere la deuda de la mesa 2 pagada");
         } else if (active.asInt(1) == 4 && !(debtPaid && slotsPaid && dicePaid)) {
             errors.add("activeTable: la mesa 4 requiere la deuda de la mesa 3 pagada");
+        } else if (active.asInt(1) == 5 && !(debtPaid && slotsPaid && dicePaid && cardsPaid)) {
+            errors.add("activeTable: la mesa 5 requiere la deuda de la mesa 4 pagada");
         }
         return new Snapshot(version, balance, playTime, levels, debtPaid);
     }

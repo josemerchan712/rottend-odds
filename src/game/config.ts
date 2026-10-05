@@ -423,6 +423,56 @@ export const CONFIG = {
     },
   },
 
+  /**
+   * Mesa 5: Doble o nada (el Dueño). Se apuesta y se lanza una moneda: con cara se dobla y se decide
+   * retirarse o seguir (hasta 10 caras), con cruz se pierde todo. Sin trastienda.
+   */
+  coin: {
+    /**
+     * Suerte: probabilidad de cara del primer lanzamiento, de `base` (por debajo del 50%: la casa) a
+     * `cap` con suerte máxima (curva 1,6), menos la penalización por apostar fuerte y la fatiga.
+     */
+    luck: { base: 0.47, cap: 0.97, curveExponent: 1.6, floor: 0.05 },
+    /** Cada cara seguida baja la probabilidad del siguiente lanzamiento; el temple lo reduce. */
+    fatigue: { perWin: 0.05, templeReductionPerLevel: 0.006 },
+    risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
+    /** Como mucho 10 caras por cadena; una cadena paga como mucho el 25% de la deuda. */
+    chain: { maxWins: 10, payoutCapDebtFraction: 0.25 },
+    /** Segundas oportunidades: como los relanzamientos (máximo 1 + nivel / 5, una cada 20 s × 0,93^nivel). */
+    seconds: { base: 1, perLevels: 5, rechargeSeconds: 20, rechargeFactor: 0.93 },
+    /** Jackpot: completar las 10 caras. Paga el pozo (semilla 50, +6% de cada apuesta), como mucho el 25% de la deuda. */
+    jackpot: { potSeed: 50, potContribution: 0.06, payoutCapDebtFraction: 0.25 },
+    /**
+     * Techo: 3 × 2,5^nivel (máximo 28.610). Más bajo que en las otras mesas porque una cadena multiplica
+     * la apuesta por 8-16: con techo 15 el final era una explosión de segundos (tramo final de 6 s).
+     */
+    bet: { minBet: 1, baseMaxBet: 3, maxBetMultiplierPerLevel: 2.5 },
+    helper: {
+      /** Segundos entre lanzamientos (o decisiones) del diablillo. */
+      baseInterval: 2,
+      speedReductionPerLevel: 0.12,
+      /** `stops`: entre cuántas caras se retira cada perfil (elige dentro con el criterio común). */
+      profiles: [
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03, stops: [1, 2] },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, stops: [3, 4] },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1, stops: [5, 10] },
+      ] as readonly (HelperProfileConfig & { stops: readonly [number, number] })[],
+      luckPerLevel: 0.005,
+    },
+    /** Conversión: oro/s = max(suelo, k * (ingreso/s de la mesa 4)^0,5). */
+    conversion: { k: 0.3, floor: 1 },
+    debt: { amount: shared.coin.debt.amount },
+    upgrades: {
+      luck: { name: 'Suerte', ...shared.coin.upgrades.luck },
+      maxBet: { name: 'Apuesta máxima', ...shared.coin.upgrades.maxBet },
+      imp: { name: 'Diablillo coronado (ayudante)', ...shared.coin.upgrades.imp },
+      helperSpeed: { name: 'Velocidad del diablillo', ...shared.coin.upgrades.helperSpeed },
+      helperProfile: { name: 'Perfil del diablillo', ...shared.coin.upgrades.helperProfile },
+      helperLuck: { name: 'Suerte del diablillo', ...shared.coin.upgrades.helperLuck },
+      temple: { name: 'Temple', ...shared.coin.upgrades.temple },
+    },
+  },
+
   /** coste(n) = base * crecimiento^n, con n = nivel actual. */
   upgrades: {
     luck: { name: 'Suerte', ...shared.upgrades.luck },
@@ -452,3 +502,5 @@ export type DiceTarget = 'par' | 'over7' | 'over9' | 'double' | 'boxcars';
 export const DICE_TARGETS: DiceTarget[] = ['par', 'over7', 'over9', 'double', 'boxcars'];
 export type CardUpgradeId = keyof typeof CONFIG.cards.upgrades;
 export const CARD_UPGRADE_IDS = Object.keys(CONFIG.cards.upgrades) as CardUpgradeId[];
+export type CoinUpgradeId = keyof typeof CONFIG.coin.upgrades;
+export const COIN_UPGRADE_IDS = Object.keys(CONFIG.coin.upgrades) as CoinUpgradeId[];

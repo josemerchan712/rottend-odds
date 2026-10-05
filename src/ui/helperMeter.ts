@@ -31,6 +31,7 @@ export const helperMeters: Record<TableId, HelperMeter> = {
   2: new HelperMeter(),
   3: new HelperMeter(),
   4: new HelperMeter(),
+  5: new HelperMeter(),
 };
 
 /** Pinta el neto del último minuto en verde o rojo ("esperando" si no ha apostado). */

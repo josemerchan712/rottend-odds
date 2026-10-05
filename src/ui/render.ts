@@ -39,6 +39,7 @@ export const TABS_HTML = `
         <button class="tab small" data-table="2" title="Mesa 2: la tragaperras">MESA 2</button>
         <button class="tab small" data-table="3" title="Mesa 3: los dados">MESA 3</button>
         <button class="tab small" data-table="4" title="Mesa 4: el blackjack">MESA 4</button>
+        <button class="tab small" data-table="5" title="Mesa 5: doble o nada">MESA 5</button>
       </div>`;
 
 export interface Ui {

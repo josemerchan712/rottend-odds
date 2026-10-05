@@ -19,6 +19,8 @@ const urls = {
   lender3Scene: import.meta.glob<string>('../../assets/sprites/lender3-scene/*.png', { eager: true, query: '?url', import: 'default' }),
   cards: import.meta.glob<string>('../../assets/sprites/cards/*.png', { eager: true, query: '?url', import: 'default' }),
   lender4Scene: import.meta.glob<string>('../../assets/sprites/lender4-scene/*.png', { eager: true, query: '?url', import: 'default' }),
+  coin: import.meta.glob<string>('../../assets/sprites/coin/*.png', { eager: true, query: '?url', import: 'default' }),
+  lender5Scene: import.meta.glob<string>('../../assets/sprites/lender5-scene/*.png', { eager: true, query: '?url', import: 'default' }),
 };
 
 export type PlayerFrame = 'walk-1' | 'walk-2' | 'crouch' | 'lift';

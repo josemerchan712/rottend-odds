@@ -41,6 +41,9 @@ public class GameRules {
     /** Mesa 4 (blackjack): igual, solo estructura. */
     private final Map<String, Upgrade> cardsUpgrades;
     private final int cardsHelperProfiles;
+    /** Mesa 5 (doble o nada): solo lo que hace falta para la validación estructural. */
+    private final Map<String, Upgrade> coinUpgrades;
+    private final int coinHelperProfiles;
 
     public GameRules(ObjectMapper mapper) throws IOException {
         String configText = read("shared/config.json");
@@ -63,6 +66,9 @@ public class GameRules {
         JsonNode cards = config.path("cards");
         this.cardsUpgrades = Collections.unmodifiableMap(readUpgrades(cards.path("upgrades")));
         this.cardsHelperProfiles = cards.path("helperProfiles").asInt();
+        JsonNode coin = config.path("coin");
+        this.coinUpgrades = Collections.unmodifiableMap(readUpgrades(coin.path("upgrades")));
+        this.coinHelperProfiles = coin.path("helperProfiles").asInt();
         JsonNode w = config.path("work");
         this.work = new Work(w.path("maxItems").asInt(), w.path("respawnSeconds").asDouble(),
                 w.path("maxItemValue").asDouble(), w.path("bagValuePerLevel").asDouble());
@@ -73,7 +79,7 @@ public class GameRules {
             throw new IllegalStateException("shared/plausibility.json no corresponde a shared/config.json: "
                     + "regenérala con `npm run plausibility`");
         }
-        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty() || cardsUpgrades.isEmpty()) {
+        if (saveVersion <= 0 || debtAmount <= 0 || upgrades.isEmpty() || slotsUpgrades.isEmpty() || diceUpgrades.isEmpty() || cardsUpgrades.isEmpty() || coinUpgrades.isEmpty()) {
             throw new IllegalStateException("shared/config.json incompleto");
         }
     }
@@ -173,5 +179,13 @@ public class GameRules {
 
     public int cardsHelperProfiles() {
         return cardsHelperProfiles;
+    }
+
+    public Map<String, Upgrade> coinUpgrades() {
+        return coinUpgrades;
+    }
+
+    public int coinHelperProfiles() {
+        return coinHelperProfiles;
     }
 }

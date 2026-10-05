@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(8));
+                .andExpect(jsonPath("$.saveVersion").value(9));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -250,6 +250,37 @@ class SaveControllerTest extends ApiTestSupport {
         ((Map<String, Object>) active.get("state")).put("activeTable", 4);
         putSave(token, 1L, active)
                 .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("activeTable"))));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mesa5ValidacionEstructural() throws Exception {
+        String token = registerUser();
+        // Mesas 1 a 4 saldadas y mesa 5 en marcha: se acepta.
+        Map<String, Object> ok = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> state = (Map<String, Object>) ok.get("state");
+        state.put("slots", SaveFixtures.slots(500, 700, SaveFixtures.slotUpgrades(), true));
+        state.put("dice", SaveFixtures.dice(800, 840, SaveFixtures.diceUpgrades(), true));
+        state.put("cards", SaveFixtures.cards(900, 760, SaveFixtures.cardsUpgrades(), true));
+        Map<String, Object> coinUps = SaveFixtures.coinUpgrades();
+        coinUps.put("luck", 4);
+        coinUps.put("imp", 1);
+        state.put("coin", SaveFixtures.coin(3_000, 60, coinUps, false));
+        state.put("activeTable", 5);
+        putSave(token, null, ok).andExpect(status().isOk());
+
+        // Progreso en la mesa 5 sin haber pagado la 4, y mejoras del diablillo sin el diablillo.
+        Map<String, Object> bad = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> badState = (Map<String, Object>) bad.get("state");
+        Map<String, Object> badUps = SaveFixtures.coinUpgrades();
+        badUps.put("helperSpeed", 1);
+        badState.put("coin", SaveFixtures.coin(100, 10, badUps, false));
+        badState.put("activeTable", 5);
+        putSave(token, 1L, bad)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("sin la deuda de la mesa 4"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("requiere el diablillo coronado"))))
                 .andExpect(jsonPath("$.details", hasItem(containsString("activeTable"))));
     }
 

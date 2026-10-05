@@ -1,6 +1,8 @@
 import shared from '../../shared/config.json';
-import { CARD_UPGRADE_IDS, CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS } from './config';
+import { CARD_UPGRADE_IDS, CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS, COIN_UPGRADE_IDS } from './config';
 import { createCardsState } from './cards/state';
+import { chainValue } from './coin/game';
+import { createCoinState } from './coin/state';
 import { createDiceState } from './dice/state';
 import { createSlotsState } from './slots/state';
 import { createInitialState, type GameState } from './state';
@@ -63,6 +65,8 @@ const migrations: Record<number, (state: Json) => Json> = {
     }
     return out;
   },
+  // v9: mesa 5 (doble o nada). Empieza de cero.
+  8: (state) => ({ ...state, coin: createCoinState() }),
 };
 
 /** Mejoras de trabajo que existían en las mesas 2 a 4 hasta el guardado v7, con sus costes de entonces. */
@@ -110,6 +114,7 @@ export function deserialize(raw: string): SaveFile | null {
     version++;
   }
 
+  state = settleCoinChains(state);
   const merged = mergeDefaults(createInitialState() as unknown as Json, state) as unknown as GameState;
   const savedAt = typeof parsed.savedAt === 'number' ? parsed.savedAt : 0;
   return { version: SAVE_VERSION, savedAt, state: sanitize(merged) };
@@ -225,8 +230,10 @@ function sanitizeSlots(state: GameState): void {
   slots.recentSpins = slots.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof slots.recentSpins;
   sanitizeDice(state);
   sanitizeCards(state);
-  const paid = [true, state.debtPaid, state.debtPaid && slots.debtPaid, state.debtPaid && slots.debtPaid && state.dice.debtPaid];
-  state.activeTable = [1, 2, 3, 4].includes(state.activeTable) && paid[state.activeTable - 1] ? state.activeTable : 1;
+  sanitizeCoin(state);
+  const paid3 = state.debtPaid && slots.debtPaid && state.dice.debtPaid;
+  const paid = [true, state.debtPaid, state.debtPaid && slots.debtPaid, paid3, paid3 && state.cards.debtPaid];
+  state.activeTable = [1, 2, 3, 4, 5].includes(state.activeTable) && paid[state.activeTable - 1] ? state.activeTable : 1;
 }
 
 function isCard(v: unknown): boolean {
@@ -261,6 +268,56 @@ function sanitizeCards(state: GameState): void {
   if (!validHand) cards.hand = null;
   else if (cards.hand!.status !== 'fin') cards.hand = null;
   cards.recentHands = cards.recentHands.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof cards.recentHands;
+}
+
+/**
+ * Una cadena de la mesa 5 a medias no sobrevive a cargar: si estaba en una cara (decidir) se cobra lo
+ * acumulado; si estaba en una cruz, se pierde. Se hace antes de fusionar con los valores por defecto
+ * (que descartan los objetos donde el valor por defecto es null).
+ */
+function settleCoinChains(state: Json): Json {
+  const coin = state.coin;
+  if (!isRecord(coin)) return state;
+  const copy: Json = { ...coin };
+  let balance = Number(copy.balance) || 0;
+  const helper = isRecord(copy.helper) ? { ...copy.helper } : null;
+  for (const raw of [copy.chain, helper?.chain]) {
+    if (!isRecord(raw) || raw.status !== 'decidir') continue;
+    const stake = Math.min(Math.max(Number(raw.stake) || 0, 0), CONFIG.coin.debt.amount);
+    const wins = Math.min(Math.max(Math.floor(Number(raw.wins) || 0), 0), CONFIG.coin.chain.maxWins);
+    if (wins > 0) balance += chainValue(stake, wins);
+  }
+  copy.balance = balance;
+  copy.chain = null;
+  if (helper) {
+    helper.chain = null;
+    copy.helper = helper;
+  }
+  return { ...state, coin: copy };
+}
+
+/** Mesa 5: lo mismo que las otras. */
+function sanitizeCoin(state: GameState): void {
+  const coin = state.coin;
+  const C = CONFIG.coin;
+  coin.balance = nonNegative(coin.balance);
+  coin.playTime = nonNegative(coin.playTime);
+  for (const id of COIN_UPGRADE_IDS) {
+    coin.upgrades[id] = Math.min(Math.floor(nonNegative(coin.upgrades[id])), C.upgrades[id].maxLevel);
+  }
+  coin.betFractionIndex = clampIndex(coin.betFractionIndex, CONFIG.bet.quickFractions.length);
+  coin.helper.timer = nonNegative(coin.helper.timer);
+  coin.helper.profile = Math.min(clampIndex(coin.helper.profile, C.helper.profiles.length), coin.upgrades.helperProfile);
+  coin.helper.stopAt = Math.min(Math.max(Math.floor(Number(coin.helper.stopAt) || 1), 1), C.chain.maxWins);
+  const maxCharges = C.seconds.base + Math.floor(coin.upgrades.luck / C.seconds.perLevels);
+  coin.seconds.charges = Math.min(Math.floor(nonNegative(coin.seconds.charges)), maxCharges);
+  coin.seconds.timer = nonNegative(coin.seconds.timer);
+  coin.passiveCarry = Math.min(nonNegative(coin.passiveCarry), 1);
+  coin.pot = Math.min(Math.max(nonNegative(coin.pot), C.jackpot.potSeed), C.debt.amount * C.jackpot.payoutCapDebtFraction);
+  // Las cadenas a medias ya se liquidaron antes de fusionar (settleCoinChains); aquí ya no hay.
+  coin.chain = null;
+  coin.helper.chain = null;
+  coin.recentChains = coin.recentChains.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as typeof coin.recentChains;
 }
 
 function isDie(v: unknown): boolean {

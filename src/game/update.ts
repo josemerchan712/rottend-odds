@@ -1,6 +1,7 @@
 import { updateHelper } from './helper';
 import type { Rng } from './rng';
 import { updateCards, type CardsTick } from './cards/table';
+import { updateCoin, type CoinTick } from './coin/table';
 import { updateDice, type DiceTick } from './dice/table';
 import { updateSlots, type SlotsTick } from './slots/table';
 import type { GameState, SpinResult } from './state';
@@ -17,6 +18,8 @@ export interface Tick {
   dice: DiceTick;
   /** Lo que ha pasado en la mesa 4 (manos del esqueleto). */
   cards: CardsTick;
+  /** Lo que ha pasado en la mesa 5 (cadenas del diablillo). */
+  coin: CoinTick;
 }
 
 /**
@@ -24,11 +27,11 @@ export interface Tick {
  * Muta el estado.
  */
 export function updateGame(state: GameState, dt: number, rng: Rng): Tick {
-  if (dt <= 0) return { cleaned: [], helper: [], slots: { zombie: [] }, dice: { ghost: [] }, cards: { skeleton: [] } };
+  if (dt <= 0) return { cleaned: [], helper: [], slots: { zombie: [] }, dice: { ghost: [] }, cards: { skeleton: [] }, coin: { imp: [] } };
   state.playTime += dt;
   const cleaned = updateWork(state, dt, rng);
   const helper = updateHelper(state, dt, rng);
-  return { cleaned, helper, slots: updateSlots(state, dt, rng), dice: updateDice(state, dt, rng), cards: updateCards(state, dt, rng) };
+  return { cleaned, helper, slots: updateSlots(state, dt, rng), dice: updateDice(state, dt, rng), cards: updateCards(state, dt, rng), coin: updateCoin(state, dt, rng) };
 }
 
 /** Como updateGame, pero solo devuelve lo recogido por el limpiador de la mesa 1. */

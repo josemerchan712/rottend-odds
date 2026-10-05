@@ -39,8 +39,9 @@ public final class SaveFixtures {
         state.put("slots", slots(0, 0, slotUpgrades(), false));
         state.put("dice", dice(0, 0, diceUpgrades(), false));
         state.put("cards", cards(0, 0, cardsUpgrades(), false));
+        state.put("coin", coin(0, 0, coinUpgrades(), false));
         Map<String, Object> file = new HashMap<>();
-        file.put("version", 8);
+        file.put("version", 9);
         file.put("savedAt", 1_700_000_000_000L);
         file.put("state", state);
         return file;
@@ -127,6 +128,37 @@ public final class SaveFixtures {
         cards.put("debtPaid", debtPaid);
         cards.put("visited", false);
         return cards;
+    }
+
+    public static Map<String, Object> coinUpgrades() {
+        Map<String, Object> ups = new LinkedHashMap<>();
+        for (String id : new String[] {"luck", "maxBet", "imp", "helperSpeed", "helperProfile", "helperLuck", "temple"}) {
+            ups.put(id, 0);
+        }
+        return ups;
+    }
+
+    /** La mesa 5 como la guarda el juego (src/game/coin/state.ts). */
+    public static Map<String, Object> coin(double balance, double playTime, Map<String, Object> upgrades, boolean debtPaid) {
+        Map<String, Object> coin = new HashMap<>();
+        coin.put("balance", balance);
+        coin.put("playTime", playTime);
+        coin.put("upgrades", upgrades);
+        coin.put("betFractionIndex", 1);
+        coin.put("chain", null);
+        coin.put("seconds", Map.of("charges", 1, "timer", 0));
+        Map<String, Object> helper = new HashMap<>();
+        helper.put("timer", 0);
+        helper.put("profile", 0);
+        helper.put("chain", null);
+        helper.put("stopAt", 1);
+        coin.put("helper", helper);
+        coin.put("pot", 50);
+        coin.put("passiveCarry", 0);
+        coin.put("recentChains", java.util.List.of());
+        coin.put("debtPaid", debtPaid);
+        coin.put("visited", false);
+        return coin;
     }
 
     /** Una mesa terminada en un tiempo normal (~8 min) y con lo que sobra tras pagar. */

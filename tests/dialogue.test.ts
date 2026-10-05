@@ -3,6 +3,7 @@ import { DIALOGUE_ES } from '../src/content/dialogue.es';
 import { DIALOGUE2_ES } from '../src/content/dialogue2.es';
 import { DIALOGUE3_ES } from '../src/content/dialogue3.es';
 import { DIALOGUE4_ES } from '../src/content/dialogue4.es';
+import { DIALOGUE5_ES } from '../src/content/dialogue5.es';
 import { CONFIG } from '../src/game/config';
 import {
   canSpeak,
@@ -60,6 +61,24 @@ describe('contenido del diálogo de la mesa 4 (la Crupier)', () => {
         }
       }
     }
+  });
+});
+
+describe('contenido del diálogo de la mesa 5 (el Dueño)', () => {
+  it('al menos 5 líneas por disparador y fase, ≤ 90 caracteres, distintas de las otras mesas, y un final', () => {
+    for (const t of PHASED_NO_BACKROOM) for (const phase of ['calm', 'uneasy', 'deformed'] as const) expect(DIALOGUE5_ES[t][phase]!.length, `${t}.${phase}`).toBeGreaterThanOrEqual(5);
+    for (const t of SINGLE) expect(DIALOGUE5_ES[t].any!.length, t).toBeGreaterThanOrEqual(5);
+    const others = JSON.stringify(DIALOGUE_ES) + JSON.stringify(DIALOGUE2_ES) + JSON.stringify(DIALOGUE3_ES) + JSON.stringify(DIALOGUE4_ES);
+    for (const byPhase of Object.values(DIALOGUE5_ES)) {
+      for (const list of Object.values(byPhase)) {
+        for (const entry of list!) {
+          const text = typeof entry === 'string' ? entry : entry.text;
+          expect(text.length, text).toBeLessThanOrEqual(90);
+          expect(others.includes(`"${text}"`), text).toBe(false);
+        }
+      }
+    }
+    expect(DIALOGUE5_ES.debtPaid.any!.length).toBeGreaterThanOrEqual(5);
   });
 });
 
@@ -216,9 +235,9 @@ describe('cambios aprobados del diálogo', () => {
   });
 });
 
-describe('sin trastienda en las mesas 2 a 4', () => {
+describe('sin trastienda en las mesas 2 a 5', () => {
   it('los motivos de entrar y volver de la trastienda solo tienen líneas en la mesa 1', () => {
-    for (const lines of [DIALOGUE2_ES, DIALOGUE3_ES, DIALOGUE4_ES]) {
+    for (const lines of [DIALOGUE2_ES, DIALOGUE3_ES, DIALOGUE4_ES, DIALOGUE5_ES]) {
       expect(Object.keys(lines.enterBackroom)).toHaveLength(0);
       expect(Object.keys(lines.returnCasino)).toHaveLength(0);
     }

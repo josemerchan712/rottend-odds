@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { CONFIG } from '../src/game/config';
 import type { GameState } from '../src/game/state';
 import { formatNumber, formatTime } from '../src/util/format';
-import { COIN_STRATEGIES, IMP_STUDY, runCoin, table4Start, type CoinRunResult, type CoinStrategy } from './coinEngine';
+import { COIN_STRATEGIES, HEIRLOOM_STUDY, IMP_STUDY, runCoin, table4Start, type CoinRunResult, type CoinStrategy } from './coinEngine';
 import { DEFAULT_PLAYER, PHASES } from './engine';
 
 const args = process.argv.slice(2);
@@ -90,9 +90,9 @@ table(
   }),
 );
 
-section('De dónde sale el oro, cadenas, jackpot y segundas oportunidades');
+section('De dónde sale el oro, cadenas, jackpot, herencias y moneda cargada');
 table(
-  ['Estrategia', 'Cadenas', 'Jackpot', 'Pasivo', 'Cadenas jugador', 'Se retira en (media)', 'Completas', 'Segundas/partida', 'Pasivo/s'],
+  ['Estrategia', 'Cadenas', 'Jackpot', 'Pasivo', 'Cadenas jugador', 'Se retira en', 'Completas', 'Herencias usadas', 'Cargada', 'Herencias listas', 'Pasivo/s'],
   strategies.map((s) => {
     const r = results.get(s)!;
     const chains = sum(r.map((x) => x.earned.chains));
@@ -107,11 +107,30 @@ table(
       (sum(r.map((x) => x.chains.player)) / runs).toFixed(0),
       mean(r.map((x) => x.chains.meanStop)).toFixed(1),
       (sum(r.map((x) => x.chains.full)) / runs).toFixed(1),
-      (sum(r.map((x) => x.seconds)) / runs).toFixed(0),
+      (sum(r.map((x) => x.heirloomsUsed)) / runs).toFixed(0),
+      pct(mean(r.map((x) => x.loadedShare))),
+      (() => {
+        const ready = r.map((x) => x.heirloomsReady).filter((x): x is number => x !== null);
+        return ready.length ? `${t(mean(ready))} (${pct(ready.length / r.length)})` : '-';
+      })(),
       `${formatNumber(mean(r.map((x) => x.passive.start)))} → ${formatNumber(mean(r.map((x) => x.passive.end)))}`,
     ];
   }),
 );
+
+section('Cada herencia sola (nivel 2) frente a (c), sin herencias');
+{
+  const base = results.get(COIN_STRATEGIES.find((x) => x.id === 'c')!) ?? Array.from({ length: runs }, (_, i) => runCoin(COIN_STRATEGIES.find((x) => x.id === 'c')!, i + 1));
+  const baseTime = mean(base.map((x) => x.time));
+  table(
+    ['Herencia', 'Media', 'Frente a (c)', 'Usos/partida'],
+    HEIRLOOM_STUDY.filter((h) => !only || only.includes(h.id)).map((h) => {
+      const r = Array.from({ length: runs }, (_, i) => runCoin(h, i + 1));
+      const m = mean(r.map((x) => x.time));
+      return [h.label, t(m), `${(((m - baseTime) / baseTime) * 100).toFixed(1)}%`, (sum(r.map((x) => x.heirloomsUsed)) / runs).toFixed(0)];
+    }),
+  );
+}
 
 if (!noStudy) {
   section('Conversión: (d) con y sin pasivo de la mesa 4');

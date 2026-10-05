@@ -61,6 +61,8 @@ export interface CardsState {
     jackpots: number;
     jackpotsCapped: number;
     passiveEarned: number;
+    /** Ganado en las apuestas (suma de los resultados positivos, jugador y ayudante). */
+    won: number;
   };
 }
 
@@ -78,6 +80,6 @@ export function createCardsState(): CardsState {
     recentHands: [],
     debtPaid: false,
     visited: false,
-    stats: { hands: 0, wins: 0, pushes: 0, discards: 0, jackpots: 0, jackpotsCapped: 0, passiveEarned: 0 },
+    stats: { hands: 0, wins: 0, pushes: 0, discards: 0, jackpots: 0, jackpotsCapped: 0, passiveEarned: 0, won: 0 },
   };
 }

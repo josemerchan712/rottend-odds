@@ -52,6 +52,8 @@ export interface SlotsState {
     jackpotsCapped: number;
     holds: number;
     passiveEarned: number;
+    /** Ganado en las apuestas (suma de los resultados positivos, jugador y ayudante). */
+    won: number;
   };
 }
 
@@ -69,6 +71,6 @@ export function createSlotsState(): SlotsState {
     recentSpins: [],
     debtPaid: false,
     visited: false,
-    stats: { spins: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, holds: 0, passiveEarned: 0 },
+    stats: { spins: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, holds: 0, passiveEarned: 0, won: 0 },
   };
 }

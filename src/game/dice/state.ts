@@ -53,6 +53,8 @@ export interface DiceState {
     jackpots: number;
     jackpotsCapped: number;
     passiveEarned: number;
+    /** Ganado en las apuestas (suma de los resultados positivos, jugador y ayudante). */
+    won: number;
   };
 }
 
@@ -72,6 +74,6 @@ export function createDiceState(): DiceState {
     recentRolls: [],
     debtPaid: false,
     visited: false,
-    stats: { rolls: 0, wins: 0, rerolls: 0, rerollWins: 0, jackpots: 0, jackpotsCapped: 0, passiveEarned: 0 },
+    stats: { rolls: 0, wins: 0, rerolls: 0, rerollWins: 0, jackpots: 0, jackpotsCapped: 0, passiveEarned: 0, won: 0 },
   };
 }

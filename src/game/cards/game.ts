@@ -293,6 +293,7 @@ function resolve(cards: CardsState, hand: CardHand): void {
     if (capped) cards.stats.jackpotsCapped++;
   }
   hand.deck = [];
+  if (hand.delta > 0) cards.stats.won += hand.delta;
   cards.recentHands.unshift(hand);
   cards.recentHands.length = Math.min(cards.recentHands.length, CONFIG.tech.recentSpins);
 }

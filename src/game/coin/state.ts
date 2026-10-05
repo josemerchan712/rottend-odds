@@ -75,6 +75,8 @@ export interface CoinState {
     loadedFlips: number;
     bestChain: number;
     passiveEarned: number;
+    /** Ganado en las apuestas (suma de los resultados positivos, jugador y ayudante). */
+    won: number;
   };
 }
 
@@ -97,6 +99,6 @@ export function createCoinState(): CoinState {
     recentChains: [],
     debtPaid: false,
     visited: false,
-    stats: { chains: 0, flips: 0, heads: 0, cashouts: 0, fullChains: 0, jackpots: 0, heirloomsUsed: 0, loadedFlips: 0, bestChain: 0, passiveEarned: 0 },
+    stats: { chains: 0, flips: 0, heads: 0, cashouts: 0, fullChains: 0, jackpots: 0, heirloomsUsed: 0, loadedFlips: 0, bestChain: 0, passiveEarned: 0, won: 0 },
   };
 }

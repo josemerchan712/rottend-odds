@@ -5,7 +5,7 @@ import { updateCoin, type CoinTick } from './coin/table';
 import { updateDice, type DiceTick } from './dice/table';
 import { updateSlots, type SlotsTick } from './slots/table';
 import type { GameState, SpinResult } from './state';
-import { trackZeros } from './summary';
+import { trackPaidAt, trackZeros } from './summary';
 import { updateWork, type Collected } from './work';
 
 export interface Tick {
@@ -34,6 +34,7 @@ export function updateGame(state: GameState, dt: number, rng: Rng): Tick {
   const helper = updateHelper(state, dt, rng);
   const tick = { cleaned, helper, slots: updateSlots(state, dt, rng), dice: updateDice(state, dt, rng), cards: updateCards(state, dt, rng), coin: updateCoin(state, dt, rng) };
   trackZeros(state);
+  trackPaidAt(state);
   return tick;
 }
 

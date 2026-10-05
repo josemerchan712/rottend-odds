@@ -315,6 +315,7 @@ function finalize(dice: DiceState, roll: DiceRoll): void {
   }
   if (isPlayer) dice.streak = streak;
   else dice.helper.streak = streak;
+  if (roll.delta > 0) dice.stats.won += roll.delta;
 }
 
 /** El jugador tira con la ficha y el objetivo elegidos. */

@@ -155,6 +155,7 @@ function resolve(coin: CoinState, chain: CoinChain, result: CoinChain['result'])
   }
   coin.balance += gain;
   chain.delta = gain - chain.stake;
+  if (chain.delta > 0) coin.stats.won += chain.delta;
   coin.stats.bestChain = Math.max(coin.stats.bestChain, chain.wins);
   coin.recentChains.unshift(chain);
   if (coin.recentChains.length > CONFIG.tech.recentSpins) coin.recentChains.length = CONFIG.tech.recentSpins;

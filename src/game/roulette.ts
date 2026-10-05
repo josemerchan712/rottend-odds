@@ -44,6 +44,7 @@ export function spin(state: GameState, req: SpinRequest, rng: Rng): SpinResult |
   state.balance = Math.max(state.balance + result.delta, 0);
   state.stats.bets++;
   if (result.outcome !== 'pierde') state.stats.wins++;
+  if (result.delta > 0) state.stats.won += result.delta;
   if (result.outcome === 'jackpot') {
     state.stats.jackpots++;
     if (result.jackpotCapped) state.stats.jackpotsCapped++;

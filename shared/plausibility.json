@@ -1,6 +1,6 @@
 {
   "description": "Límites estadísticos (no imposibles) generados por npm run plausibility. maxEarned[k] = fichas ganadas como mínimo (saldo + coste de mejoras + deuda pagada) que se consideran plausibles a los k*sampleEverySeconds segundos de juego; más allá del horizonte, se suma maxEarnedPerSecondAfterHorizon por segundo.",
-  "configHash": "33cd0e3ae390c9d0dfa36a034535a05f909826ba08c04df1516be64d53feb41d",
+  "configHash": "23dbaacfce74f385724077b4bc3761c7b6a6fee45cb0de85380199d68e8adf4f",
   "mode": "full",
   "runsPerStrategy": 300,
   "strategies": [

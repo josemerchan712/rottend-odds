@@ -1,5 +1,5 @@
 {
-  "saveVersion": 10,
+  "saveVersion": 11,
   "debt": { "amount": 10000000 },
   "upgrades": {
     "luck": { "baseCost": 3, "growth": 1.55, "maxLevel": 20 },

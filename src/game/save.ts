@@ -75,6 +75,15 @@ const migrations: Record<number, (state: Json) => Json> = {
     delete coin.seconds;
     return { ...state, coin };
   },
+  // v11: pantalla final nueva (sesión 7). Indicador de final visto (una partida ya terminada lo ha
+  // visto: no se repite sola) y el momento de pago de cada deuda (las ya pagadas, desconocido = -1).
+  // Los contadores de lo ganado empiezan a 0 (valores por defecto).
+  10: (state) => {
+    const tables = [state.debtPaid, (state.slots as Json | undefined)?.debtPaid, (state.dice as Json | undefined)?.debtPaid, (state.cards as Json | undefined)?.debtPaid, (state.coin as Json | undefined)?.debtPaid];
+    const stats = isRecord(state.stats) ? { ...state.stats } : {};
+    stats.paidAt = tables.map((paid) => (paid === true ? -1 : 0));
+    return { ...state, stats, endingSeen: (state.coin as Json | undefined)?.debtPaid === true };
+  },
 };
 
 /** Mejoras de trabajo que existían en las mesas 2 a 4 hasta el guardado v7, con sus costes de entonces. */
@@ -206,6 +215,12 @@ function sanitize(state: GameState): GameState {
     state.work.cleaner.y = CONFIG.work.cleaner.start.y;
   }
   state.recentSpins = state.recentSpins.filter(isRecord).slice(0, CONFIG.tech.recentSpins) as GameState['recentSpins'];
+  state.endingSeen = state.endingSeen === true;
+  const paidAt = Array.isArray(state.stats.paidAt) ? state.stats.paidAt : [];
+  state.stats.paidAt = Array.from({ length: 5 }, (_, i) => {
+    const t = Number(paidAt[i]);
+    return t === -1 ? -1 : Number.isFinite(t) && t > 0 ? Math.min(t, state.playTime) : 0;
+  });
   sanitizeSlots(state);
   return state;
 }

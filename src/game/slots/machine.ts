@@ -293,6 +293,7 @@ export function spinSlots(slots: SlotsState, req: SlotRequest, rng: Rng): SlotSp
   };
   slots.stats.spins++;
   if (outcome !== 'nada') slots.stats.wins++;
+  if (delta > 0) slots.stats.won += delta;
   if (held) slots.stats.holds++;
   if (outcome === 'jackpot') {
     slots.stats.jackpots++;

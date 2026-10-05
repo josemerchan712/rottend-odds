@@ -92,7 +92,16 @@ export interface GameState {
     workEarned: number;
     /** Veces que el saldo de alguna mesa se quedó por debajo de la apuesta mínima (pantalla final). */
     zeros: number;
+    /** Ganado en las apuestas de la mesa 1 (suma de los resultados positivos, jugador y ayudante). */
+    won: number;
+    /**
+     * Tiempo total de juego (s) al pagar la deuda de cada mesa (1 a 5): 0 = aún no pagada; -1 = pagada
+     * antes de que se guardara (partidas anteriores al guardado v11). Da el tiempo por mesa del final.
+     */
+    paidAt: number[];
   };
+  /** Ya se vio la pantalla final: no se repite sola al recargar (se puede ver desde el menú). */
+  endingSeen: boolean;
 }
 
 export function createInitialState(): GameState {
@@ -116,6 +125,7 @@ export function createInitialState(): GameState {
     dice: createDiceState(),
     cards: createCardsState(),
     coin: createCoinState(),
-    stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0, zeros: 0 },
+    stats: { bets: 0, wins: 0, jackpots: 0, jackpotsCapped: 0, workEarned: 0, zeros: 0, won: 0, paidAt: [0, 0, 0, 0, 0] },
+    endingSeen: false,
   };
 }

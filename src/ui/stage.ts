@@ -27,8 +27,13 @@ export interface StageLayout {
   top: number;
 }
 
-/** El mayor factor entero de píxeles físicos que cabe, y la esquina centrada alineada a píxel físico. */
-export function stageLayout(width: number, height: number, dpr: number): StageLayout {
+/**
+ * El mayor factor entero de píxeles físicos que cabe, y la esquina centrada alineada a píxel físico.
+ * Función pura. Devuelve null con medidas imposibles (ventana minimizada, pestaña oculta, dpr 0):
+ * entonces se conserva la composición anterior en vez de recomponer con un tamaño de 0.
+ */
+export function stageLayout(width: number, height: number, dpr: number): StageLayout | null {
+  if (!(width >= 1 && height >= 1 && dpr > 0 && Number.isFinite(width) && Number.isFinite(height) && Number.isFinite(dpr))) return null;
   const k = Math.max(1, Math.floor(Math.min((width * dpr) / STAGE_WIDTH, (height * dpr) / STAGE_HEIGHT)));
   const left = Math.max(0, Math.floor((width * dpr - STAGE_WIDTH * k) / 2)) / dpr;
   const top = Math.max(0, Math.floor((height * dpr - STAGE_HEIGHT * k) / 2)) / dpr;
@@ -37,7 +42,7 @@ export function stageLayout(width: number, height: number, dpr: number): StageLa
 
 /** Factor de escala CSS para que cada unidad del escenario ocupe un número entero de píxeles físicos. */
 export function stageScale(width: number, height: number, dpr: number): number {
-  return stageLayout(width, height, dpr).u;
+  return stageLayout(width, height, dpr)?.u ?? 1;
 }
 
 let physicalScale = 1;
@@ -47,9 +52,16 @@ export function stagePixelScale(): number {
   return physicalScale;
 }
 
-export function layoutStage(root: HTMLElement, stage: HTMLElement): void {
+/**
+ * Recoloca el escenario. Con un tamaño nulo o un dpr imposible (ventana minimizada) no hace nada y
+ * devuelve false. No se usa document.hidden como bloqueo: algunos navegadores incrustados la dan por
+ * oculta mientras se ve; las medidas transitorias de una página oculta se corrigen al volver
+ * (visibilitychange → recolocar con debounce).
+ */
+export function layoutStage(root: HTMLElement, stage: HTMLElement): boolean {
   const { clientWidth: w, clientHeight: h } = root;
   const layout = stageLayout(w, h, window.devicePixelRatio || 1);
+  if (!layout) return false;
   physicalScale = layout.k;
   root.style.setProperty('--u', `${layout.u}px`);
   stage.style.transform = '';
@@ -57,6 +69,21 @@ export function layoutStage(root: HTMLElement, stage: HTMLElement): void {
   // Con zoom, left y top del propio escenario también se multiplican por él.
   stage.style.left = `${layout.left / layout.u}px`;
   stage.style.top = `${layout.top / layout.u}px`;
+  return true;
+}
+
+/**
+ * La barra superior siempre en una línea: si el contenido no cabe, pasa a modo compacto (textos
+ * abreviados); si sobra sitio de verdad (con margen, para no oscilar), vuelve al normal.
+ */
+export function fitHud(hud: HTMLElement | null): void {
+  if (!hud || hud.clientWidth === 0) return;
+  const overflow = hud.scrollWidth > hud.clientWidth + 1;
+  if (overflow && !hud.classList.contains('compact')) hud.classList.add('compact');
+  else if (!overflow && hud.classList.contains('compact')) {
+    hud.classList.remove('compact');
+    if (hud.scrollWidth > hud.clientWidth - 24) hud.classList.add('compact');
+  }
 }
 
 /**

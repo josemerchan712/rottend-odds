@@ -74,8 +74,8 @@ function shopRows(ids: readonly CardUpgradeId[]): string {
 export function mountUi4(root: HTMLElement): Ui4 {
   root.innerHTML = `
     <div class="hud">
-      <div class="hud-balance">FICHAS NEGRAS <strong data-ref="balance">0</strong></div>${TABS_HTML}
-      <div class="hud-passive" data-ref="passive" title="Fichas por segundo que llegan de la mesa 3"></div>
+      <div class="hud-balance"><span class="long">FICHAS NEGRAS</span><span class="short">NEGRAS</span> <strong data-ref="balance">0</strong></div>${TABS_HTML}
+      <div class="hud-passive" title="Fichas por segundo que llegan de la mesa 3"><span data-ref="passive"></span><span class="long"> de la mesa 3</span></div>
       <div class="hud-debt" title="Deuda con la Crupier">
         <span class="muted">DEUDA</span>
         <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
@@ -84,7 +84,7 @@ export function mountUi4(root: HTMLElement): Ui4 {
       <div class="hud-toast" data-ref="toast" role="status"></div>
       <div class="hud-buttons">
         <button data-ref="payDebt" class="gold small">Pagar deuda</button>
-        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
+        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)"><span class="long">Pantalla completa</span><span class="short">Pantalla</span></button>
         <button data-ref="toMenu" class="small">Menú</button>
       </div>
     </div>
@@ -155,7 +155,7 @@ export function render4(ui: Ui4, state: GameState): void {
   const cards = state.cards;
   const { upgrades } = cards;
   setText(ui.balance, formatNumber(cards.balance));
-  setText(ui.passive, `+${formatNumber(cardsPassiveRate(state))}/s de la mesa 3`);
+  setText(ui.passive, `+${formatNumber(cardsPassiveRate(state))}/s`);
   ui.debtFill.style.width = `${cardsDebtProgress(cards) * 100}%`;
   setText(ui.debtText, cards.debtPaid ? 'SALDADA' : formatPercent(cardsDebtProgress(cards), 0));
   ui.payDebt.hidden = !canPayCardsDebt(cards);

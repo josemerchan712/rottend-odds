@@ -26,7 +26,7 @@ import {
 } from './ui/online';
 import { mountUi, render, setText } from './ui/render';
 import { Scene } from './ui/scene';
-import { enterFullscreen, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
+import { enterFullscreen, fitHud, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
 import { loadSprites, whenSpritesLoaded } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
 import { canBetManually, canCollectTrash, createRoomState, inTransition, toggleRoom, updateRooms } from './game/rooms';
@@ -150,15 +150,32 @@ const screens = Object.fromEntries(
 ) as Record<Screen, HTMLElement>;
 const crt = mountCrt(stage);
 mountTextLayer(app.querySelector<HTMLCanvasElement>('[data-ref="sceneText"]')!);
-const relayout = () => layoutStage(root, stage);
-window.addEventListener('resize', relayout);
-document.addEventListener('fullscreenchange', relayout);
+// Recolocar con debounce: al volver de otra pestaña o aplicación, o al minimizar, llegan eventos con
+// tamaños o dpr transitorios; se espera a que se asienten y se ignoran los de la página oculta. Si no
+// hay medidas válidas (página oculta o sin tamaño, también al cargar), se reintenta hasta que las haya.
+let relayoutTimer = 0;
+const scheduleRelayout = () => {
+  window.clearTimeout(relayoutTimer);
+  relayoutTimer = window.setTimeout(relayout, 120);
+};
+function relayout(): void {
+  if (!layoutStage(root, stage)) scheduleRelayout();
+}
+window.addEventListener('resize', scheduleRelayout);
+document.addEventListener('fullscreenchange', () => {
+  relayout();
+  scheduleRelayout();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) scheduleRelayout();
+});
+window.addEventListener('pageshow', scheduleRelayout);
 // Si cambia el dpr (otro monitor, zoom del navegador) sin redimensionar, también hay que recolocar.
 const watchDpr = () => {
   matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
     'change',
     () => {
-      relayout();
+      scheduleRelayout();
       watchDpr();
     },
     { once: true },
@@ -317,6 +334,7 @@ function renderHud(current: GameState): void {
       b.hidden = !isTableUnlocked(current, Number(b.dataset.table) as TableId);
     });
   }
+  fitHud(layers[table - 1].querySelector<HTMLElement>('.hud'));
   if (table === 1) render(gameUi, current);
   else if (table === 2) render2(slotsUi, current);
   else if (table === 3) render3(diceUi, current);

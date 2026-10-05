@@ -79,7 +79,7 @@ export function mountUi2(root: HTMLElement): Ui2 {
   root.innerHTML = `
     <div class="hud">
       <div class="hud-balance">MONEDAS <strong data-ref="balance">0</strong></div>${TABS_HTML}
-      <div class="hud-passive" data-ref="passive" title="Monedas por segundo que llegan de la mesa 1"></div>
+      <div class="hud-passive" title="Monedas por segundo que llegan de la mesa 1"><span data-ref="passive"></span><span class="long"> de la mesa 1</span></div>
       <div class="hud-debt" title="Deuda con la Tragaperras viviente">
         <span class="muted">DEUDA</span>
         <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
@@ -88,7 +88,7 @@ export function mountUi2(root: HTMLElement): Ui2 {
       <div class="hud-toast" data-ref="toast" role="status"></div>
       <div class="hud-buttons">
         <button data-ref="payDebt" class="gold small">Pagar deuda</button>
-        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
+        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)"><span class="long">Pantalla completa</span><span class="short">Pantalla</span></button>
         <button data-ref="toMenu" class="small">Menú</button>
       </div>
     </div>
@@ -160,7 +160,7 @@ export function render2(ui: Ui2, state: GameState): void {
   const slots = state.slots;
   const { upgrades } = slots;
   setText(ui.balance, formatNumber(slots.balance));
-  setText(ui.passive, `+${formatNumber(passiveRate(state))}/s de la mesa 1`);
+  setText(ui.passive, `+${formatNumber(passiveRate(state))}/s`);
   ui.debtFill.style.width = `${slotsDebtProgress(slots) * 100}%`;
   setText(ui.debtText, slots.debtPaid ? 'SALDADA' : formatPercent(slotsDebtProgress(slots), 0));
   ui.payDebt.hidden = !canPaySlotsDebt(slots);

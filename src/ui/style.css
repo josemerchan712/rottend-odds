@@ -161,9 +161,12 @@ kbd {
   top: 0;
   height: 20px;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   padding: 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
   background: linear-gradient(to bottom, rgba(5, 4, 3, 0.92), rgba(5, 4, 3, 0.6));
   border-bottom: 1px solid #2a2219;
   font-size: 13px;
@@ -171,7 +174,17 @@ kbd {
 .hud-balance strong { color: var(--gold); font-weight: normal; font-size: 15px; }
 .hud-debt { display: flex; align-items: center; gap: 4px; flex: 1; max-width: 220px; margin: 0 auto; }
 .hud-debt .debt-bar { flex: 1; }
-.hud-buttons { display: flex; gap: 3px; }
+.hud > * { flex-shrink: 0; white-space: nowrap; }
+.hud .hud-debt { flex-shrink: 1; min-width: 60px; }
+.hud button { white-space: nowrap; }
+.hud-buttons { display: flex; gap: 3px; margin-left: auto; }
+/* Barra compacta (poco ancho): textos abreviados en vez de partir líneas (fitHud en stage.ts). */
+.hud .short { display: none; }
+.hud.compact .short { display: inline; }
+.hud.compact .long { display: none; }
+.hud.compact { gap: 5px; }
+.hud.compact .hud-debt .debt-bar { display: none; }
+.hud.compact .table-tabs .tab { padding: 0 3px; }
 .hud-toast { min-width: 70px; text-align: right; opacity: 0; transition: opacity 0.25s; color: var(--muted); }
 .hud-toast.show { opacity: 1; }
 .hud-toast[data-kind='gana'] { color: #9fb97a; }

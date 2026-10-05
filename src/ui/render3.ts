@@ -75,7 +75,7 @@ export function mountUi3(root: HTMLElement): Ui3 {
   root.innerHTML = `
     <div class="hud">
       <div class="hud-balance">CHAPAS <strong data-ref="balance">0</strong></div>${TABS_HTML}
-      <div class="hud-passive" data-ref="passive" title="Chapas por segundo que llegan de la mesa 2"></div>
+      <div class="hud-passive" title="Chapas por segundo que llegan de la mesa 2"><span data-ref="passive"></span><span class="long"> de la mesa 2</span></div>
       <div class="hud-debt" title="Deuda con el Barman">
         <span class="muted">DEUDA</span>
         <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
@@ -84,7 +84,7 @@ export function mountUi3(root: HTMLElement): Ui3 {
       <div class="hud-toast" data-ref="toast" role="status"></div>
       <div class="hud-buttons">
         <button data-ref="payDebt" class="gold small">Pagar deuda</button>
-        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
+        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)"><span class="long">Pantalla completa</span><span class="short">Pantalla</span></button>
         <button data-ref="toMenu" class="small">Menú</button>
       </div>
     </div>
@@ -155,7 +155,7 @@ export function render3(ui: Ui3, state: GameState): void {
   const dice = state.dice;
   const { upgrades } = dice;
   setText(ui.balance, formatNumber(dice.balance));
-  setText(ui.passive, `+${formatNumber(dicePassiveRate(state))}/s de la mesa 2`);
+  setText(ui.passive, `+${formatNumber(dicePassiveRate(state))}/s`);
   ui.debtFill.style.width = `${diceDebtProgress(dice) * 100}%`;
   setText(ui.debtText, dice.debtPaid ? 'SALDADA' : formatPercent(diceDebtProgress(dice), 0));
   ui.payDebt.hidden = !canPayDiceDebt(dice);

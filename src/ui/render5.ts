@@ -75,7 +75,7 @@ export function mountUi5(root: HTMLElement): Ui5 {
   root.innerHTML = `
     <div class="hud">
       <div class="hud-balance">ORO <strong data-ref="balance">0</strong></div>${TABS_HTML}
-      <div class="hud-passive" data-ref="passive" title="Oro por segundo que llega de la mesa 4"></div>
+      <div class="hud-passive" title="Oro por segundo que llega de la mesa 4"><span data-ref="passive"></span><span class="long"> de la mesa 4</span></div>
       <div class="hud-debt" title="Deuda con el Dueño">
         <span class="muted">DEUDA</span>
         <div class="debt-bar"><div class="debt-fill" data-ref="debtFill"></div></div>
@@ -84,7 +84,7 @@ export function mountUi5(root: HTMLElement): Ui5 {
       <div class="hud-toast" data-ref="toast" role="status"></div>
       <div class="hud-buttons">
         <button data-ref="payDebt" class="gold small">Pagar deuda</button>
-        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
+        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)"><span class="long">Pantalla completa</span><span class="short">Pantalla</span></button>
         <button data-ref="toMenu" class="small">Menú</button>
       </div>
     </div>
@@ -155,7 +155,7 @@ export function render5(ui: Ui5, state: GameState): void {
   const coin = state.coin;
   const { upgrades } = coin;
   setText(ui.balance, formatNumber(coin.balance));
-  setText(ui.passive, `+${formatNumber(coinPassiveRate(state))}/s de la mesa 4`);
+  setText(ui.passive, `+${formatNumber(coinPassiveRate(state))}/s`);
   ui.debtFill.style.width = `${coinDebtProgress(coin) * 100}%`;
   setText(ui.debtText, coin.debtPaid ? 'SALDADA' : formatPercent(coinDebtProgress(coin), 0));
   ui.payDebt.hidden = !canPayCoinDebt(coin);

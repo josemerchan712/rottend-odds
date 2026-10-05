@@ -35,11 +35,11 @@ export interface Drawer {
 /** Pestañas de mesa del HUD (aparecen al desbloquear la mesa 2). */
 export const TABS_HTML = `
       <div class="table-tabs" data-ref="tabs" hidden>
-        <button class="tab small" data-table="1" title="Mesa 1: la ruleta">MESA 1</button>
-        <button class="tab small" data-table="2" title="Mesa 2: la tragaperras">MESA 2</button>
-        <button class="tab small" data-table="3" title="Mesa 3: los dados">MESA 3</button>
-        <button class="tab small" data-table="4" title="Mesa 4: el blackjack">MESA 4</button>
-        <button class="tab small" data-table="5" title="Mesa 5: doble o nada">MESA 5</button>
+        <button class="tab small" data-table="1" title="Mesa 1: la ruleta"><span class="long">MESA </span>1</button>
+        <button class="tab small" data-table="2" title="Mesa 2: la tragaperras"><span class="long">MESA </span>2</button>
+        <button class="tab small" data-table="3" title="Mesa 3: los dados"><span class="long">MESA </span>3</button>
+        <button class="tab small" data-table="4" title="Mesa 4: el blackjack"><span class="long">MESA </span>4</button>
+        <button class="tab small" data-table="5" title="Mesa 5: doble o nada"><span class="long">MESA </span>5</button>
       </div>`;
 
 export interface Ui {
@@ -93,7 +93,7 @@ export function mountUi(root: HTMLElement): Ui {
       <div class="hud-toast" data-ref="toast" role="status"></div>
       <div class="hud-buttons">
         <button data-ref="payDebt" class="gold small">Pagar deuda</button>
-        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)">Pantalla completa</button>
+        <button data-ref="fullscreen" class="small" title="Pantalla completa (F)"><span class="long">Pantalla completa</span><span class="short">Pantalla</span></button>
         <button data-ref="toMenu" class="small">Menú</button>
       </div>
     </div>

@@ -36,9 +36,27 @@ Remoto: `origin`. Push al final de cada bloque, nunca con force. Simulaciones de
     tamaños × 7 dpr) y el texto se rasteriza a la resolución física, así que escala igual. Test nuevo
     `tests/sceneText.test.ts` (tamaño mínimo y contraste de cada estilo; ninguna escena dibuja texto por su cuenta).
 
+- [x] **B2 Barra superior que cambia de tamaño.**
+  - Causa: el contenido de la barra ya no cabe en 640 unidades en todas las mesas (cinco pestañas, «FICHAS
+    NEGRAS», pasivo, deuda, aviso del ayudante, botones). El HUD es flex sin `nowrap` en sus hijos: cuando el
+    contenido supera el ancho, los elementos encogen y su texto se parte en dos líneas («MONEDAS» sobre la cifra,
+    «Pantalla completa» en dos). Al volver de otra pestaña cambian las cifras (saldo, pasivo, «SALDADA», aviso) y,
+    además, se recolocaba el escenario con medidas transitorias de la página oculta (tamaño 0 / dpr temporal), así
+    que la barra salía distinta. Reproducido en el navegador (mesas 2 y 4 en dos líneas a 1280x720).
+  - Arreglo: `stageLayout` pura y con límites (devuelve null con tamaño 0, dpr 0 o NaN y se conserva la composición
+    anterior); recolocar con debounce en resize, al volver a ser visible (`visibilitychange`, `pageshow`), en
+    `fullscreenchange` y al cambiar el dpr (`matchMedia`); un cálculo descartado se reintenta hasta tener medidas
+    válidas. No se bloquea por `document.hidden` (el panel del navegador la da por oculta mientras se ve: con ese
+    bloqueo el escenario se quedaba sin escalar al cargar; encontrado y corregido). HUD: `nowrap` en todos sus
+    elementos, alto de 20 unidades, y modo **compacto** controlado (`fitHud`): si no cabe, abrevia (MESA n → n,
+    «Pantalla completa» → «Pantalla», «FICHAS NEGRAS» → «NEGRAS», pasivo sin «de la mesa N», sin barra de deuda);
+    vuelve al normal solo con margen (sin oscilar).
+  - Tests: escala (null con medidas imposibles, k ≥ 1, determinista). Comprobado con capturas en la mesa 4 antes y
+    después de cambiar de pestaña: barra en una línea y misma altura. Zoom del navegador, otro monitor y pantalla
+    completa no se pueden provocar en el panel; pasan por el mismo recolocado con debounce.
+
 ### Pendiente
 
-- B2 barra superior que cambia de tamaño
 - B3 aciertos de los ayudantes (auditoría con el motor real)
 - B4 rediseño de la mesa 5 (herencias, dos monedas, monedas del escritorio)
 

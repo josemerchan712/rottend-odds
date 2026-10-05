@@ -412,6 +412,10 @@ Empieza al pagar la mesa 4 con el estado real de una partida (d) de la mesa 4 (q
 - **Sin servidor**: sin `VITE_API_URL` el menú no enseña la sección en línea y al saldar deudas solo se avisa.
 - **Publicación**: web estática en Cloudflare (Workers con assets, `wrangler.jsonc`, `public/_headers`); pasos en DEPLOY.md. Pantalla de carga, favicon, descripción e imagen para compartir; aviso en pantallas táctiles o de menos de 900x480; exportar e importar la partida (JSON) en Ajustes.
 
+## 4h. Sonido (sesión 5)
+
+Todo sintetizado con Web Audio (`src/audio.ts`): ambiente por sala, ruleta, fichas, carretes, dados, cartas, moneda, acordes de ganar/perder/jackpot y un susurro al perder mucho. Volumen de Ajustes; **N** silencia.
+
 ## 5. Conversión de monedas entre mesas
 
 - Cada mesa tiene su moneda (fichas, monedas, etc.).

@@ -72,9 +72,17 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
   Verificado con `vite preview`: arranca, carga una partida con la mesa 5 abierta, el Dueño habla al pagar y sale
   la pantalla final; sin errores en consola.
 
+- [x] **B6 Sonido (opcional).** Web Audio sintetizado en `src/audio.ts`, sin archivos: zumbido ambiente distinto
+  por mesa (dos sierras desafinadas con filtro que respira), tic de la ruleta que se espacia, fichas (comprar,
+  retirarse), carretes, dados, cartas, moneda (tintineo y giro), acordes de ganar, perder y jackpot, y un susurro
+  filtrado al perder una apuesta de al menos medio techo. Respeta el volumen de Ajustes; arranca con el primer gesto;
+  **N** silencia o reactiva todo (no se guarda: es por sesión). Solo suenan los resultados del jugador, no los de los
+  ayudantes.
+
 ### Pendiente
 
-- B6 sonido (opcional)
+- Nada de esta sesión. Revisar a oído los sonidos (no se han podido escuchar desde aquí) y los diálogos marcados
+  como pendientes de revisión (mesas 2 a 5).
 
 ---
 

@@ -5,7 +5,7 @@ import { mountEnding, renderEnding } from './ui/ending';
 import { gameSummary, isGameFinished } from './game/summary';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
-import { setVolume, unlockAudio } from './audio';
+import { isMuted, outcomeSound, setAmbient, setMuted, setVolume, sfx, unlockAudio } from './audio';
 import { CONFIG } from './game/config';
 import { continueGame, continueInfo, startNewGame } from './game/menu';
 import { defaultRng } from './game/rng';
@@ -240,31 +240,36 @@ function activeTable(): TableId {
 }
 
 scene.onSpinShown = (spin) => {
+  if (state) outcomeSound(spin.bettor, spin.outcome === 'jackpot' ? 'jackpot' : spin.delta > 0 ? 'gana' : 'pierde', spin.bet, currentMaxBet(state));
   const w = watches[1];
   if (w && state) noteSpinShown(w, spin, currentMaxBet(state));
 };
 cardsScene.onHandShown = (hand) => {
+  if (state) outcomeSound(hand.bettor, hand.jackpot > 0 ? 'jackpot' : hand.result === 'gana' ? 'gana' : 'pierde', hand.bet, cardsCeiling(state.cards));
   const w = watches[4];
   if (!w || !state) return;
   noteSpinShown(w, { bettor: hand.bettor, bet: hand.bet, outcome: hand.jackpot > 0 ? 'jackpot' : hand.result === 'gana' ? 'gana' : 'pierde' }, cardsCeiling(state.cards));
 };
 coinScene.onChainShown = (chain) => {
+  const outcome = chain.jackpot > 0 ? 'jackpot' : chain.delta > 0 ? 'gana' : 'pierde';
+  if (state) outcomeSound(chain.bettor, outcome, chain.stake * 2 ** chain.wins, coinCeiling(state.coin));
   const w = watches[5];
   if (!w || !state) return;
-  const outcome = chain.jackpot > 0 ? 'jackpot' : chain.delta > 0 ? 'gana' : 'pierde';
   // Lo que se arriesgaba al final: la apuesta doblada tantas veces como caras.
   const atRisk = Math.min(chain.stake * 2 ** Math.max(chain.wins, 0), state.coin.balance + chain.stake * 2 ** chain.wins);
   noteSpinShown(w, { bettor: chain.bettor, bet: chain.result === 'perdido' ? atRisk : chain.stake, outcome }, coinCeiling(state.coin));
 };
 diceScene.onRollShown = (roll) => {
+  if (state) outcomeSound(roll.bettor, roll.jackpot > 0 ? 'jackpot' : roll.won ? 'gana' : 'pierde', roll.bet, diceCeiling(state.dice));
   const w = watches[3];
   if (!w || !state) return;
   noteSpinShown(w, { bettor: roll.bettor, bet: roll.bet, outcome: roll.jackpot > 0 ? 'jackpot' : roll.won ? 'gana' : 'pierde' }, diceCeiling(state.dice));
 };
 slotsScene.onSpinShown = (spin) => {
+  const outcome = spin.outcome === 'nada' ? 'pierde' : spin.outcome === 'jackpot' ? 'jackpot' : 'gana';
+  if (state) outcomeSound(spin.bettor, outcome, spin.bet, slotCeiling(state.slots));
   const w = watches[2];
   if (!w || !state) return;
-  const outcome = spin.outcome === 'nada' ? 'pierde' : spin.outcome === 'jackpot' ? 'jackpot' : 'gana';
   noteSpinShown(w, { bettor: spin.bettor, bet: spin.bet, outcome }, slotCeiling(state.slots));
 };
 // Cualquier clic o tecla durante la partida cuenta como actividad (para el silencio largo).
@@ -275,6 +280,9 @@ const activity = () => {
 screens.game.addEventListener('pointerdown', activity, true);
 sceneCanvas.addEventListener('pointerdown', activity);
 window.addEventListener('keydown', activity);
+// El audio solo arranca tras un gesto; cualquier clic o tecla vale (además de Continuar y Nueva partida).
+window.addEventListener('pointerdown', () => state && unlockAudio());
+window.addEventListener('keydown', () => state && unlockAudio());
 
 const api = createApi();
 let session: Session | null = loadSession(localStorage, sessionKey, Date.now());
@@ -288,6 +296,7 @@ const settings = loadSettings(localStorage, settingsKey);
 
 function show(next: Screen): void {
   screen = next;
+  setAmbient(next === 'game' && state ? state.activeTable : null);
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
   if (next === 'menu') renderMenu(menuUi, continueInfo(localStorage, saveKey), currentSession()?.displayName ?? null);
   if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
@@ -345,6 +354,7 @@ function updateTableFade(current: GameState, dt: number): void {
     const firstVisit = target !== null && !target.visited;
     if (target) target.visited = true;
     current.activeTable = tableFade.to;
+    setAmbient(tableFade.to);
     rooms = createRoomState();
     scene.reset(current);
     slotsScene.reset(current);
@@ -414,7 +424,7 @@ sceneCanvas.addEventListener('click', (event) => {
     return;
   }
   if (target?.kind === 'zone') {
-    if (!target.locked && canBetManually(rooms)) playerBet(state, target.zone.choice, defaultRng);
+    if (!target.locked && canBetManually(rooms) && playerBet(state, target.zone.choice, defaultRng)) sfx('roulette');
     return;
   }
   if (!canCollectTrash(rooms)) return;
@@ -440,7 +450,7 @@ function clickDice(current: GameState, point: { x: number; y: number }): void {
   else if (hit?.kind === 'target' && !hit.locked) selectTarget(dice, hit.target);
   else if (hit?.kind === 'die') {
     const roll = openRoll(dice);
-    if (roll) reroll(dice, roll, hit.die, defaultRng);
+    if (roll && reroll(dice, roll, hit.die, defaultRng)) sfx('dice');
   } else if (hit?.kind === 'accept') closeOpenRoll(dice);
   else if (hit?.kind === 'roll') rollDiceNow();
 }
@@ -459,10 +469,11 @@ function cardsAction(kind: 'deal' | 'hit' | 'stand' | 'accept' | 'discard'): voi
   const cards = state.cards;
   const hand = cards.hand;
   if (kind === 'deal') {
-    if (!hand || hand.status === 'fin') playerDeal(cards, defaultRng);
+    if ((!hand || hand.status === 'fin') && playerDeal(cards, defaultRng)) sfx('card');
     return;
   }
   if (!hand || hand.status === 'fin') return;
+  sfx('card');
   if (kind === 'hit') hitCard(cards, hand, defaultRng);
   else if (kind === 'stand') standHand(cards, hand, defaultRng);
   else if (kind === 'accept') acceptBust(cards, hand);
@@ -484,14 +495,21 @@ function coinAction(kind: 'bet' | 'more' | 'stop' | 'second' | 'accept'): void {
   if (kind === 'bet') {
     if (chainInPlay(coin)) return;
     const chip = selectedCoinChip(coin);
-    if (chip.affordable) startChain(coin, { bettor: 'jugador', stake: chip.amount }, defaultRng);
+    if (chip.affordable && startChain(coin, { bettor: 'jugador', stake: chip.amount }, defaultRng)) sfx('coin');
     return;
   }
   if (!chain || chain.status === 'fin') return;
-  if (kind === 'more') continueChain(coin, chain, defaultRng);
+  if (kind === 'more') {
+    if (continueChain(coin, chain, defaultRng)) sfx('coin');
+  }
   else if (kind === 'stop') {
-    if (cashOut(coin, chain)) coinScene.notifyResolved();
-  } else if (kind === 'second') useSecondChance(coin, chain, defaultRng);
+    if (cashOut(coin, chain)) {
+      sfx('chip');
+      coinScene.notifyResolved();
+    }
+  } else if (kind === 'second') {
+    if (useSecondChance(coin, chain, defaultRng)) sfx('coin');
+  }
   else {
     acceptLoss(coin, chain);
     coinScene.notifyResolved();
@@ -501,13 +519,13 @@ function coinAction(kind: 'bet' | 'more' | 'stop' | 'second' | 'accept'): void {
 /** El jugador tira los dados (solo en el bar). Una tirada perdida abierta se acepta al tirar otra. */
 function rollDiceNow(): void {
   if (!state || !canBetManually(rooms) || diceScene.rollInFlight()) return;
-  playerRoll(state.dice, defaultRng);
+  if (playerRoll(state.dice, defaultRng)) sfx('dice');
 }
 
 /** El jugador tira de la palanca (solo en la sala de las tragaperras). */
 function spinSlots(): void {
   if (!state || !canBetManually(rooms)) return;
-  playerSpin(state.slots, defaultRng);
+  if (playerSpin(state.slots, defaultRng)) sfx('reels');
 }
 
 sceneCanvas.addEventListener('mousemove', (event) => {
@@ -530,6 +548,12 @@ window.addEventListener('keydown', (event) => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
   if (event.key === 'f' || event.key === 'F') {
     void toggleFullscreen(root);
+    return;
+  }
+  // N: silencio (todo el sonido) / volver a oír.
+  if (event.key === 'n' || event.key === 'N') {
+    setMuted(!isMuted());
+    if (screen === 'game' && state) showNote(isMuted() ? 'Sonido silenciado (N)' : 'Sonido activado (N)');
     return;
   }
   if (screen !== 'game' || !state) return;
@@ -763,7 +787,7 @@ bindControls(
 for (const id of SLOT_UPGRADE_IDS) {
   slotsUi.shop[id].buy.addEventListener('click', () => {
     if (!state) return;
-    buySlotUpgrade(state.slots, id);
+    if (buySlotUpgrade(state.slots, id)) sfx('chip');
     renderHud(state);
   });
 }
@@ -784,7 +808,7 @@ slotsUi.statsToggle.addEventListener('click', () => {
 for (const id of DICE_UPGRADE_IDS) {
   diceUi.shop[id].buy.addEventListener('click', () => {
     if (!state) return;
-    buyDiceUpgrade(state.dice, id);
+    if (buyDiceUpgrade(state.dice, id)) sfx('chip');
     renderHud(state);
   });
 }
@@ -805,7 +829,7 @@ diceUi.statsToggle.addEventListener('click', () => {
 for (const id of CARD_UPGRADE_IDS) {
   cardsUi.shop[id].buy.addEventListener('click', () => {
     if (!state) return;
-    buyCardsUpgrade(state.cards, id);
+    if (buyCardsUpgrade(state.cards, id)) sfx('chip');
     renderHud(state);
   });
 }
@@ -826,7 +850,7 @@ cardsUi.statsToggle.addEventListener('click', () => {
 for (const id of COIN_UPGRADE_IDS) {
   coinUi.shop[id].buy.addEventListener('click', () => {
     if (!state) return;
-    buyCoinUpgrade(state.coin, id);
+    if (buyCoinUpgrade(state.coin, id)) sfx('chip');
     renderHud(state);
   });
 }

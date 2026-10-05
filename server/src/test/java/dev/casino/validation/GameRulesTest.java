@@ -28,7 +28,7 @@ class GameRulesTest {
 
     @Test
     void leeLosNumerosDelJuego() {
-        assertThat(rules.saveVersion()).isEqualTo(11);
+        assertThat(rules.saveVersion()).isEqualTo(12);
         assertThat(rules.debtAmount()).isEqualTo(10_000_000);
         assertThat(rules.upgrades()).containsKeys("luck", "maxBet", "crupier", "dozenBet", "numberBet",
                 "tweezers", "bigBag", "cleaner");

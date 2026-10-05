@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(11));
+                .andExpect(jsonPath("$.saveVersion").value(12));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -328,6 +328,26 @@ class SaveControllerTest extends ApiTestSupport {
         stats.put("paidAt", java.util.List.of(400, 0, 0, 0, 0));
         state.put("endingSeen", false);
         putSave(token, null, bad).andExpect(status().isOk());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mesa5CadenasDeLaVersion12() throws Exception {
+        String token = registerUser();
+        Map<String, Object> save = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> state = (Map<String, Object>) save.get("state");
+        Map<String, Object> coin = (Map<String, Object>) state.get("coin");
+        // Una cadena reciente con la fatiga de la v11 y contadores imposibles: se rechaza.
+        coin.put("recentChains", java.util.List.of(Map.of("wins", -1, "fatigue", 2, "decay", 1.5, "value", -3)));
+        putSave(token, null, save)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("coin.recentChains[0].fatigue"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("coin.recentChains[0].wins"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("coin.recentChains[0].decay"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("coin.recentChains[0].value"))));
+        // Bien formada (v12): se acepta.
+        coin.put("recentChains", java.util.List.of(Map.of("wins", 2, "decay", 1, "value", 120)));
+        putSave(token, null, save).andExpect(status().isOk());
     }
 
     @Test

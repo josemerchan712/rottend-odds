@@ -139,6 +139,7 @@ public class SaveValidator {
         boolean coinPaid = parseTable(state.path("coin"), new TableSpec("coin", "mesa 5", rules.coinUpgrades(), "imp",
                 "el diablillo coronado", rules.coinHelperProfiles(), "mesa 4"), coinOpen, errors);
         parseCoinExtras(state.path("coin"), coinOpen, errors);
+        parseCoinChains(state.path("coin"), errors);
         parseEnding(state, new boolean[] {debtPaid, slotsPaid, dicePaid, cardsPaid, coinPaid}, playTime, errors);
         JsonNode active = state.path("activeTable");
         if (!active.isMissingNode() && (!active.isInt() || active.asInt() < 1 || active.asInt() > 5)) {
@@ -276,6 +277,48 @@ public class SaveValidator {
                 errors.add("stats.paidAt[" + i + "]: debe ser -1, 0 o un tiempo de juego hasta el total");
             } else if (value != 0 && !paid[i]) {
                 errors.add("stats.paidAt[" + i + "]: hay tiempo de pago sin la deuda de la mesa " + (i + 1) + " pagada");
+            }
+        }
+    }
+
+    /**
+     * Mesa 5 (guardado v12, multiplicadores acumulativos): cada cadena guardada (la del jugador, la del
+     * diablillo y las recientes) es null o un objeto con `wins` y `decay` enteros no negativos y `value`
+     * un número finito no negativo; el campo `fatigue` de la v11 ya no existe (pasó a `decay`).
+     */
+    private static void parseCoinChains(JsonNode coin, List<String> errors) {
+        if (!coin.isObject()) return;
+        List<JsonNode> chains = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        chains.add(coin.path("chain"));
+        names.add("coin.chain");
+        chains.add(coin.path("helper").path("chain"));
+        names.add("coin.helper.chain");
+        JsonNode recent = coin.path("recentChains");
+        if (recent.isArray()) {
+            for (int i = 0; i < recent.size(); i++) {
+                chains.add(recent.get(i));
+                names.add("coin.recentChains[" + i + "]");
+            }
+        }
+        for (int i = 0; i < chains.size(); i++) {
+            JsonNode chain = chains.get(i);
+            String name = names.get(i);
+            if (chain.isMissingNode() || chain.isNull()) continue;
+            if (!chain.isObject()) {
+                errors.add(name + ": debe ser un objeto o null");
+                continue;
+            }
+            if (chain.has("fatigue")) errors.add(name + ".fatigue: campo de una versión anterior (ahora decay)");
+            for (String field : new String[] {"wins", "decay"}) {
+                JsonNode n = chain.path(field);
+                if (!n.isMissingNode() && (!n.isIntegralNumber() || n.asLong() < 0 || n.asLong() > 1000)) {
+                    errors.add(name + "." + field + ": debe ser un entero no negativo");
+                }
+            }
+            JsonNode value = chain.path("value");
+            if (!value.isMissingNode() && (!value.isNumber() || !Double.isFinite(value.asDouble()) || value.asDouble() < 0 || value.asDouble() > MAX_SANE_NUMBER)) {
+                errors.add(name + ".value: debe ser un número finito no negativo");
             }
         }
     }

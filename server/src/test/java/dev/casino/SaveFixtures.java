@@ -42,7 +42,7 @@ public final class SaveFixtures {
         state.put("coin", coin(0, 0, coinUpgrades(), false));
         state.put("endingSeen", false);
         Map<String, Object> file = new HashMap<>();
-        file.put("version", 11);
+        file.put("version", 12);
         file.put("savedAt", 1_700_000_000_000L);
         file.put("state", state);
         return file;

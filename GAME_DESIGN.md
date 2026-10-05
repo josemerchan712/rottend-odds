@@ -331,7 +331,7 @@ Empieza al pagar la deuda de la mesa 3 con el estado real de una partida (d) de 
 
 - **Sala**: el fondo de la mesa 4; la Crupier (96 px) tras la mesa, recortada por ella, con respiración; un tapete delante con las cartas de la banca y del jugador, que salen del zapato, se deslizan y **se voltean** (la de la banca boca abajo hasta que te plantas); caras dibujadas en código (papel viejo, índices, palo y una corona en las figuras) y el dorso del arte; **PEDIR, PLANTARSE, REPARTIR y ACEPTAR impresos en el propio tapete**; la última carta resaltada con una "D" para descartar; totales, manos, descartes, pozo y 7·7·7; la columna de fichas; el esqueleto a la derecha. Teclas: Espacio (repartir / plantarse), P, S, D, 1-4.
 
-## 4f. Mesa 5: Doble o nada (hecha, sesión 5)
+## 4f. Mesa 5: la moneda del Dueño (hecha, sesión 5; multiplicadores acumulativos, sesión 8)
 
 **Prestamista**: el Dueño de la casa. **Sin trastienda ni trabajo**. **Moneda**: oro. **Deuda**: 10M (la última: pagarla es el final del juego).
 
@@ -340,64 +340,66 @@ Empieza al pagar la deuda de la mesa 3 con el estado real de una partida (d) de 
 - Al pagar la deuda de la mesa 4 sale **"Mesa 4 saldada"** y la pestaña **MESA 5**. Las mesas 1 a 4 siguen solas con sus ayudantes.
 - **Conversión**: `oro/s = max(1, 0,3 · (ingreso/s de la mesa 4)^0,5)` (ingreso esperado del esqueleto). Sin pasivo (solo el suelo) la mesa no se termina en una hora.
 
-### 4f.2 El juego (rediseño de la sesión 6)
+### 4f.2 El juego (multiplicadores acumulativos, sesión 8)
 
-- Se apuesta una cantidad (las fichas de siempre: 1%, 10%, 50% del techo y TODO) y se lanza una moneda: **CARA** multiplica lo acumulado y sigue en juego; **CRUZ** lo pierde todo. Tras cada cara se decide **RETIRARSE** (cobrar) o **SEGUIR**. Como mucho **10 caras** por cadena.
-- **Dos monedas**, elegidas antes de cada lanzamiento (botón en el paño y Q):
-  - **Justa**: paga ×2. Probabilidad `base = suerte − penalización por apostar fuerte`; primer lanzamiento `47% → 97%` con la suerte.
-  - **Cargada** (mejora de 5.000 de oro): paga ×3 y cuenta como un paso. Probabilidad `base · 2/3 · (1 + 0,06 · progreso de la suerte)`: mismo valor esperado de base que la justa y la suerte la mejora más.
-  - La **fatiga** resta igual a las dos (5 puntos por cara seguida; el temple la baja hasta 2). Con fatiga escalada a 2/3 en la cargada, "siempre cargada" dominaba.
-  - Tooltip: probabilidad y pago de cada moneda (sin porcentajes de equilibrio).
+- Se apuesta una cantidad (las fichas de siempre: 1%, 10%, 50% del techo y TODO) y se lanza una moneda: **CARA** multiplica lo acumulado por el **factor del paso** y sigue en juego; **CRUZ** lo pierde todo. Tras cada cara se decide **RETIRARSE** (cobrar) o **SEGUIR**.
+- **Factores crecientes**: el paso i paga **×f_i con f_i = i + `CHAIN_FACTOR_OFFSET`** (constante de `config.ts`, 2: ×3, ×4, ×5, ×6; apostando 2: 6, 24, 120, 720). Con offset 1 serían ×2, ×3, ×4 (apostando 2: 4, 12, 48). Lógica, interfaz y tests dependen solo de esa constante.
+- **Cadena de 4 aciertos** (antes 10; ×3·4·5·6 = ×360): con estos pagos, 10 aciertos serían ×239 millones y el tope del 25% de la deuda se alcanza en el tercer o cuarto paso. Con 7-8 (lo sugerido) la cadena completa sería prácticamente imposible (probabilidad ∝ 1/f): con 5 el jackpot no llegaba al 1% del oro; con 4 aporta el ~6% pedido.
+- **Probabilidad** (sustituye a la fatiga): la de un paso con factor f es **ventaja / f** (1/f sería justo). La ventaja va de **0,9** sin suerte (la casa gana en todos los pasos) a **2,0** con suerte máxima (curva 1,6), menos la penalización por apostar fuerte (fracción del techo^1,5 × 0,35 sin suerte, 0,30 con suerte máxima), y además **cae ×0,75 por paso**. Así, con suerte máxima los primeros pasos compensan (valor esperado ×2,0, ×1,5, ×1,1) y el último no (×0,84 sin herencias): "seguir siempre" no es gratis. Tope del 95%, suelo del 2%.
+  - **Temple**: suaviza la caída del denominador: f_1 × (f / f_1)^γ con γ = 1 − 0,04 × nivel (0,8 al máximo). No cambia el primer paso.
+  - **Moneda cargada** (mejora de 5.000 de oro): acierta **2/3** de lo que acierta la justa y paga **×1,5 el factor** del paso (mismo valor esperado de base); cuenta como un paso; la suerte la mejora hasta un 6% más.
 - **Tope por cadena**: el 25% de la deuda (2,5M); al llegar se cobra sola.
-- **Jackpot**: completar las **10 caras**; además del valor de la cadena paga el **pozo progresivo** (semilla 400.000, +35% de cada apuesta, tope 25% de la deuda). Indicador `n/10` y pozo en el paño. Aporta un **4-9%** del oro según la estrategia (objetivo ~6%).
-- **Herencias** (sustituyen a la segunda oportunidad): cada mesa pagada presta su mecánica como herramienta con **cargas por cadena** (nivel 0-3 = cargas; se rellenan al empezar cada cadena). Se compran en el cajón **Herencias** (E) con la **moneda de su mesa de origen** (las otras mesas, con sus ayudantes, tienen cientos de millones cuando se llega aquí). Botón en el paño y tecla:
+- **Jackpot**: completar los **4 aciertos**; además del valor de la cadena paga el **pozo progresivo** (semilla 1M, +50% de cada apuesta, tope 25% de la deuda). Aporta un **~5-6%** del oro.
+- **Herencias** (cargas por cadena, nivel 0-3; se compran en el cajón Herencias con la moneda de su mesa de origen; costes sin cambios):
 
-| Herencia | Mesa | Tecla | Efecto | Costes por nivel |
-|---|---|---|---|---|
-| Cero dorado | Ruleta | Z | Tras una cruz con alguna cara, salva la cadena y devuelve el **25%** de lo acumulado | 200M / 315M / 600M fichas |
-| Retener | Tragaperras | H | El siguiente acierto no suma fatiga | 100M / 170M / 350M monedas |
-| Relanzar | Dados | S | Tras una cruz con alguna cara, repite el lanzamiento con **8 caras más de fatiga** (solo para ese lanzamiento) | 50M / 80M / 160M chapas |
-| Marcar | Cartas | C | Enseña el resultado del próximo lanzamiento antes de decidir | 15M / 40M / 90M fichas negras |
+| Herencia | Mesa | Tecla | Efecto (sesión 8) |
+|---|---|---|---|
+| Cero dorado | Ruleta | Z | Tras una cruz con alguna cara, salva la cadena y devuelve el **25%** de lo acumulado |
+| Retener | Tragaperras | H | **Congela la caída del siguiente paso**: ese lanzamiento tiene la probabilidad del paso anterior (con su ventaja) aunque paga su factor; solo ese paso |
+| Relanzar | Dados | S | Tras una cruz con alguna cara, repite el lanzamiento con la probabilidad de **3 pasos más adelante** |
+| Marcar | Cartas | C | Enseña el resultado del próximo lanzamiento antes de decidir |
 
-- **Monedas del escritorio**: la cadena se ve como monedas reales: el montón del jugador crece con cada cara, el Dueño empuja monedas hacia él al ganar y barre el montón al perder (animación por código con el sprite de moneda). El Dueño habla en los hitos **3, 6 y 9** caras (mismo motor y enfriamientos que el resto de líneas).
-- **Ayudante**: el **diablillo coronado**. Criterio común de 4e; paradas prudente 1-2, normal 1-4, agresivo 2-10. Usa las herencias con un criterio simple: retener si lo tiene, marcar y retirarse si sale cruz, relanzar y luego cero dorado tras una cruz con alguna cara. El agresivo usa la cargada si su probabilidad es ≥ 55%.
+- **Interfaz**: el paño muestra `n/4`, **SIGUIENTE ×f → valor** (con la moneda elegida), **EN JUEGO** (lo que cobras), los botones de moneda con su factor (JUSTA ×4 / CARGADA ×6) y **RETIRARSE <cantidad>**. Tooltips con la probabilidad real del siguiente paso, su factor y lo acumulado que quedaría. Los montones del escritorio siguen creciendo con la cadena; el flotante dice CARA ×f.
+- **El Dueño** habla a los **2 aciertos** y a los **3** (a uno del jackpot) (`CONFIG.coin.milestones`).
+- **Ayudante**: el diablillo coronado, con el criterio común de 4e y sus mínimos (prudente ≥ 50%, normal ≥ 40%, agresivo libre). Con la ventaja de 2,0 el primer paso llega al 67%: el prudente juega desde la fase alta. Herencias con el mismo criterio sencillo.
 
 ### 4f.3 Mejoras
 
 | Mejora | Coste base | Crecimiento | Niveles |
 |---|---|---|---|
-| Suerte | 560 | 1,25 | 20 |
-| Apuesta máxima (techo 3 × 2,5^nivel, máx. 28.610) | 350 | 2 | 10 |
+| Suerte | 600 | 1,25 | 20 |
+| Apuesta máxima (techo 2 × 2,5^nivel, máx. 19.073) | 350 | 2 | 10 |
 | Moneda cargada | 5.000 | - | 1 |
 | Diablillo coronado | 1.200 | - | 1 |
 | Velocidad / perfil / suerte del diablillo | 700 / 2.500 / 1.800 | 1,6 / 4 / 1,8 | 15 / 2 / 10 |
-| Temple (−0,6 puntos de fatiga por nivel) | 3.000 | 2,2 | 5 |
+| Temple (la caída, ^(1 − 0,04 × nivel)) | 3.000 | 2,2 | 5 |
 
 ### 4f.4 Simulación (`npm run simulate:coin -- --quick --cache`, 40 partidas)
 
-Empieza al pagar la mesa 4 con el estado real de una partida (d) de la mesa 4. Cada decisión gasta una acción (0,5 s) y entre lanzamientos pasa al menos 1 s. La estrategia óptima decide apuesta, moneda y parada por programación dinámica sobre (caras, valor, fatiga, cargas) con crecimiento logarítmico; "herencias medias" = las cuatro a nivel 2, compradas cuando llega la moneda de su mesa (~8 min dentro de la mesa 5).
+Empieza al pagar la mesa 4 con el estado real de una partida (d) de la mesa 4. La estrategia óptima decide por programación dinámica sobre (caras, valor, caída, cargas): **la apuesta con el logaritmo** (Kelly; con el valor esperado apostaba todo, quebraba y tardaba más) y **la moneda y la parada con el valor esperado** (con el logaritmo era demasiado prudente para llegar a 10M y "seguir hasta el final" llegaba antes). Todas las estrategias con herencias miran con Marcar antes de decidir desde la segunda cara. La dispersión es grande (p10-p90 de 5 a 19 min): el error de una media de 40 partidas es de ~0,7 min.
 
 | Estrategia | Media | p10 | p90 | Tramo final | Jackpot | Mesas 1-5 |
 |---|---|---|---|---|---|---|
-| (b) Siempre TODO, justa, sigue hasta 10 | 12:25 | 11:36 | 13:15 | 0:18 | 5% | 59:32 (quiebra 38% en la fase media) |
-| (bj) Siempre justa (óptima) | 11:20 | 10:03 | 12:23 | 0:23 | 9% | 58:27 |
-| (bc) Siempre cargada (óptima) | 11:19 | 10:14 | 12:37 | 0:26 | 0% | 58:26 |
-| (b3) Apuesta óptima, sigue hasta 10 | 12:17 | 10:47 | 13:25 | 0:28 | 5% | 59:24 |
-| (b4) Apuesta óptima, se retira a la primera | 14:54 | 14:23 | 15:21 | 0:29 | 0% | 62:01 |
-| (c) Óptima, sin herencias | 17:43 | 16:49 | 18:41 | 1:14 | 0% | 64:50 |
-| (d) Óptima, las dos monedas, herencias medias | **11:37** | 9:59 | 13:11 | **0:25** | 4% | **58:44** |
+| (d) Óptima, las dos monedas, herencias medias | **12:09-13:25** | 4:35-6:05 | 18:46-19:42 | **1:21** | 5-6% | **59:16-60:32** |
+| (b) Siempre TODO, justa, sigue hasta el final | 12:53-13:40 | 7:20-7:53 | 15:57-16:26 | 1:18 | 6% | quiebra 15-45% en las fases media y alta |
+| (bj) Siempre justa (óptima) | 11:05 | 5:20 | 18:50 | 1:20 | 8% | 58:12 |
+| (bc) Siempre cargada (óptima) | 12:00 | 5:09 | 17:49 | 1:27 | 5% | 59:07 |
+| (b3) Apuesta óptima, sigue hasta el final | 12:10 | 5:06 | 19:42 | 1:22 | 6% | 59:17 |
+| (bn) Apuesta óptima, sigue hasta 3 aciertos | 15:38 | 8:40 | 19:42 | 1:13 | 6% | 62:45 |
+| (b4) Apuesta óptima, se retira a la primera | 20:45 | 19:46 | 21:42 | 1:59 | 0% | 67:52 |
+| (c) Óptima, sin herencias | 22:13 | 11:54 | 38:57 | 4:48 | 12% | 69:20 |
 
-Cada herencia sola (nivel 2) frente a (c): Cero dorado −5,6%, Retener −11,3%, Relanzar −17,2%, Marcar −11,3%. Todas dan ventaja medible y ninguna es obligatoria ((c) termina siempre).
+Cada herencia sola (nivel 2) frente a (c): Cero dorado −7,1%, Retener −35,1%, Relanzar −18,3%, Marcar −22,6%. Todas dan ventaja medible y ninguna es obligatoria ((c) termina siempre). Diablillo con perfil fijo (12 partidas): sin quiebras en ninguna fase con ningún perfil. Sin el pasivo de la mesa 4: 35:43.
 
-- Mesa 5 de ~12 minutos; **mesas 1 a 5 ≈ 59 min**.
-- Ninguna estrategia trivial es claramente mejor: siempre justa o siempre cargada quedan a ±3% de (d) (empate dentro del ruido de 40 partidas); siempre hasta 10 tarda un 6% más (y con TODO quiebra); retirarse siempre a la primera, un 28% más.
-- **Tramo final** de 25 s, por debajo de los 45-90 s pedidos. Propuesta mínima (no aplicada): bajar el tope por cadena al 10% de la deuda (las últimas cadenas darían menos) podría llevar el final a ~45 s, a costa de alargar algo toda la mesa; sin simular, se deja anotado.
+- Mesa 5 de ~12-13 minutos con la mejor estrategia; **mesas 1 a 5 ≈ 59-60 min**; **tramo final 1:21** (dentro de 45-90 s).
+- Ninguna estrategia trivial es claramente mejor: siempre justa, siempre cargada y "seguir hasta el final" quedan dentro del ruido de (d); "siempre TODO" empata en media pero quiebra a menudo; retirarse siempre a la primera tarda un 60% más y "seguir hasta 3" un 20% más. (bj, bc, b3, bn, b4 y c se midieron con el Cero dorado al 15%; (d), (b) y el estudio de herencias con el 25% final.)
+- Las cadenas son cortas (casi nunca pasan de 2-3 aciertos), así que la regla de parada pesa poco: por eso "seguir hasta el final" empata con la óptima en vez de perder claramente.
 
 ### 4f.5 Escena y diálogo
 
 - **Despacho**: el fondo de la mesa 5 (lámpara de araña, retratos sin cara, montones de oro); el Dueño (96 px, 3 fases) sentado tras el escritorio; la **moneda** (cara: el rey coronado; cruz: la calavera) gira sobre el escritorio; los montones de monedas de la cadena y de la casa; el paño (262x104) con `n/10`, pozo, "en juego", selector de moneda, las cuatro herencias con sus cargas y los botones **APOSTAR / SEGUIR / RETIRARSE** (o **ACEPTAR** tras una cruz rescatable). Teclas: Espacio (apostar, seguir o aceptar), R (retirarse), Q (moneda), Z/H/S/C (herencias), E (cajón Herencias), 1-4 fichas.
-- **El Dueño** (`src/content/dialogue5.es.ts`, pendiente de revisión): señorial, pausado, casi paternal y absoluto. ≥5 líneas por disparador y fase, ≤90 caracteres; líneas para los hitos de 3, 6 y 9 caras y para el pago final.
-- Guardado **v10** (de la v9 se quitan las segundas oportunidades; herencias a 0 y moneda justa; una cadena a medias se cobra al cargar con su valor). Servidor: versión 10 y validación estructural de las herencias (enteros de 0 al nivel máximo, solo con la mesa abierta) y de la moneda elegida (la cargada exige su mejora). `?dev=mesa5` con hueco de guardado aparte y moneda de las otras mesas para probar las herencias.
+- **El Dueño** (`src/content/dialogue5.es.ts`, pendiente de revisión): señorial, pausado, casi paternal y absoluto. ≥5 líneas por disparador y fase, ≤90 caracteres; líneas para los hitos (sesión 8: 2 y 3 aciertos; las del jackpot dicen "cuatro caras") y para el pago final.
+- Guardado **v12** (sesión 8: la fatiga de las cadenas pasa a `decay`; una cadena a medias de un guardado anterior se cobra con la regla antigua, ×2 por cara). Antes, v10 (de la v9 se quitan las segundas oportunidades; herencias a 0 y moneda justa). Servidor: versión 10 y validación estructural de las herencias (enteros de 0 al nivel máximo, solo con la mesa abierta) y de la moneda elegida (la cargada exige su mejora). `?dev=mesa5` con hueco de guardado aparte y moneda de las otras mesas para probar las herencias.
 
 ## 4e. Ayudantes: criterio común (sesión 5, auditoría)
 

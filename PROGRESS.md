@@ -66,6 +66,63 @@ Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.
     al lógico. Capturas sana y rota en reposo, girando y al caer, con dpr 1 y 1,5, en ventana y en pantalla
     completa (build de producción), 0 errores: `docs/capturas/sesion8/ruleta-*.jpg`.
 
+- [x] **B3 Mesa 5: multiplicadores acumulativos** (detalle y tablas en GAME_DESIGN 4f).
+  - Cada acierto multiplica por **f_i = i + `CHAIN_FACTOR_OFFSET`** (2 en `config.ts`: ×3, ×4, ×5, ×6; apostando 2:
+    6, 24, 120, 720). Lógica, interfaz y tests dependen solo de la constante. La cargada acierta 2/3 y paga ×1,5 el
+    factor (mismo valor esperado de base).
+  - **Probabilidad**: ventaja / f (1/f sería justo). Ventaja de 0,9 (la casa) a 2,0 con suerte máxima, menos la
+    penalización por apostar fuerte, y **×0,75 por paso** (sin eso, con suerte todos los pasos compensaban y "seguir
+    siempre" empataba con la óptima). La fatiga desaparece: el campo `fatigue` de las cadenas pasa a `decay` (pasos
+    de caída). **Retener** congela la caída del siguiente paso (solo ese); **Relanzar** repite con la probabilidad de 3
+    pasos más adelante; **Temple** suaviza la caída del denominador (γ de 1 a 0,8).
+  - **Cadena de 4** aciertos con el jackpot en la completa (×360): con 10 el tope del 25% llegaba en 3-4 pasos y el
+    resto no tenía sentido; con 7-8 la cadena completa sería imposible (∝ 1/f); con 5 el jackpot no pasaba del 1-2%.
+  - Interfaz: `n/4`, «SIGUIENTE ×f → valor», «EN JUEGO», botones de moneda con su factor, «RETIRARSE <cantidad>»,
+    flotante «CARA ×f»; tooltips con probabilidad real, factor y valor resultante (sin % de saldo). Hitos del Dueño a
+    los 2 y 3 aciertos (líneas reescritas: «Dos…», «Tres. Una más…»; las del jackpot, «Cuatro caras»; pendientes de
+    revisión). Captura del panel: `docs/capturas/sesion8/mesa5-panel-dpr1.5.png`.
+  - Guardado **v12** (migración: `fatigue` → `decay`; las cadenas a medias de guardados anteriores se cobran con la
+    regla antigua, ×2 por cara o su valor guardado). Servidor v12 con validación estructural de las cadenas (sin
+    `fatigue`, `wins`/`decay` enteros no negativos, `value` finito). plausibility.json regenerada (--full).
+  - **Calibración** (40 partidas, --quick): (d) óptima **12:09-13:25** (dos tandas con la configuración final),
+    tramo final **1:21**, jackpot **5-6%**, mesas 1-5 **59-60 min**; siempre TODO 12:53-13:40 con quiebras del 15-45%;
+    siempre justa 11:05, siempre cargada 12:00, seguir hasta el final 12:10 (dentro del ruido: p10-p90 de 5 a 19 min,
+    error de la media ~0,7 min); seguir hasta 3 15:38; retirarse a la primera 20:45; sin herencias 22:13. Herencias
+    solas frente a (c): Cero dorado −7%, Retener −35%, Relanzar −18%, Marcar −23%. Diablillo: sin quiebras con ningún
+    perfil (el prudente juega desde la fase alta, cuando el primer paso pasa del 50%).
+  - Simulador: la óptima elige la apuesta con Kelly (logaritmo) y la moneda y la parada con el valor esperado; todas
+    las estrategias con herencias miran con Marcar antes de decidir (antes la óptima no miraba si iba a retirarse).
+
+## Cierre de la sesión 8
+
+- **Bug de los cajones**: el segundo cajón del lado izquierdo (Herencias) seguía anclado a `left: 0`, así que con
+  «Mesa» abierto su pestaña quedaba encima del contenido; el hueco transparente de un cajón abierto además tapaba
+  clics. Ahora las pestañas de un lado van apiladas y pegadas al borde exterior del cajón abierto (los cerrados se
+  desplazan 123 unidades); el cajón solo recibe el ratón en su pestaña y su cuerpo.
+- **Bug de la barra**: cada mesa decidía su modo con su propio texto («FICHAS NEGRAS 1,00B» desbordaba la mesa 4 en 20
+  unidades; en la 5 ya no se veía «Pagar deuda»). La pantalla completa no da más ancho (el escenario mide siempre 640
+  unidades). Ahora las partes variables tienen ancho reservado, el aviso del ayudante va debajo de la barra y un solo
+  modo se aplica a las cinco barras: completo en todas.
+- **Ruleta**: de la imagen se usan solo el aro de madera y el cono con su pomo (radios medidos: 648, 463 y 252 px);
+  la rota, con las proporciones de la sana. En código: el anillo de 37 casillas en orden europeo (18 negras, 18
+  blanco hueso alternadas, un cero verde), números de 14 px a lo largo del radio, desgaste de la rota; bola y
+  marcador como sprites que no giran. Negro y blanco siguen los colores de la ruleta real (`BLACK_NUMBERS`) para
+  alternarse; el jackpot cae en el cero con destello dorado.
+- **Probabilidades y cadena**: ventaja/f con ventaja 0,9 → 2,0 y caída ×0,75 por paso; cadena de 4 con jackpot.
+- **Números cambiados**: `CHAIN_FACTOR_OFFSET` 2; cadena 10 → 4; suerte 47-97% → ventaja 0,9-2,0 (tope 95%); fatiga →
+  caída ×0,75 por paso y temple γ −0,04/nivel; cargada ×3 → ×1,5 el factor; Relanzar 8 caras de fatiga → 3 pasos;
+  penalización por apostar fuerte 0,2/0,04 → 0,35/0,30; techo 3 × 2,5^n → 2 × 2,5^n (máx. 19.073); pozo 400.000/+35%
+  → 1M/+50%; suerte de la mesa 5 560 → 600; guardado 11 → 12.
+- **Decisiones por mi cuenta**: además de lo anterior, la ventaja también cae por paso (necesario para que seguir no
+  sea siempre rentable); Retener solo congela el siguiente paso (congelándolo para el resto de la cadena, las
+  herencias juntas eran obligatorias); la óptima del simulador decide la parada por valor esperado; hitos del Dueño a
+  los 2 y 3 aciertos. **Objetivos no alcanzados del todo**: "seguir hasta el final" y "siempre TODO" no ganan pero
+  empatan con la óptima dentro del ruido (las cadenas son tan cortas que la parada pesa poco; TODO a cambio quiebra a
+  menudo). Propuesta mínima, sin aplicar: subir algo más la penalización por apostar fuerte (de 0,15 a 0,30 TODO
+  pasó de ganar por un 4-13% a empatar) para que TODO pierda claramente, a costa de alargar un poco la mesa.
+- **Tests y push**: cliente 320 en verde, servidor 30 en verde, `tsc` limpio y build correcto. Push de los tres
+  bloques a `origin/main` sin force. Sin desplegar.
+
 ## Sesión 7 (pantalla de título y pantalla final: ROTTEN ODDS)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.

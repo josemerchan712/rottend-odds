@@ -136,9 +136,10 @@ public class SaveValidator {
         boolean cardsPaid = parseTable(state.path("cards"), new TableSpec("cards", "mesa 4", rules.cardsUpgrades(), "skeleton",
                 "el esqueleto barajador", rules.cardsHelperProfiles(), "mesa 3"), debtPaid && slotsPaid && dicePaid, errors);
         boolean coinOpen = debtPaid && slotsPaid && dicePaid && cardsPaid;
-        parseTable(state.path("coin"), new TableSpec("coin", "mesa 5", rules.coinUpgrades(), "imp",
+        boolean coinPaid = parseTable(state.path("coin"), new TableSpec("coin", "mesa 5", rules.coinUpgrades(), "imp",
                 "el diablillo coronado", rules.coinHelperProfiles(), "mesa 4"), coinOpen, errors);
         parseCoinExtras(state.path("coin"), coinOpen, errors);
+        parseEnding(state, new boolean[] {debtPaid, slotsPaid, dicePaid, cardsPaid, coinPaid}, playTime, errors);
         JsonNode active = state.path("activeTable");
         if (!active.isMissingNode() && (!active.isInt() || active.asInt() < 1 || active.asInt() > 5)) {
             errors.add("activeTable: debe ser 1, 2, 3, 4 o 5");
@@ -247,6 +248,34 @@ public class SaveValidator {
                 errors.add("coin.coinChoice: debe ser justa o cargada");
             } else if (kind.equals("cargada") && coin.path("upgrades").path("loaded").asInt(0) < 1) {
                 errors.add("coin.coinChoice: la moneda cargada requiere su mejora");
+            }
+        }
+    }
+
+    /**
+     * Pantalla final (guardado v11): `endingSeen` es true o false y solo puede ser true con la deuda del
+     * Dueño pagada; `stats.paidAt` son 5 tiempos (0 = sin pagar, -1 = pagada antes de guardarse, o un
+     * tiempo de juego hasta el total) y solo una mesa pagada tiene tiempo. Faltar es válido.
+     */
+    private static void parseEnding(JsonNode state, boolean[] paid, double playTime, List<String> errors) {
+        JsonNode seen = state.path("endingSeen");
+        if (!seen.isMissingNode()) {
+            if (!seen.isBoolean()) errors.add("endingSeen: debe ser true o false");
+            else if (seen.asBoolean() && !paid[4]) errors.add("endingSeen: el final requiere la deuda de la mesa 5 pagada");
+        }
+        JsonNode paidAt = state.path("stats").path("paidAt");
+        if (paidAt.isMissingNode()) return;
+        if (!paidAt.isArray() || paidAt.size() != paid.length) {
+            errors.add("stats.paidAt: debe ser una lista de 5 tiempos");
+            return;
+        }
+        for (int i = 0; i < paid.length; i++) {
+            JsonNode t = paidAt.get(i);
+            double value = t.isNumber() ? t.asDouble() : Double.NaN;
+            if (!(value == -1 || (value >= 0 && value <= playTime + 1))) {
+                errors.add("stats.paidAt[" + i + "]: debe ser -1, 0 o un tiempo de juego hasta el total");
+            } else if (value != 0 && !paid[i]) {
+                errors.add("stats.paidAt[" + i + "]: hay tiempo de pago sin la deuda de la mesa " + (i + 1) + " pagada");
             }
         }
     }

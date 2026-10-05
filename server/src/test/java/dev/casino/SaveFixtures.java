@@ -40,8 +40,9 @@ public final class SaveFixtures {
         state.put("dice", dice(0, 0, diceUpgrades(), false));
         state.put("cards", cards(0, 0, cardsUpgrades(), false));
         state.put("coin", coin(0, 0, coinUpgrades(), false));
+        state.put("endingSeen", false);
         Map<String, Object> file = new HashMap<>();
-        file.put("version", 10);
+        file.put("version", 11);
         file.put("savedAt", 1_700_000_000_000L);
         file.put("state", state);
         return file;

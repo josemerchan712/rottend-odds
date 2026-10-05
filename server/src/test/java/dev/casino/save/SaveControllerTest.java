@@ -39,7 +39,7 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.verified").value(true))
-                .andExpect(jsonPath("$.saveVersion").value(10));
+                .andExpect(jsonPath("$.saveVersion").value(11));
 
         mvc.perform(get("/api/save").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -300,6 +300,34 @@ class SaveControllerTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.details", hasItem(containsString("sin la deuda de la mesa 4"))))
                 .andExpect(jsonPath("$.details", hasItem(containsString("requiere el diablillo coronado"))))
                 .andExpect(jsonPath("$.details", hasItem(containsString("activeTable"))));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void pantallaFinalValidacionEstructural() throws Exception {
+        String token = registerUser();
+        // Final visto sin haber pagado al Dueño, tiempos de pago mal formados o de mesas sin pagar.
+        Map<String, Object> bad = SaveFixtures.finished(8 * 60 + 30);
+        Map<String, Object> state = (Map<String, Object>) bad.get("state");
+        state.put("endingSeen", true);
+        Map<String, Object> stats = new java.util.HashMap<>((Map<String, Object>) state.get("stats"));
+        stats.put("paidAt", java.util.List.of(400, 9_999_999, "ya", 0, 0));
+        state.put("stats", stats);
+        putSave(token, null, bad)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("endingSeen: el final requiere"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("stats.paidAt[1]"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("stats.paidAt[2]"))));
+        stats.put("paidAt", java.util.List.of(400, 0, 0, 0));
+        state.put("endingSeen", "sí");
+        putSave(token, null, bad)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details", hasItem(containsString("lista de 5 tiempos"))))
+                .andExpect(jsonPath("$.details", hasItem(containsString("endingSeen: debe ser true o false"))));
+        // Bien formado: la mesa 1 pagada a los 400 s y el final sin ver.
+        stats.put("paidAt", java.util.List.of(400, 0, 0, 0, 0));
+        state.put("endingSeen", false);
+        putSave(token, null, bad).andExpect(status().isOk());
     }
 
     @Test

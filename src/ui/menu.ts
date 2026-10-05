@@ -1,146 +1,191 @@
-import type { ContinueInfo } from '../game/menu';
-import type { Settings } from '../game/settings';
-import { formatPercent, formatTime } from '../util/format';
+import { creditsLines, type CreditLine } from '../content/credits.es';
+import { GAME_VERSION } from '../game/config';
+import type { ContinueInfo, MenuItem } from '../game/menu';
+import type { CrtSetting, Settings } from '../game/settings';
+import { formatTime } from '../util/format';
 import { setText } from './render';
 
+const ref = <T extends HTMLElement = HTMLElement>(root: HTMLElement, name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
+
+// ---------------------------------------------------------------------------
+// Menú principal (sobre la portada)
+
+const ITEM_LABELS: Record<MenuItem, string> = {
+  continue: 'Continuar',
+  newGame: 'Nueva partida',
+  settings: 'Ajustes',
+  ranking: 'Ranking',
+  login: 'Iniciar sesión',
+  sync: 'Sincronizar partida',
+  ending: 'Ver final',
+  credits: 'Créditos',
+};
+
 export interface MenuUi {
-  continueButton: HTMLButtonElement;
+  root: HTMLElement;
+  list: HTMLElement;
+  items: Record<MenuItem, HTMLButtonElement>;
   continueInfo: HTMLElement;
-  newGame: HTMLButtonElement;
-  settings: HTMLButtonElement;
-  login: HTMLButtonElement;
-  sync: HTMLButtonElement;
-  ranking: HTMLButtonElement;
-  online: HTMLElement;
   account: HTMLElement;
+  fullscreen: HTMLButtonElement;
 }
 
+export function mountMenu(root: HTMLElement): MenuUi {
+  const buttons = (Object.keys(ITEM_LABELS) as MenuItem[])
+    .map(
+      (id) =>
+        `<button class="nav-item title-option" data-item="${id}">${ITEM_LABELS[id]}${id === 'continue' ? '<span class="menu-sub" data-ref="continueInfo"></span>' : ''}</button>`,
+    )
+    .join('');
+  root.innerHTML = `
+    <div class="title-screen">
+      <nav class="title-menu" data-ref="list" aria-label="Menú principal">${buttons}</nav>
+      <p class="title-account" data-ref="account"></p>
+      <span class="title-version">v${GAME_VERSION}</span>
+      <button class="corner-button" data-ref="fullscreen" title="Pantalla completa (F)">Pantalla completa</button>
+    </div>`;
+  const items = Object.fromEntries(
+    (Object.keys(ITEM_LABELS) as MenuItem[]).map((id) => [id, root.querySelector<HTMLButtonElement>(`[data-item="${id}"]`)!]),
+  ) as Record<MenuItem, HTMLButtonElement>;
+  return { root, list: ref(root, 'list'), items, continueInfo: ref(root, 'continueInfo'), account: ref(root, 'account'), fullscreen: ref(root, 'fullscreen') };
+}
+
+/** Línea pequeña bajo Continuar: mesa actual, tiempo jugado y estado de la deuda. */
+export function continueLine(info: ContinueInfo): string {
+  const debt = info.finished ? 'casa saldada' : info.debtPaid ? 'deuda saldada' : `deuda ${Math.floor(info.debtProgress * 100)}%`;
+  return `Mesa ${info.activeTable} · ${formatTime(info.playTime)} · ${debt}`;
+}
+
+/** Enseña solo las opciones que tocan, en su orden, y la línea de Continuar. */
+export function renderMenu(ui: MenuUi, items: MenuItem[], info: ContinueInfo | null, displayName: string | null): void {
+  for (const [id, button] of Object.entries(ui.items) as [MenuItem, HTMLButtonElement][]) button.hidden = !items.includes(id);
+  items.forEach((id) => ui.list.append(ui.items[id]));
+  ui.items.login.firstChild!.textContent = displayName ? 'Cerrar sesión' : 'Iniciar sesión';
+  setText(ui.account, displayName ? `Sesión: ${displayName}` : '');
+  if (info) setText(ui.continueInfo, continueLine(info));
+}
+
+// ---------------------------------------------------------------------------
+// Ajustes
+
+export type SettingRow = 'volume' | 'crt' | 'fullscreen' | 'dialogues' | 'muted';
+
 export interface SettingsUi {
-  crt: HTMLSelectElement;
-  fullscreen: HTMLInputElement;
-  dialogues: HTMLInputElement;
-  volume: HTMLInputElement;
-  volumeValue: HTMLElement;
-  deleteSave: HTMLButtonElement;
-  deleteNote: HTMLElement;
+  root: HTMLElement;
+  rows: Record<SettingRow, HTMLElement>;
+  values: Record<SettingRow, HTMLElement>;
+  volumeDown: HTMLButtonElement;
+  volumeUp: HTMLButtonElement;
   exportSave: HTMLButtonElement;
   importSave: HTMLButtonElement;
   importFile: HTMLInputElement;
+  deleteSave: HTMLButtonElement;
   saveNote: HTMLElement;
   back: HTMLButtonElement;
 }
 
-export function mountMenu(root: HTMLElement): MenuUi {
-  root.innerHTML = `
-    <section class="panel menu">
-      <h1>Casino</h1>
-      <p class="muted">Debes 10.000.000 fichas.</p>
-      <div class="menu-options">
-        <button data-ref="continue">
-          Continuar
-          <span class="menu-sub" data-ref="continueInfo"></span>
-        </button>
-        <button data-ref="newGame">Nueva partida</button>
-        <button data-ref="settings">Ajustes</button>
-      </div>
-      <div data-ref="online">
-        <h2 class="menu-section">En línea (opcional)</h2>
-        <div class="menu-options">
-          <button data-ref="login">Iniciar sesión</button>
-          <button data-ref="sync">Sincronizar partida</button>
-          <button data-ref="ranking">Ranking</button>
-        </div>
-        <p class="muted" data-ref="account"></p>
-      </div>
-    </section>
-  `;
-  const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
-  return {
-    continueButton: ref('continue'),
-    continueInfo: ref('continueInfo'),
-    newGame: ref('newGame'),
-    settings: ref('settings'),
-    login: ref('login'),
-    sync: ref('sync'),
-    ranking: ref('ranking'),
-    account: ref('account'),
-    online: ref('online'),
-  };
-}
-
-/** Continuar solo aparece si hay partida guardada. Sincronizar, solo con sesión iniciada. */
-export function renderMenu(ui: MenuUi, info: ContinueInfo | null, displayName: string | null = null): void {
-  setText(ui.login, displayName ? 'Cerrar sesión' : 'Iniciar sesión');
-  ui.sync.disabled = !displayName;
-  setText(ui.account, displayName ? `Sesión iniciada como ${displayName}.` : 'Sin sesión: la partida se guarda solo en este navegador.');
-  ui.continueButton.hidden = info === null;
-  if (!info) return;
-  const table = info.debtPaid ? 'Mesa 1 saldada' : `Mesa 1 · deuda ${formatPercent(info.debtProgress)} reunida`;
-  setText(ui.continueInfo, `${formatTime(info.playTime)} jugados · ${table}`);
-}
+const CRT_LABELS: Record<CrtSetting, string> = { apagado: 'Apagado', suave: 'Suave', fuerte: 'Fuerte' };
 
 export function mountSettings(root: HTMLElement): SettingsUi {
+  const row = (id: SettingRow, label: string, extra = '') =>
+    `<div class="nav-item setting-row" role="button" tabindex="-1" data-row="${id}"><span>${label}</span>${extra}<span class="setting-value" data-value="${id}"></span></div>`;
   root.innerHTML = `
-    <section class="panel menu">
+    <section class="panel pixel-panel settings-panel">
       <h1>Ajustes</h1>
-      <label class="setting">
-        Filtro CRT
-        <select data-ref="crt">
-          <option value="apagado">Apagado</option>
-          <option value="suave">Suave</option>
-          <option value="fuerte">Fuerte</option>
-        </select>
-      </label>
-      <label class="setting">
-        <input type="checkbox" data-ref="fullscreen" />
-        Iniciar en pantalla completa <span class="muted">(tecla F)</span>
-      </label>
-      <label class="setting">
-        <input type="checkbox" data-ref="dialogues" />
-        Diálogos de los prestamistas
-      </label>
-      <label class="setting">
-        Volumen
-        <input type="range" min="0" max="100" step="1" data-ref="volume" />
-        <span data-ref="volumeValue"></span>
-      </label>
-      <div class="setting">
-        <button data-ref="exportSave">Exportar partida</button>
-        <button data-ref="importSave">Importar partida</button>
+      <div class="settings-list">
+        ${row('volume', 'Volumen', '<span class="steps"><button class="step" data-ref="volumeDown" tabindex="-1" aria-label="Bajar volumen">-</button><button class="step" data-ref="volumeUp" tabindex="-1" aria-label="Subir volumen">+</button></span>')}
+        ${row('crt', 'Filtro CRT')}
+        ${row('fullscreen', 'Iniciar en pantalla completa')}
+        ${row('dialogues', 'Diálogos de los prestamistas')}
+        ${row('muted', 'Silencio (N)')}
+        <div class="settings-actions">
+          <button class="nav-item pixel-button" data-ref="exportSave">Exportar partida</button>
+          <button class="nav-item pixel-button" data-ref="importSave">Importar partida</button>
+          <button class="nav-item pixel-button danger" data-ref="deleteSave">Borrar partida</button>
+        </div>
         <input type="file" accept="application/json,.json" data-ref="importFile" hidden />
+        <p class="settings-note" data-ref="saveNote"></p>
+        <button class="nav-item pixel-button back" data-ref="back">Volver (Esc)</button>
       </div>
-      <p class="muted small-text" data-ref="saveNote"></p>
-      <div class="setting">
-        <button data-ref="deleteSave" class="danger">Borrar partida</button>
-        <span class="muted" data-ref="deleteNote"></span>
-      </div>
-      <button data-ref="back">Volver</button>
-    </section>
-  `;
-  const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
+    </section>`;
+  const ids: SettingRow[] = ['volume', 'crt', 'fullscreen', 'dialogues', 'muted'];
   return {
-    crt: ref('crt'),
-    fullscreen: ref('fullscreen'),
-    dialogues: ref('dialogues'),
-    volume: ref('volume'),
-    volumeValue: ref('volumeValue'),
-    deleteSave: ref('deleteSave'),
-    deleteNote: ref('deleteNote'),
-    exportSave: ref('exportSave'),
-    importSave: ref('importSave'),
-    importFile: ref('importFile'),
-    saveNote: ref('saveNote'),
-    back: ref('back'),
+    root,
+    rows: Object.fromEntries(ids.map((id) => [id, root.querySelector(`[data-row="${id}"]`)!])) as Record<SettingRow, HTMLElement>,
+    values: Object.fromEntries(ids.map((id) => [id, root.querySelector(`[data-value="${id}"]`)!])) as Record<SettingRow, HTMLElement>,
+    volumeDown: ref(root, 'volumeDown'),
+    volumeUp: ref(root, 'volumeUp'),
+    exportSave: ref(root, 'exportSave'),
+    importSave: ref(root, 'importSave'),
+    importFile: ref(root, 'importFile'),
+    deleteSave: ref(root, 'deleteSave'),
+    saveNote: ref(root, 'saveNote'),
+    back: ref(root, 'back'),
   };
 }
 
 export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: boolean): void {
-  ui.crt.value = settings.crt;
-  ui.fullscreen.checked = settings.startFullscreen;
-  ui.dialogues.checked = settings.dialogues;
-  ui.volume.value = String(Math.round(settings.volume * 100));
-  setText(ui.volumeValue, `${Math.round(settings.volume * 100)}%`);
+  const yesNo = (v: boolean) => (v ? 'Sí' : 'No');
+  setText(ui.values.volume, `${Math.round(settings.volume * 100)}%`);
+  setText(ui.values.crt, CRT_LABELS[settings.crt]);
+  setText(ui.values.fullscreen, yesNo(settings.startFullscreen));
+  setText(ui.values.dialogues, yesNo(settings.dialogues));
+  setText(ui.values.muted, yesNo(settings.muted));
   ui.deleteSave.disabled = !hasSave;
   ui.exportSave.disabled = !hasSave;
-  setText(ui.deleteNote, hasSave ? '' : 'No hay partida guardada.');
+}
+
+// ---------------------------------------------------------------------------
+// Créditos
+
+/** Las líneas de los créditos como HTML (las mismas en el menú y en el final). */
+export function creditsHtml(lines: CreditLine[] = creditsLines()): string {
+  const esc = (s: string) => s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]!);
+  return lines
+    .map((line) => {
+      if (line.kind === 'link') return `<p class="credit-link"><a href="${esc(line.href ?? '')}" target="_blank" rel="noopener">${esc(line.text)}</a></p>`;
+      const tag = line.kind === 'title' ? 'h1' : line.kind === 'heading' ? 'h2' : 'p';
+      return `<${tag} class="credit-${line.kind}">${esc(line.text)}</${tag}>`;
+    })
+    .join('');
+}
+
+export interface CreditsUi {
+  root: HTMLElement;
+  back: HTMLButtonElement;
+}
+
+export function mountCredits(root: HTMLElement): CreditsUi {
+  root.innerHTML = `
+    <section class="panel pixel-panel credits-panel">
+      <div class="credits-body">${creditsHtml()}</div>
+      <button class="nav-item pixel-button back" data-ref="back">Volver (Esc)</button>
+    </section>`;
+  return { root, back: ref(root, 'back') };
+}
+
+// ---------------------------------------------------------------------------
+// Pausa (dentro de la partida)
+
+export interface PauseUi {
+  root: HTMLElement;
+  resume: HTMLButtonElement;
+  settings: HTMLButtonElement;
+  toMenu: HTMLButtonElement;
+}
+
+export function mountPause(parent: HTMLElement): PauseUi {
+  const root = document.createElement('div');
+  root.className = 'pause-layer';
+  root.hidden = true;
+  root.innerHTML = `
+    <section class="panel pixel-panel pause-panel" aria-label="Pausa">
+      <h1>Pausa</h1>
+      <button class="nav-item pixel-button" data-ref="resume">Reanudar</button>
+      <button class="nav-item pixel-button" data-ref="settings">Ajustes</button>
+      <button class="nav-item pixel-button" data-ref="toMenu">Menú principal</button>
+      <p class="pause-note">Se guarda al salir al menú.</p>
+    </section>`;
+  parent.append(root);
+  return { root, resume: ref(root, 'resume'), settings: ref(root, 'settings'), toMenu: ref(root, 'toMenu') };
 }

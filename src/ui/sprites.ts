@@ -21,6 +21,8 @@ const urls = {
   lender4Scene: import.meta.glob<string>('../../assets/sprites/lender4-scene/*.png', { eager: true, query: '?url', import: 'default' }),
   coin: import.meta.glob<string>('../../assets/sprites/coin/*.png', { eager: true, query: '?url', import: 'default' }),
   lender5Scene: import.meta.glob<string>('../../assets/sprites/lender5-scene/*.png', { eager: true, query: '?url', import: 'default' }),
+  /** Pantallas completas: la portada (con el título dibujado) y el final. */
+  screens: import.meta.glob<string>('../../assets/sprites/screens/*.png', { eager: true, query: '?url', import: 'default' }),
 };
 
 export type PlayerFrame = 'walk-1' | 'walk-2' | 'crouch' | 'lift';

@@ -395,3 +395,137 @@ kbd {
 
 /* Aviso de pantallas pequeñas o táctiles. */
 .small-screen { width: 280px; text-align: center; }
+
+/* ------------------------------------------------------------------------------------------
+ * Portada, menú principal, ajustes, créditos, pausa y diálogos (sesión 7). Texto de 14 px como
+ * mínimo (la regla de la capa de texto) y contraste ≥ 4,5:1 contra su caja.
+ */
+.screen.press { background: none; cursor: pointer; }
+.screen.title { background: rgba(5, 4, 3, 0.62); }
+.screen.title[data-screen='menu'] { background: none; display: block; }
+
+/* Botón con marco pixel (capas escalonadas, sin imágenes). */
+.pixel-button,
+.title-option {
+  display: block;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  color: #e3dcc6;
+  background: rgba(16, 12, 9, 0.88);
+  border: 0;
+  padding: 3px 8px 4px;
+  text-align: left;
+  box-shadow:
+    0 0 0 1px #0b0908,
+    0 0 0 2px #4a3a1f,
+    0 0 0 3px #0b0908;
+}
+.pixel-button.focused,
+.title-option.focused {
+  color: #f6dc8a;
+  background: rgba(46, 33, 16, 0.94);
+  border: 0;
+  box-shadow:
+    0 0 0 1px #0b0908,
+    0 0 0 2px #d4ad48,
+    0 0 0 3px #0b0908;
+}
+.pixel-button.danger.focused { color: #ff9a8a; box-shadow: 0 0 0 1px #0b0908, 0 0 0 2px #b0473a, 0 0 0 3px #0b0908; }
+.pixel-button:disabled { opacity: 1; color: #8f846a; background: rgba(16, 12, 9, 0.7); box-shadow: 0 0 0 1px #0b0908, 0 0 0 2px #2e261c, 0 0 0 3px #0b0908; }
+.pixel-button:focus-visible,
+.title-option:focus-visible { outline: none; }
+
+/* Menú principal: columna en la zona oscura del pasillo, hacia el centro y la derecha. */
+.title-menu {
+  position: absolute;
+  left: 398px;
+  top: 166px;
+  width: 162px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.title-option { width: 100%; padding: 3px 8px 4px; }
+.title-option::before { content: '\25B8'; display: inline-block; width: 10px; margin-left: -2px; color: transparent; }
+.title-option.focused::before { color: #d4ad48; }
+.title-option .menu-sub { display: block; margin: 2px 0 0 10px; font-size: 14px; color: #b9ae92; white-space: nowrap; }
+.title-account { position: absolute; left: 8px; bottom: 22px; margin: 0; font-size: 14px; color: #b9ae92; text-shadow: 1px 1px 0 #000; }
+.title-version { position: absolute; left: 8px; bottom: 6px; font-size: 14px; color: #a99c7c; text-shadow: 1px 1px 0 #000; }
+.corner-button {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  font-size: 14px;
+  color: #c9bfa3;
+  background: rgba(16, 12, 9, 0.8);
+  border: 1px solid #4a3a1f;
+  padding: 1px 6px 2px;
+}
+.corner-button:hover { color: #f6dc8a; border-color: #d4ad48; }
+
+/* Paneles de ajustes, créditos, pausa y diálogos. */
+.pixel-panel { padding: 10px 14px 12px; }
+.pixel-panel h1 { font-size: 22px; margin: 0 0 8px; color: var(--gold); font-weight: normal; letter-spacing: 1px; }
+.settings-panel { width: 360px; }
+.settings-list { display: flex; flex-direction: column; gap: 5px; }
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  padding: 2px 8px 3px;
+  color: #e3dcc6;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px #2e261c;
+}
+.setting-row.focused { color: #f6dc8a; background: rgba(46, 33, 16, 0.94); box-shadow: 0 0 0 1px #d4ad48; }
+.setting-row:focus-visible { outline: none; }
+.setting-value { margin-left: auto; color: #f0d27a; min-width: 48px; text-align: right; }
+.setting-row .steps { display: flex; gap: 3px; margin-left: auto; }
+.setting-row .steps + .setting-value { margin-left: 4px; }
+.step { font-size: 14px; min-width: 16px; padding: 0 4px; text-align: center; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
+.settings-actions .pixel-button { font-size: 14px; padding: 2px 6px 3px; }
+.settings-note { min-height: 14px; margin: 2px 0; font-size: 14px; color: #9fc06a; }
+.pixel-button.back { align-self: flex-start; margin-top: 2px; }
+
+.credits-panel { width: 360px; max-height: 330px; overflow: auto; text-align: center; }
+.credits-body h1, .credit-title { font-size: 26px; margin: 0; color: var(--gold); font-weight: normal; letter-spacing: 2px; }
+.credit-tagline { margin: 0 0 8px; font-size: 16px; color: #b89c58; }
+.credit-heading { margin: 8px 0 1px; font-size: 14px; color: #b9ae92; }
+.credit-text, .credit-link { margin: 0; font-size: 16px; color: #e3dcc6; }
+.credit-link a { color: #f0d27a; }
+.credits-panel .pixel-button.back { margin: 10px auto 0; }
+
+.pause-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.pause-panel { width: 200px; display: flex; flex-direction: column; gap: 7px; }
+.pause-panel h1 { text-align: center; }
+.pause-panel .pixel-button { width: 100%; text-align: center; }
+.pause-note { margin: 2px 0 0; font-size: 14px; color: #b9ae92; text-align: center; }
+
+.dialog-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.dialog { width: 290px; padding: 12px 14px; }
+.dialog-text { margin: 0 0 12px; font-size: 16px; line-height: 1.15; color: #e3dcc6; }
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+
+.small-screen { display: flex; flex-direction: column; gap: 8px; align-items: center; font-size: 16px; }
+/* El resaltado lo lleva .focused (ratón o teclado, uno solo a la vez): el hover genérico no pinta aparte. */
+.pixel-button:not(.focused):hover:not(:disabled),
+.title-option:not(.focused):hover { color: #e3dcc6; }

@@ -4,6 +4,40 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 7 (pantalla de título y pantalla final: ROTTEN ODDS)
+
+Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.
+
+### Hecho
+
+- [x] **B1 Pantalla de título y menú.**
+  - Título: `GAME_TITLE = "ROTTEN ODDS"`, `GAME_TAGLINE = "La casa siempre cobra"` (y `GAME_VERSION`, `GAME_AUTHOR`,
+    `REPO_URL = null`) en `src/game/config.ts`. `index.html` los toma en el build (plugin de `vite.config.ts` con
+    `%GAME_TITLE%`/`%GAME_TAGLINE%`); README, DEPLOY.md, créditos, OpenAPI del servidor y la imagen para compartir
+    (`npm run meta`, ahora la portada con el subtítulo). Test `tests/title.test.ts`: no queda «CASINO» como título
+    (el letrero de la puerta de la trastienda pasa a «SALA»; el nombre del repo, del paquete y del Worker no cambian).
+  - Assets: `assets/raw/titulo.*` y `final.*` → `assets/sprites/screens/` (640x360, vecino más próximo). El título
+    traía un filo blanco abajo (3-4 px) y a la derecha (2 px): `trimBrightEdges` (test en pipeline) lo recorta con
+    una línea más de margen. El logo no se dibuja en código; si faltara la imagen, sale un provisional.
+  - «Pulsa para entrar» tras la carga (texto que respira); el primer clic o tecla desbloquea el audio, pide
+    pantalla completa si el ajuste está activo y funde desde negro a la portada (una vez por carga).
+  - Portada (`src/ui/titleScene.ts`): la imagen tal cual; halo verde de la lámpara que respira (~6 s), 40 motas de
+    polvo de 1 px y oscilación de 1 px (sin oscilación ni temblor de la lámpara con el CRT apagado, como las mesas).
+    Subtítulo en la capa de texto (14 px, dorado apagado, contorno). Zumbido propio de la portada (más grave).
+  - Menú vertical en la zona oscura a la derecha del pasillo (x 398-560, y 166+): Continuar (con «Mesa N · tiempo ·
+    deuda X%» / «deuda saldada» / «casa saldada»), Nueva partida, Ajustes, Ranking e Iniciar sesión (solo con
+    `VITE_API_URL`; Sincronizar solo con sesión), Ver final (solo con el juego completado), Créditos. Versión abajo a
+    la izquierda y «Pantalla completa» en la esquina. Flechas, Intro, Esc y ratón; un único resaltado y tic suave.
+  - Diálogos propios (`src/ui/dialog.ts`) en vez de `confirm()`: nueva partida con guardado, borrar e importar.
+  - Ajustes con la misma estética: volumen (−/+, flechas, clic sube y da la vuelta), Filtro CRT, pantalla completa al
+    iniciar, diálogos, **silencio** (ahora se guarda en los ajustes, también con N), exportar, importar, borrar.
+  - Créditos (`src/content/credits.es.ts`): arte con IA, VT323 con su licencia, autor; repositorio solo si `REPO_URL`.
+  - Pausa: Esc sin cajones abiertos (o el botón Menú del HUD) → Reanudar, Ajustes (vuelve a la pausa), Menú
+    principal (guarda antes). En pausa no avanza nada (ni ayudantes, ni diálogos, ni fundidos).
+  - Decisiones: el botón «Menú» del HUD abre la pausa en vez de salir de golpe; «Sincronizar partida» se conserva
+    (con sesión) aunque no estaba en la lista; con el CRT apagado no hay oscilación; el clic en Volumen sube 10% y
+    da la vuelta; borrar la partida desde la pausa deja la partida en curso cerrada (vuelve al menú al salir).
+
 ## Sesión 6 (bloques 1-4: texto legible, barra superior, aciertos de los ayudantes, rediseño de la mesa 5)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Simulaciones de una en una, con --quick.

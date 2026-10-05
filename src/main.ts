@@ -6,16 +6,19 @@ import { mountTextLayer } from './ui/sceneText';
 import { gameSummary, isGameFinished } from './game/summary';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
-import { isMuted, outcomeSound, setAmbient, setMuted, setVolume, sfx, unlockAudio } from './audio';
-import { CONFIG } from './game/config';
-import { continueGame, continueInfo, startNewGame } from './game/menu';
+import { outcomeSound, setAmbient, setMuted, setVolume, sfx, unlockAudio } from './audio';
+import { CONFIG, GAME_TITLE } from './game/config';
+import { continueGame, continueInfo, menuItems, startNewGame } from './game/menu';
 import { defaultRng } from './game/rng';
 import { clearSave, deserialize, loadGame, saveGame, serialize } from './game/save';
 import { CRT_LEVELS, loadSettings, saveSettings } from './game/settings';
 import type { GameState } from './game/state';
 import { startLoop } from './loop';
 import { bindControls, closeDrawers, toggleDrawer } from './ui/controls';
-import { mountMenu, mountSettings, renderMenu, renderSettings } from './ui/menu';
+import { Dialogs } from './ui/dialog';
+import { MenuNav } from './ui/menuNav';
+import { TitleScene } from './ui/titleScene';
+import { mountCredits, mountMenu, mountPause, mountSettings, renderMenu, renderSettings, type SettingRow } from './ui/menu';
 import {
   mountAuth,
   mountRanking,
@@ -128,7 +131,9 @@ const DEV_TABLE = DEV_MODE === 'mesa2' ? 2 : DEV_MODE === 'mesa3' ? 3 : DEV_MODE
 const saveKey = DEV_TABLE ? `${CONFIG.tech.saveKey}-dev${DEV_TABLE}` : CONFIG.tech.saveKey;
 if (DEV_TABLE && !loadGame(localStorage, saveKey)) saveGame(localStorage, saveKey, devState(DEV_TABLE), Date.now());
 
-type Screen = 'menu' | 'settings' | 'game' | 'auth' | 'sync' | 'ranking' | 'ending' | 'notice';
+type Screen = 'press' | 'menu' | 'settings' | 'credits' | 'game' | 'auth' | 'sync' | 'ranking' | 'ending' | 'notice';
+/** Pantallas con la portada de fondo (el resto: la partida o el final). */
+const TITLE_SCREENS: readonly Screen[] = ['press', 'menu', 'settings', 'credits', 'auth', 'sync', 'ranking', 'notice'];
 
 // Contenedor raíz (toda la ventana; es lo que va a pantalla completa) con el escenario de 640x360
 // dentro: la escena de fondo, las pantallas HTML encima y el filtro CRT sobre todo.
@@ -139,17 +144,19 @@ app.innerHTML = `
       <canvas class="scene" data-ref="scene" aria-label="Mesa 1: el casino"></canvas>
       <canvas class="scene-text" data-ref="sceneText" aria-hidden="true"></canvas>
       <div class="screen game" data-screen="game" hidden></div>
-      <div class="screen" data-screen="menu"></div>
-      <div class="screen" data-screen="settings" hidden></div>
+      <div class="screen press" data-screen="press" hidden></div>
+      <div class="screen title" data-screen="menu" hidden></div>
+      <div class="screen title" data-screen="settings" hidden></div>
+      <div class="screen title" data-screen="credits" hidden></div>
       <div class="screen" data-screen="auth" hidden></div>
       <div class="screen" data-screen="sync" hidden></div>
       <div class="screen" data-screen="ranking" hidden></div>
       <div class="screen" data-screen="ending" hidden></div>
-      <div class="screen" data-screen="notice" hidden>
-        <section class="panel menu small-screen">
-          <h1>Casino</h1>
+      <div class="screen title" data-screen="notice" hidden>
+        <section class="panel pixel-panel small-screen">
+          <h1>${GAME_TITLE}</h1>
           <p>Este juego está pensado para ordenador, con ratón y teclado y una pantalla de al menos 900 px.</p>
-          <div class="menu-options"><button data-ref="noticeContinue">Seguir de todos modos</button></div>
+          <button class="nav-item pixel-button" data-ref="noticeContinue">Seguir de todos modos</button>
         </section>
       </div>
     </div>
@@ -159,7 +166,7 @@ const root = app.querySelector<HTMLElement>('[data-ref="root"]')!;
 const stage = app.querySelector<HTMLElement>('[data-ref="stage"]')!;
 const sceneCanvas = app.querySelector<HTMLCanvasElement>('[data-ref="scene"]')!;
 const screens = Object.fromEntries(
-  (['menu', 'settings', 'game', 'auth', 'sync', 'ranking', 'ending', 'notice'] as Screen[]).map((name) => [
+  (['press', 'menu', 'settings', 'credits', 'game', 'auth', 'sync', 'ranking', 'ending', 'notice'] as Screen[]).map((name) => [
     name,
     app.querySelector<HTMLElement>(`[data-screen="${name}"]`)!,
   ]),
@@ -202,6 +209,8 @@ relayout();
 
 const menuUi = mountMenu(screens.menu);
 const settingsUi = mountSettings(screens.settings);
+const creditsUi = mountCredits(screens.credits);
+const dialogs = new Dialogs(stage);
 // La pantalla de juego: una capa de HUD y cajones por mesa, el fundido entre mesas y el cartel.
 screens.game.innerHTML = `
   <div class="table-layer" data-layer="1"></div>
@@ -228,7 +237,7 @@ const authUi = mountAuth(screens.auth);
 const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
 const endingUi = mountEnding(screens.ending);
-if (!ONLINE_ENABLED) menuUi.online.hidden = true;
+const pauseUi = mountPause(screens.game);
 
 const sprites = loadSprites();
 const scene = new Scene(sceneCanvas, sprites);
@@ -236,6 +245,7 @@ const slotsScene = new SlotsScene(sceneCanvas, sprites);
 const diceScene = new DiceScene(sceneCanvas, sprites);
 const cardsScene = new CardsScene(sceneCanvas, sprites);
 const coinScene = new CoinScene(sceneCanvas, sprites);
+const titleScene = new TitleScene(sceneCanvas, sprites);
 const SPEAKERS = { 1: 'EL ENCARGADO', 2: 'TRAGAPERRAS VIVIENTE', 3: 'EL BARMAN', 4: 'LA CRUPIER', 5: 'EL DUEÑO' } as const;
 const speech = new Speech(screens.game, SPEAKERS[1]);
 /** Cuándo habla el prestamista de cada mesa (se crean al entrar en la partida). */
@@ -327,20 +337,75 @@ window.addEventListener('keydown', () => state && unlockAudio());
 const api = createApi();
 let session: Session | null = loadSession(localStorage, sessionKey, Date.now());
 
-let screen: Screen = 'menu';
+let screen: Screen = 'press';
+/** De dónde se abrieron los Ajustes (se vuelve allí): del menú principal o de la pausa. */
+let settingsFrom: 'menu' | 'pause' = 'menu';
+/** Partida en pausa (Esc): no avanza nada. */
+let paused = false;
+/** Fundido desde negro de la portada (1 → 0) al entrar desde "Pulsa para entrar". */
+let titleFade = 0;
+/** La carga (sprites y fuente) ha terminado: "Pulsa para entrar" ya responde. */
+let loaded = false;
 /** Sala actual de la mesa 1 (no se guarda: siempre se empieza en el casino). */
 let rooms = createRoomState();
 /** Partida en curso; null fuera del juego. */
 let state: GameState | null = null;
 const settings = loadSettings(localStorage, settingsKey);
+/** Navegación con teclado y ratón de cada pantalla de menú. */
+const navs: Partial<Record<Screen, MenuNav>> = {
+  menu: new MenuNav(screens.menu),
+  settings: new MenuNav(screens.settings, { onBack: closeSettings, onAdjust: adjustSetting }),
+  credits: new MenuNav(screens.credits, { onBack: () => show('menu') }),
+  notice: new MenuNav(screens.notice),
+};
+const pauseNav = new MenuNav(pauseUi.root, { onBack: () => setPaused(false) });
+
+/** Ajustes abiertos desde la pausa: la partida congelada sigue de fondo. */
+function settingsOverGame(): boolean {
+  return screen === 'settings' && settingsFrom === 'pause' && state !== null;
+}
 
 function show(next: Screen): void {
   screen = next;
-  setAmbient(next === 'game' && state ? state.activeTable : null);
+  if (next === 'game' && state) setAmbient(state.activeTable);
+  else if (TITLE_SCREENS.includes(next) && !settingsOverGame()) setAmbient('title');
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
-  if (next === 'menu') renderMenu(menuUi, continueInfo(localStorage, saveKey), currentSession()?.displayName ?? null);
+  if (next === 'menu') refreshMenu();
   if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
   if (next === 'game' && state) renderHud(state);
+  navs[next]?.reset();
+}
+
+/** Opciones del menú principal según el guardado, el servidor y la sesión. */
+function refreshMenu(): void {
+  const info = continueInfo(localStorage, saveKey);
+  const s = currentSession();
+  const items = menuItems({ hasSave: info !== null, online: ONLINE_ENABLED, loggedIn: s !== null, finished: info?.finished ?? false });
+  renderMenu(menuUi, items, info, s?.displayName ?? null);
+}
+
+/** Pausa (Esc en la partida, sin cajones abiertos): Reanudar, Ajustes o Menú principal. */
+function setPaused(on: boolean): void {
+  if (on && (!state || screen !== 'game' || tableFade)) return;
+  paused = on;
+  pauseUi.root.hidden = !on;
+  if (on) pauseNav.reset();
+}
+
+/** ¿Hay algún cajón abierto en la mesa que se ve? */
+function anyDrawerOpen(): boolean {
+  return layers[activeTable() - 1].querySelector('.drawer[data-open="true"]') !== null;
+}
+
+function closeSettings(): void {
+  if (settingsFrom === 'pause' && state) {
+    settingsFrom = 'menu';
+    show('game');
+    setPaused(true);
+    return;
+  }
+  settingsFrom = 'menu';
+  show('menu');
 }
 
 /** Pinta la capa de la mesa activa y las pestañas. */
@@ -598,24 +663,50 @@ sceneCanvas.addEventListener('mouseleave', () => {
   coinScene.setHover(null);
 });
 window.addEventListener('keydown', (event) => {
-  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+  // Un diálogo de confirmación abierto se queda con todas las teclas.
+  if (dialogs.handleKey(event)) return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  if (screen === 'press') {
+    if (!event.repeat) enterTitle();
+    return;
+  }
+  if (screen === 'ending' && handleEndingKey(event)) return;
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+  const nav = paused && screen === 'game' ? pauseNav : navs[screen];
+  // Las flechas pueden repetirse al mantenerlas; lo demás, no.
+  if (nav && (!event.repeat || event.key.startsWith('Arrow')) && nav.handleKey(event)) {
+    if (event.key.startsWith('Arrow')) event.preventDefault();
+    return;
+  }
+  if (event.repeat) return;
   if (event.key === 'f' || event.key === 'F') {
     void toggleFullscreen(root);
     return;
   }
-  // N: silencio (todo el sonido) / volver a oír.
+  // N: silencio (todo el sonido) / volver a oír. Se guarda con los ajustes.
   if (event.key === 'n' || event.key === 'N') {
-    setMuted(!isMuted());
-    if (screen === 'game' && state) showNote(isMuted() ? 'Sonido silenciado (N)' : 'Sonido activado (N)');
+    settings.muted = !settings.muted;
+    applySettings();
+    if (screen === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
+    if (screen === 'game' && state) showNote(settings.muted ? 'Sonido silenciado (N)' : 'Sonido activado (N)');
     return;
   }
-  if (screen !== 'game' || !state) return;
+  // Esc en las pantallas en línea: volver al menú.
+  if (event.key === 'Escape' && (screen === 'auth' || screen === 'sync' || screen === 'ranking')) {
+    show('menu');
+    return;
+  }
+  if (screen !== 'game' || !state || paused) return;
   const table2 = activeTable() === 2;
   const table3 = activeTable() === 3;
   const table4 = activeTable() === 4;
   const table5 = activeTable() === 5;
+  // Esc: cierra los cajones abiertos; sin cajones, pausa.
   if (event.key === 'Escape') {
+    if (!anyDrawerOpen()) {
+      setPaused(true);
+      return;
+    }
     closeDrawers(gameUi);
     closeDrawers2(slotsUi);
     closeDrawers3(diceUi);
@@ -746,29 +837,37 @@ function applySettings(): void {
   document.documentElement.dataset.crt = settings.crt;
   crt.setLevel(settings.crt);
   setVolume(settings.volume);
+  setMuted(settings.muted);
   const effects = settings.crt !== 'apagado';
-  for (const s of [scene, slotsScene, diceScene, cardsScene, coinScene]) s.setEffectsEnabled(effects);
+  for (const s of [scene, slotsScene, diceScene, cardsScene, coinScene, titleScene]) s.setEffectsEnabled(effects);
   saveSettings(localStorage, settingsKey, settings);
 }
 
-// Pantalla de inicio
-menuUi.continueButton.addEventListener('click', () => {
+// Menú principal
+menuUi.items.continue.addEventListener('click', () => {
   const savedAt = loadGame(localStorage, saveKey)?.savedAt ?? Date.now();
   const loaded = continueGame(localStorage, saveKey);
   if (loaded) enterGame(loaded, { kind: 'resume', absenceSeconds: Math.max(0, (Date.now() - savedAt) / 1000) });
   else show('menu');
 });
-menuUi.newGame.addEventListener('click', () => {
-  const fresh = startNewGame(
-    localStorage,
-    saveKey,
-    () => confirm('Ya hay una partida guardada. ¿Empezar de cero y borrarla?'),
-    Date.now(),
-  );
+menuUi.items.newGame.addEventListener('click', async () => {
+  const hasSave = continueInfo(localStorage, saveKey) !== null;
+  const ok =
+    !hasSave ||
+    (await dialogs.confirm('Ya hay una partida guardada. ¿Empezar de cero y borrarla?', { confirm: 'Empezar de cero', danger: true }));
+  if (!ok) return navs.menu?.reset(menuUi.items.newGame);
+  const fresh = startNewGame(localStorage, saveKey, () => true, Date.now());
   if (fresh) enterGame(fresh, { kind: 'new' });
 });
-menuUi.settings.addEventListener('click', () => show('settings'));
-menuUi.login.addEventListener('click', () => {
+menuUi.items.settings.addEventListener('click', () => {
+  settingsFrom = 'menu';
+  show('settings');
+});
+menuUi.items.credits.addEventListener('click', () => show('credits'));
+menuUi.items.ending.addEventListener('click', () => playEnding());
+menuUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
+creditsUi.back.addEventListener('click', () => show('menu'));
+menuUi.items.login.addEventListener('click', () => {
   if (currentSession()) {
     setSession(null);
     show('menu');
@@ -778,40 +877,74 @@ menuUi.login.addEventListener('click', () => {
   renderAuthMode(authUi, registering);
   show('auth');
 });
-menuUi.sync.addEventListener('click', () => {
+menuUi.items.sync.addEventListener('click', () => {
   show('sync');
   void runSync();
 });
-menuUi.ranking.addEventListener('click', () => {
+menuUi.items.ranking.addEventListener('click', () => {
   rankingPage = 0;
   show('ranking');
   void loadRanking();
 });
 
-// Ajustes
-settingsUi.crt.addEventListener('change', () => {
-  settings.crt = CRT_LEVELS.find((l) => l === settingsUi.crt.value) ?? 'suave';
-  applySettings();
+// Pausa
+pauseUi.resume.addEventListener('click', () => setPaused(false));
+pauseUi.settings.addEventListener('click', () => {
+  settingsFrom = 'pause';
+  show('settings');
 });
-settingsUi.dialogues.addEventListener('change', () => {
-  settings.dialogues = settingsUi.dialogues.checked;
-  applySettings();
-});
-settingsUi.fullscreen.addEventListener('change', () => {
-  settings.startFullscreen = settingsUi.fullscreen.checked;
-  applySettings();
-});
-settingsUi.volume.addEventListener('input', () => {
-  settings.volume = Number(settingsUi.volume.value) / 100;
+pauseUi.toMenu.addEventListener('click', () => toMenu());
+
+// Ajustes: cada fila se cambia con clic o Intro (y con izquierda/derecha).
+function changeSetting(row: SettingRow, delta: number): void {
+  if (row === 'volume') {
+    const steps = Math.round(settings.volume * 10) + delta;
+    // Con clic (delta 0) da la vuelta: de 100% a 0%.
+    settings.volume = delta === 0 ? ((Math.round(settings.volume * 10) + 1) % 11) / 10 : Math.min(Math.max(steps, 0), 10) / 10;
+  } else if (row === 'crt') {
+    const i = CRT_LEVELS.indexOf(settings.crt);
+    settings.crt = CRT_LEVELS[(i + (delta < 0 ? -1 : 1) + CRT_LEVELS.length) % CRT_LEVELS.length];
+  } else if (row === 'fullscreen') settings.startFullscreen = !settings.startFullscreen;
+  else if (row === 'dialogues') settings.dialogues = !settings.dialogues;
+  else settings.muted = !settings.muted;
   applySettings();
   renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
+}
+
+function adjustSetting(item: HTMLElement, delta: number): boolean {
+  const row = item.dataset.row as SettingRow | undefined;
+  if (!row) return false;
+  changeSetting(row, delta);
+  return true;
+}
+
+for (const [row, el] of Object.entries(settingsUi.rows) as [SettingRow, HTMLElement][]) {
+  el.addEventListener('click', () => changeSetting(row, 0));
+}
+settingsUi.volumeDown.addEventListener('click', (event) => {
+  event.stopPropagation();
+  changeSetting('volume', -1);
 });
-settingsUi.deleteSave.addEventListener('click', () => {
-  if (!confirm('¿Borrar la partida guardada? No se puede deshacer.')) return;
+settingsUi.volumeUp.addEventListener('click', (event) => {
+  event.stopPropagation();
+  changeSetting('volume', 1);
+});
+settingsUi.deleteSave.addEventListener('click', async () => {
+  const ok = await dialogs.confirm('¿Borrar la partida guardada? No se puede deshacer.', { confirm: 'Borrar', danger: true });
+  navs.settings?.reset(settingsUi.back);
+  if (!ok) return;
   clearSave(localStorage, saveKey);
+  // Si se borra desde la pausa, la partida en curso ya no existe: al menú.
+  if (state) {
+    state = null;
+    paused = false;
+    pauseUi.root.hidden = true;
+    settingsFrom = 'menu';
+  }
+  setText(settingsUi.saveNote, 'Partida borrada.');
   renderSettings(settingsUi, settings, false);
 });
-settingsUi.back.addEventListener('click', () => show('menu'));
+settingsUi.back.addEventListener('click', closeSettings);
 
 /**
  * Aviso del ayudante en el HUD (cuando juega sin que se le vea): en vez de una línea por apuesta, el
@@ -852,16 +985,21 @@ gameUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
 // Fuera del casino, las tiradas del ayudante se avisan en el HUD (agregadas).
 scene.onAwayResult = (spin) => toast1(spin.delta, spin.outcome === 'jackpot');
 
+/** Menú principal desde la partida: guarda antes de salir. */
 const toMenu = () => {
   save();
   state = null;
+  paused = false;
+  pauseUi.root.hidden = true;
   show('menu');
 };
+/** El botón Menú del HUD abre la pausa (como Esc), no sale de golpe. */
+const openPause = () => setPaused(true);
 bindControls(
   gameUi,
   () => state!,
   () => state && renderHud(state),
-  toMenu,
+  openPause,
   () => {
     void reportDebtPaid();
     showBanner('MESA 1 SALDADA', 'El Encargado tiene su dinero. Abajo se abre la sala de las tragaperras.', 'Bajar a la mesa 2', () => switchTable(2));
@@ -883,7 +1021,7 @@ slotsUi.payDebt.addEventListener('click', () => {
   showBanner('MESA 2 SALDADA', 'La Tragaperras viviente ha cobrado. Más abajo se abre el bar del Barman.', 'Bajar a la mesa 3', () => switchTable(3));
 });
 slotsUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
-slotsUi.toMenu.addEventListener('click', toMenu);
+slotsUi.toMenu.addEventListener('click', openPause);
 for (const id of ['mesa', 'ayuda'] as const) slotsUi.drawers[id].tab.addEventListener('click', () => toggleDrawer2(slotsUi, id));
 slotsUi.statsToggle.addEventListener('click', () => {
   slotsUi.statsBody.hidden = !slotsUi.statsBody.hidden;
@@ -904,7 +1042,7 @@ diceUi.payDebt.addEventListener('click', () => {
   showBanner('MESA 3 SALDADA', 'El Barman ha cobrado. Tras las cortinas rojas se abre la mesa de la Crupier.', 'Bajar a la mesa 4', () => switchTable(4));
 });
 diceUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
-diceUi.toMenu.addEventListener('click', toMenu);
+diceUi.toMenu.addEventListener('click', openPause);
 for (const id of ['mesa', 'ayuda'] as const) diceUi.drawers[id].tab.addEventListener('click', () => toggleDrawer3(diceUi, id));
 diceUi.statsToggle.addEventListener('click', () => {
   diceUi.statsBody.hidden = !diceUi.statsBody.hidden;
@@ -925,7 +1063,7 @@ cardsUi.payDebt.addEventListener('click', () => {
   showBanner('MESA 4 SALDADA', 'La Crupier ha cobrado. Tras el último pasillo espera el Dueño de la casa.', 'Subir a la mesa 5', () => switchTable(5));
 });
 cardsUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
-cardsUi.toMenu.addEventListener('click', toMenu);
+cardsUi.toMenu.addEventListener('click', openPause);
 for (const id of ['mesa', 'ayuda'] as const) cardsUi.drawers[id].tab.addEventListener('click', () => toggleDrawer4(cardsUi, id));
 cardsUi.statsToggle.addEventListener('click', () => {
   cardsUi.statsBody.hidden = !cardsUi.statsBody.hidden;
@@ -947,7 +1085,7 @@ coinUi.payDebt.addEventListener('click', () => {
   onFinalDebtPaid();
 });
 coinUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
-coinUi.toMenu.addEventListener('click', toMenu);
+coinUi.toMenu.addEventListener('click', openPause);
 for (const id of ['mesa', 'ayuda', 'herencias'] as const) coinUi.drawers[id].tab.addEventListener('click', () => toggleDrawer5(coinUi, id));
 for (const id of HEIRLOOM_IDS) {
   coinUi.heirlooms[id].buy.addEventListener('click', () => {
@@ -974,6 +1112,20 @@ function onFinalDebtPaid(): void {
   }, 4500);
 }
 endingUi.toMenu.addEventListener('click', () => show('menu'));
+
+/** "Ver final" desde el menú: la pantalla final con las estadísticas de la partida guardada. */
+function playEnding(): void {
+  const saved = continueGame(localStorage, saveKey);
+  if (!saved) return;
+  renderEnding(endingUi, gameSummary(saved));
+  show('ending');
+}
+
+function handleEndingKey(event: KeyboardEvent): boolean {
+  if (event.key !== 'Escape') return false;
+  show('menu');
+  return true;
+}
 
 cardsScene.onAwayResult = (hand) => toast4(hand.delta, hand.jackpot > 0);
 
@@ -1149,7 +1301,20 @@ try {
 } catch {
   // Sin almacenamiento: se avisa igualmente.
 }
-show(smallScreen && !noticeSeen ? 'notice' : 'menu');
+show('press');
+screens.press.addEventListener('pointerdown', () => enterTitle());
+
+/**
+ * "Pulsa para entrar" (una vez por carga): el primer clic o tecla desbloquea el audio, pide pantalla
+ * completa si el ajuste está activo y pasa a la portada con un fundido desde negro.
+ */
+function enterTitle(): void {
+  if (screen !== 'press' || !loaded) return;
+  unlockAudio();
+  if (settings.startFullscreen) void enterFullscreen(root);
+  titleFade = 1;
+  show(smallScreen && !noticeSeen ? 'notice' : 'menu');
+}
 screens.notice.querySelector<HTMLButtonElement>('[data-ref="noticeContinue"]')!.addEventListener('click', () => {
   try {
     sessionStorage.setItem('casino-aviso-pantalla', '1');
@@ -1167,7 +1332,10 @@ void Promise.all([
     if (loadingBar) loadingBar.style.width = `${Math.round(f * 100)}%`;
   }),
   document.fonts?.ready ?? Promise.resolve(),
-]).then(() => loadingEl?.remove());
+]).then(() => {
+  loadingEl?.remove();
+  loaded = true;
+});
 
 // Exportar e importar la partida (archivo JSON), desde Ajustes.
 settingsUi.exportSave.addEventListener('click', () => {
@@ -1177,7 +1345,7 @@ settingsUi.exportSave.addEventListener('click', () => {
   const blob = new Blob([serialize(file.state, Date.now())], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `casino-partida-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `rotten-odds-partida-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
   setText(settingsUi.saveNote, 'Partida exportada.');
@@ -1189,7 +1357,11 @@ settingsUi.importFile.addEventListener('change', async () => {
   if (!picked) return;
   const file = deserialize(await picked.text());
   if (!file) return setText(settingsUi.saveNote, 'Ese archivo no es una partida válida.');
-  if (continueInfo(localStorage, saveKey) && !confirm('¿Sustituir la partida guardada por la del archivo?')) return;
+  if (continueInfo(localStorage, saveKey)) {
+    const ok = await dialogs.confirm('¿Sustituir la partida guardada por la del archivo?', { confirm: 'Sustituir', danger: true });
+    navs.settings?.reset(settingsUi.importSave);
+    if (!ok) return;
+  }
   saveGame(localStorage, saveKey, file.state, Date.now());
   setText(settingsUi.saveNote, 'Partida importada. Pulsa Continuar en el menú.');
   renderSettings(settingsUi, settings, true);
@@ -1284,11 +1456,12 @@ function updateDialogue(current: GameState, dt: number, entered: ReturnType<type
   speech.update(dt, inHall ? { mode: 'bubble', anchor, minLeft: table === 1 ? SPEECH_MIN_LEFT : 372 } : { mode: 'box' });
 }
 
+const TITLE_FADE_SECONDS = 1.2;
 let lastDt = 0;
 startLoop(
   {
     update: (dt) => {
-      if (screen === 'game' && state) {
+      if (screen === 'game' && state && !paused) {
         const entered = updateRooms(rooms, dt);
         const tick = updateGame(state, dt, defaultRng);
         if (state.activeTable === 1) scene.cleanerCollected(tick.cleaned);
@@ -1305,14 +1478,20 @@ startLoop(
     },
     render: () => {
       crt.tick();
-      if (screen === 'game' && state) {
-        renderHud(state);
-        if (state.activeTable === 1) scene.render(state, lastDt, rooms);
-        else if (state.activeTable === 2) slotsScene.render(state, lastDt, rooms);
-        else if (state.activeTable === 3) diceScene.render(state, lastDt, rooms);
-        else if (state.activeTable === 4) cardsScene.render(state, lastDt, rooms);
-        else coinScene.render(state, lastDt, rooms);
-        updateTooltip(state);
+      if (state && (screen === 'game' || settingsOverGame())) {
+        // En pausa (o con los Ajustes de la pausa encima) la escena se queda quieta.
+        const dt = paused || screen !== 'game' ? 0 : lastDt;
+        if (screen === 'game') renderHud(state);
+        if (state.activeTable === 1) scene.render(state, dt, rooms);
+        else if (state.activeTable === 2) slotsScene.render(state, dt, rooms);
+        else if (state.activeTable === 3) diceScene.render(state, dt, rooms);
+        else if (state.activeTable === 4) cardsScene.render(state, dt, rooms);
+        else coinScene.render(state, dt, rooms);
+        if (screen === 'game') updateTooltip(state);
+      } else if (TITLE_SCREENS.includes(screen)) {
+        titleFade = Math.max(0, titleFade - lastDt / TITLE_FADE_SECONDS);
+        titleScene.render(lastDt, { press: screen === 'press', fade: titleFade });
+        screens[screen].style.opacity = String(1 - titleFade);
       }
     },
   },

@@ -66,6 +66,13 @@ export const STYLES = {
   cardRed: { size: 14, color: '#8f1d16', background: PAPER, outline: false },
   cardPip: { size: 22, color: '#141110', background: PAPER, outline: false },
   cardPipRed: { size: 22, color: '#8f1d16', background: PAPER, outline: false },
+  /** Portada: el subtítulo bajo el título (dorado apagado, con contorno) y "Pulsa para entrar". */
+  tagline: { size: 14, color: '#b89c58', background: OUTLINE, outline: true },
+  prompt: { size: 16, color: '#d8cfb4', background: OUTLINE, outline: true },
+  /** Título provisional (solo si falta la imagen de la portada). */
+  provisionalTitle: { size: 48, color: '#c9a443', background: OUTLINE, outline: true },
+  /** Epílogo del final: texto frío sobre la caja oscura de la franja inferior. */
+  epilogue: { size: 16, color: '#e6e1d2', background: OUTLINE, outline: true },
   /** Etiquetas de objetivo bloqueado (dados) y similares sobre los paneles. */
   locked: { size: 14, color: '#a99c7c', background: PANEL, outline: false },
 } satisfies Record<string, TextStyle>;

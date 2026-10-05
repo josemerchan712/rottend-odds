@@ -17,7 +17,7 @@ public class OpenApiConfig {
     OpenAPI casinoOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Casino incremental · API")
+                        .title("ROTTEN ODDS · API")
                         .version("0.1.0")
                         .description("Cuentas, guardado en la nube con control de conflictos, ranking de la mesa 1 "
                                 + "y validación de plausibilidad. El juego funciona sin este servidor."))

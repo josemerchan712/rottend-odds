@@ -1,4 +1,6 @@
-# Casino incremental
+# ROTTEN ODDS
+
+*La casa siempre cobra.*
 
 Juego incremental de terror en el navegador: un trabajador del casino debe 10.000.000 de fichas y
 tiene que saldarlas apostando en una ruleta amañada por la suerte. Frontend en TypeScript que
@@ -270,3 +272,11 @@ sistema antitrampas:
 - No hay despliegue: el `Dockerfile` y el `docker-compose.yml` son para desarrollo local.
 - Las mesas 2 a 4 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
   servidor acepta cualquier saldo.
+
+## Créditos
+
+**ROTTEN ODDS** · diseño, programación y textos: José María Merchán Martos. Arte: pixel art generado con
+IA y procesado para el juego (`npm run assets`). Sonido sintetizado en el navegador. Fuente VT323
+© 2011 The VT323 Project Authors (Peter Hull), con licencia SIL Open Font License 1.1
+(`public/licencias/VT323-OFL.txt`). El título y el subtítulo viven en `src/game/config.ts`
+(`GAME_TITLE`, `GAME_TAGLINE`); el nombre del repositorio y del paquete no cambian.

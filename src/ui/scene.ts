@@ -37,7 +37,7 @@ const BIG_LOSS_FRACTION = 0.25;
  */
 export const DOORS: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
   casino: { x: 30, y: 88, width: 62, height: 168, label: 'TRASTIENDA' },
-  trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'CASINO' },
+  trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'SALA' },
 };
 
 /** Lo que hay bajo el ratón en el casino (para el tooltip y el clic). */

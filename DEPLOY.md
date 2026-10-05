@@ -1,8 +1,11 @@
-# Despliegue (Cloudflare Workers con assets estáticos)
+# Despliegue de ROTTEN ODDS (Cloudflare Workers con assets estáticos)
 
 El juego es una web estática: `npm run build` deja todo en `dist/` y funciona entero sin servidor (sin
 `VITE_API_URL` se ocultan *Iniciar sesión*, *Sincronizar* y *Ranking*). Cloudflare la sirve como un
-Worker **solo de assets** (sin código de servidor), configurado en `wrangler.jsonc`.
+Worker **solo de assets** (sin código de servidor), configurado en `wrangler.jsonc`. El nombre del juego
+(«ROTTEN ODDS · La casa siempre cobra») sale de `GAME_TITLE` y `GAME_TAGLINE` en `src/game/config.ts`: el
+build lo escribe en el `<title>` y los metadatos de `index.html`. El Worker y el repositorio conservan su
+nombre técnico (`casino-incremental`).
 
 **Nada de esto se ha ejecutado.** Son los pasos exactos para cuando se quiera publicar.
 

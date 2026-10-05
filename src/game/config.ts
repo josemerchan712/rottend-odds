@@ -1,4 +1,16 @@
-import shared from '../../shared/config.json';
+import shared from '../../shared/config.json' with { type: 'json' };
+import pkg from '../../package.json' with { type: 'json' };
+
+/** Nombre del juego: título de la página, metadatos, menú, créditos y textos para compartir. */
+export const GAME_TITLE = 'ROTTEN ODDS';
+/** Subtítulo, bajo el título de la portada. */
+export const GAME_TAGLINE = 'La casa siempre cobra';
+/** Versión que se ve en el menú (la del paquete). */
+export const GAME_VERSION: string = pkg.version;
+/** Autor (créditos). */
+export const GAME_AUTHOR = 'José María Merchán Martos';
+/** Enlace al repositorio en los créditos; null = no se muestra (el repositorio es privado). */
+export const REPO_URL: string | null = null;
 
 /**
  * Todos los números del diseño en un solo sitio.

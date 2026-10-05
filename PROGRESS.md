@@ -84,6 +84,37 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
 - Nada de esta sesión. Revisar a oído los sonidos (no se han podido escuchar desde aquí) y los diálogos marcados
   como pendientes de revisión (mesas 2 a 5).
 
+### Cierre de la sesión 5
+
+- **Push**: los seis bloques están en `origin/main` (push normal al final de cada bloque, nunca con force). Nada
+  desplegado.
+- **Qué hacía perder a los ayudantes** (sobre todo al camarero de la mesa 3): apostaban una fracción fija del techo
+  aunque no tuvieran ventaja; el camarero, además, perseguía el doble seis con suerte alta y su agresivo apostaba el
+  techo entero con suerte baja. Ahora: Kelly sobre la probabilidad real, riesgo por perfil y espera si no compensa.
+- **Qué capa emborronaba el texto**: el canvas de 640x360 estirado (texto con antialias a 1 px por unidad) y el HTML
+  escalado con `transform`, más el grano CRT. Ahora: zoom entero, canvas a resolución física y texto sin antialias.
+- **Números cambiados**: mesa 2 techo máx. nivel 11 → 10 (tramo final 18 s → 47 s, sin basura); mesa 3 conversión
+  k 0,3 → 0,38 (el zombi con Kelly rinde menos al empezar la mesa 3); mesa 5 nueva (techo base 3, suerte 400 × 1,25^n,
+  fatiga 5 puntos por cara). Mesas 1 y 4 sin cambios. Duraciones (estrategia óptima): 8:18 / 11:31 / ~14:20 / 12:26 /
+  11:42 → mesas 1-5 ≈ 58 min.
+- **Decisiones propias**: ver cada bloque (diálogos de trastienda vacíos en 2-5; agresivo sin umbral de riesgo; temple
+  como mejora de la mesa 5; Espacio/R/S en la mesa 5; tramo final de la mesa 5 en 40 s; silencio no persistente;
+  créditos con el nombre del autor del repositorio).
+- **Llegar a la mesa 5**: `npm run dev` y abrir `http://localhost:5173/?dev=mesa5` (hueco de guardado aparte, mesas
+  1-4 saldadas, 4.000 de oro). Pestaña MESA 5.
+- **Assets que faltan** (pendientes de antes; mismo estilo: pixel art de terror, contorno negro, paleta verde
+  enfermizo, óxido y rojo seco, fondo magenta plano):
+
+| Asset | Archivo | Tamaño | Prompt de Nano Banana |
+|---|---|---|---|
+| Jugador en reposo (idle) | hoja magenta de 2 frames → `assets/sprites/player/idle-1.png`, `idle-2.png` | 64x64 | "Pixel art, el mismo jugador harapiento de casino de terror de pie y quieto, respirando, 2 frames de animación idle, vista lateral, fondo magenta plano, contorno negro" |
+| Ruleta limpia sin bola ni marcador | `assets/raw/ruleta-limpia.*` | 192x192 (o mayor, cuadrada) | "Pixel art, ruleta de casino vista desde arriba, vieja y oxidada, números legibles en anillo, sin bola y sin ningún marcador, centrada sobre fondo magenta plano, contorno negro" |
+| Bola y marcador | hoja magenta: bola de marfil manchada y flecha verde del marcador | 16x16 cada uno | "Pixel art, dos objetos pequeños sobre fondo magenta plano: una bola de ruleta de marfil manchada de sangre y una flecha marcadora verde enfermizo, contorno negro" |
+
+- **Desplegar**: seguir DEPLOY.md (`npm ci`, `npm test`, `npm run build`, `npx wrangler login`, `npx wrangler deploy`
+  y el paso del dominio personalizado).
+- **Tests**: cliente 276 en verde (`npm test`), servidor en verde (`./mvnw test`), `tsc` sin errores.
+
 ---
 
 ## Sesión 4 (bloques 0-3: comprobaciones y push, regeneración rápida y mesa 3, mesa 4, cierre)

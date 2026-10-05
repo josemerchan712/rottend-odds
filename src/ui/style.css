@@ -163,9 +163,9 @@ kbd {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 0 6px;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
   background: linear-gradient(to bottom, rgba(5, 4, 3, 0.92), rgba(5, 4, 3, 0.6));
   border-bottom: 1px solid #2a2219;
@@ -177,7 +177,15 @@ kbd {
 .hud > * { flex-shrink: 0; white-space: nowrap; }
 .hud .hud-debt { flex-shrink: 1; min-width: 60px; }
 .hud button { white-space: nowrap; }
-.hud-buttons { display: flex; gap: 3px; margin-left: auto; }
+.hud-buttons { display: flex; gap: 3px; margin-left: auto; justify-content: flex-end; }
+/*
+ * Sesión 8: las partes que cambian de una mesa a otra (saldo con el nombre de la moneda, pasivo, botón de
+ * pagar) ocupan siempre el mismo ancho reservado, el del contenido más ancho posible. Así la barra mide
+ * lo mismo en las cinco mesas y el modo (completo o compacto) no cambia al cambiar de mesa.
+ */
+.hud:not(.compact) .hud-balance { width: 88px; overflow: hidden; text-overflow: ellipsis; }
+.hud:not(.compact) .hud-passive { width: 84px; overflow: hidden; text-overflow: ellipsis; }
+.hud:not(.compact) .hud-buttons { min-width: 164px; }
 /* Barra compacta (poco ancho): textos abreviados en vez de partir líneas (fitHud en stage.ts). */
 .hud .short { display: none; }
 .hud.compact .short { display: inline; }
@@ -185,7 +193,19 @@ kbd {
 .hud.compact { gap: 5px; }
 .hud.compact .hud-debt .debt-bar { display: none; }
 .hud.compact .table-tabs .tab { padding: 0 3px; }
-.hud-toast { min-width: 70px; text-align: right; opacity: 0; transition: opacity 0.25s; color: var(--muted); }
+.hud-toast {
+  /* Fuera de la fila: bajo la barra, a la derecha (no ocupa ancho en ella). */
+  position: absolute;
+  top: 22px;
+  right: 6px;
+  padding: 0 4px;
+  background: rgba(5, 4, 3, 0.85);
+  text-align: right;
+  opacity: 0;
+  transition: opacity 0.25s;
+  color: var(--muted);
+  pointer-events: none;
+}
 .hud-toast.show { opacity: 1; }
 .hud-toast[data-kind='gana'] { color: #9fb97a; }
 .hud-toast[data-kind='pierde'] { color: #c0574d; }
@@ -219,9 +239,22 @@ kbd {
   display: flex;
   align-items: flex-start;
   z-index: 10;
+  /* Solo la pestaña y el cuerpo reciben el ratón: el hueco transparente del cajón no tapa nada. */
+  pointer-events: none;
 }
+.drawer > * { pointer-events: auto; }
 .drawer.left { left: 0; }
 .drawer.right { right: 0; }
+.drawer[data-open='true'] { z-index: 11; }
+/*
+ * Sesión 8: las pestañas de un mismo lado van apiladas (Mesa arriba, Herencias debajo) y pegadas al borde
+ * exterior del cajón abierto, o al borde de la pantalla si todos están cerrados: un cajón cerrado se
+ * desplaza lo que mide el cuerpo del abierto (120 + 3 del marco), así su pestaña nunca tapa contenido.
+ */
+.table-layer:has(.drawer.left[data-open='true']) .drawer.left[data-open='false'] { left: 123px; }
+.table-layer:has(.drawer.right[data-open='true']) .drawer.right[data-open='false'] { right: 123px; }
+.drawer[data-open='true'] .drawer-tab { margin-left: 3px; }
+.drawer.right[data-open='true'] .drawer-tab { margin-left: 0; margin-right: 3px; }
 .drawer-tab {
   position: relative;
   width: 20px;
@@ -261,8 +294,6 @@ kbd {
 .drawer-sub { margin-top: 6px; }
 /* Segundo cajón del lado izquierdo (Herencias en la mesa 5): su pestaña, debajo de la de Mesa. */
 .drawer.left.second .drawer-tab { margin-top: 112px; height: 84px; }
-.drawer.left.second[data-open='false'] { pointer-events: none; }
-.drawer.left.second .drawer-tab { pointer-events: auto; }
 .small-text { font-size: 10px; margin: 2px 0; }
 .shop-row { padding: 2px 0 3px; border-top: 1px solid var(--line); }
 .shop-row:first-of-type { border-top: 0; }

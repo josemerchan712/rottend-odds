@@ -72,18 +72,52 @@ export function layoutStage(root: HTMLElement, stage: HTMLElement): boolean {
   return true;
 }
 
+export type HudMode = 'completo' | 'compacto';
+
 /**
- * La barra superior siempre en una línea: si el contenido no cabe, pasa a modo compacto (textos
- * abreviados); si sobra sitio de verdad (con margen, para no oscilar), vuelve al normal.
+ * Modo de la barra superior, el mismo para las cinco mesas: completo si el contenido más ancho de
+ * todas (medido en modo completo) cabe en el ancho disponible; si no, compacto. Función pura.
+ *
+ * Sesión 8: antes cada mesa decidía con su propio contenido (el nombre de su moneda, su saldo, si aún
+ * se ve "Pagar deuda"), así que la mesa 4 ("FICHAS NEGRAS") pasaba a compacto y la 5 no. Ahora se
+ * decide una vez con el más ancho, y las partes variables tienen un ancho reservado (style.css).
  */
-export function fitHud(hud: HTMLElement | null): void {
-  if (!hud || hud.clientWidth === 0) return;
-  const overflow = hud.scrollWidth > hud.clientWidth + 1;
-  if (overflow && !hud.classList.contains('compact')) hud.classList.add('compact');
-  else if (!overflow && hud.classList.contains('compact')) {
+export function hudMode(available: number, required: readonly number[]): HudMode {
+  if (!(available > 0) || required.length === 0) return 'completo';
+  return Math.max(...required) <= available + 0.5 ? 'completo' : 'compacto';
+}
+
+/**
+ * Mide las barras de todas las mesas en modo completo (también las de las mesas que no se ven) y les
+ * pone el mismo modo. Mide de verdad solo cuando se le llama (al recolocar, al cargar la fuente y de
+ * vez en cuando), no en cada fotograma.
+ */
+export function fitHuds(huds: readonly HTMLElement[]): HudMode | null {
+  const required: number[] = [];
+  let available = 0;
+  for (const hud of huds) {
+    const layer = hud.parentElement;
+    const wasHidden = layer?.hidden ?? false;
+    if (layer && wasHidden) {
+      layer.style.visibility = 'hidden';
+      layer.hidden = false;
+    }
+    const compact = hud.classList.contains('compact');
     hud.classList.remove('compact');
-    if (hud.scrollWidth > hud.clientWidth - 24) hud.classList.add('compact');
+    if (hud.clientWidth > 0) {
+      available = Math.max(available, hud.clientWidth);
+      required.push(hud.scrollWidth);
+    }
+    if (compact) hud.classList.add('compact');
+    if (layer && wasHidden) {
+      layer.hidden = true;
+      layer.style.visibility = '';
+    }
   }
+  if (available === 0) return null;
+  const mode = hudMode(available, required);
+  for (const hud of huds) hud.classList.toggle('compact', mode === 'compacto');
+  return mode;
 }
 
 /**

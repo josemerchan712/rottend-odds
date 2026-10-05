@@ -31,7 +31,7 @@ import {
 } from './ui/online';
 import { mountUi, render, setText } from './ui/render';
 import { Scene } from './ui/scene';
-import { enterFullscreen, fitHud, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
+import { enterFullscreen, fitHuds, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
 import { loadSprites, whenSpritesLoaded } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
 import { canBetManually, canCollectTrash, createRoomState, inTransition, toggleRoom, updateRooms } from './game/rooms';
@@ -179,12 +179,15 @@ mountTextLayer(app.querySelector<HTMLCanvasElement>('[data-ref="sceneText"]')!);
 // tamaños o dpr transitorios; se espera a que se asienten y se ignoran los de la página oculta. Si no
 // hay medidas válidas (página oculta o sin tamaño, también al cargar), se reintenta hasta que las haya.
 let relayoutTimer = 0;
+/** Última vez que se midieron las barras superiores (ms); 0 = medir en el siguiente pintado. */
+let lastHudFit = 0;
 const scheduleRelayout = () => {
   window.clearTimeout(relayoutTimer);
   relayoutTimer = window.setTimeout(relayout, 120);
 };
 function relayout(): void {
   if (!layoutStage(root, stage)) scheduleRelayout();
+  lastHudFit = 0;
 }
 window.addEventListener('resize', scheduleRelayout);
 document.addEventListener('fullscreenchange', () => {
@@ -422,7 +425,12 @@ function renderHud(current: GameState): void {
       b.hidden = !isTableUnlocked(current, Number(b.dataset.table) as TableId);
     });
   }
-  fitHud(layers[table - 1].querySelector<HTMLElement>('.hud'));
+  // Un solo modo (completo o compacto) para las cinco barras; se vuelve a medir como mucho una vez por segundo.
+  const now = performance.now();
+  if (now - lastHudFit > 1000) {
+    lastHudFit = now;
+    fitHuds(layers.map((l) => l.querySelector<HTMLElement>('.hud')!));
+  }
   if (table === 1) render(gameUi, current);
   else if (table === 2) render2(slotsUi, current);
   else if (table === 3) render3(diceUi, current);
@@ -1458,6 +1466,7 @@ void Promise.all([
 ]).then(() => {
   loadingEl?.remove();
   loaded = true;
+  lastHudFit = 0; // con la fuente ya cargada, se vuelven a medir las barras
 });
 
 // Exportar e importar la partida (archivo JSON), desde Ajustes.

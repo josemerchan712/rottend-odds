@@ -3,9 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Casino</title>
+    <title>Casino · un incremental de terror</title>
+    <meta name="description" content="Debes diez millones. Un incremental de terror en pixel art: cinco mesas, cinco prestamistas y una casa que nunca pierde." />
+    <meta name="theme-color" content="#050403" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Casino" />
+    <meta property="og:description" content="Debes diez millones. Paga cinco deudas y sal de la casa." />
+    <meta property="og:image" content="./og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      /* Pantalla de carga: visible antes de que llegue el código; main.ts la quita al cargar los sprites. */
+      #loading { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #000; color: #c9a443; font: 16px monospace; letter-spacing: 2px; }
+      #loading .track { width: 200px; height: 8px; border: 2px solid #6b5428; background: #15110d; }
+      #loading-bar { width: 0; height: 100%; background: #c9a443; }
+    </style>
   </head>
   <body>
+    <div id="loading" aria-live="polite">
+      <div>CARGANDO</div>
+      <div class="track"><div id="loading-bar"></div></div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

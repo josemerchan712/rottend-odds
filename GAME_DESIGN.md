@@ -406,6 +406,12 @@ Empieza al pagar la mesa 4 con el estado real de una partida (d) de la mesa 4 (q
 
 **Interfaz**: junto a cada ayudante, su neto del **último minuto** (`+N/min` en verde, `−N/min` en rojo, o "Esperando") y una estrellita discreta en el perfil **recomendado** para la suerte y el saldo de ahora (el de más crecimiento esperado del saldo; si ninguno apuesta, el prudente). Sin porcentajes. Al comprar un ayudante empieza en prudente.
 
+## 4g. Final y publicación (sesión 5)
+
+- **Final**: al pagar al Dueño, su última línea (`debtPaid` de `dialogue5.es.ts`) y la **pantalla final**: epílogo corto, tiempo total, apuestas de las cinco mesas (jugador y ayudantes), % ganadas, jackpots, veces sin fichas (`state.stats.zeros`, cuenta cada vez que una mesa abierta baja de la apuesta mínima) y créditos (arte generado con IA; VT323 con la SIL Open Font License 1.1). Sin prestigio: la partida queda guardada y se puede seguir jugando.
+- **Sin servidor**: sin `VITE_API_URL` el menú no enseña la sección en línea y al saldar deudas solo se avisa.
+- **Publicación**: web estática en Cloudflare (Workers con assets, `wrangler.jsonc`, `public/_headers`); pasos en DEPLOY.md. Pantalla de carga, favicon, descripción e imagen para compartir; aviso en pantallas táctiles o de menos de 900x480; exportar e importar la partida (JSON) en Ajustes.
+
 ## 5. Conversión de monedas entre mesas
 
 - Cada mesa tiene su moneda (fichas, monedas, etc.).

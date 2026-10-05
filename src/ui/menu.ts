@@ -11,6 +11,7 @@ export interface MenuUi {
   login: HTMLButtonElement;
   sync: HTMLButtonElement;
   ranking: HTMLButtonElement;
+  online: HTMLElement;
   account: HTMLElement;
 }
 
@@ -22,6 +23,10 @@ export interface SettingsUi {
   volumeValue: HTMLElement;
   deleteSave: HTMLButtonElement;
   deleteNote: HTMLElement;
+  exportSave: HTMLButtonElement;
+  importSave: HTMLButtonElement;
+  importFile: HTMLInputElement;
+  saveNote: HTMLElement;
   back: HTMLButtonElement;
 }
 
@@ -38,13 +43,15 @@ export function mountMenu(root: HTMLElement): MenuUi {
         <button data-ref="newGame">Nueva partida</button>
         <button data-ref="settings">Ajustes</button>
       </div>
-      <h2 class="menu-section">En línea (opcional)</h2>
-      <div class="menu-options">
-        <button data-ref="login">Iniciar sesión</button>
-        <button data-ref="sync">Sincronizar partida</button>
-        <button data-ref="ranking">Ranking</button>
+      <div data-ref="online">
+        <h2 class="menu-section">En línea (opcional)</h2>
+        <div class="menu-options">
+          <button data-ref="login">Iniciar sesión</button>
+          <button data-ref="sync">Sincronizar partida</button>
+          <button data-ref="ranking">Ranking</button>
+        </div>
+        <p class="muted" data-ref="account"></p>
       </div>
-      <p class="muted" data-ref="account"></p>
     </section>
   `;
   const ref = <T extends HTMLElement>(name: string) => root.querySelector<T>(`[data-ref="${name}"]`)!;
@@ -57,6 +64,7 @@ export function mountMenu(root: HTMLElement): MenuUi {
     sync: ref('sync'),
     ranking: ref('ranking'),
     account: ref('account'),
+    online: ref('online'),
   };
 }
 
@@ -89,13 +97,19 @@ export function mountSettings(root: HTMLElement): SettingsUi {
       </label>
       <label class="setting">
         <input type="checkbox" data-ref="dialogues" />
-        Diálogos del Encargado
+        Diálogos de los prestamistas
       </label>
       <label class="setting">
         Volumen
         <input type="range" min="0" max="100" step="1" data-ref="volume" />
         <span data-ref="volumeValue"></span>
       </label>
+      <div class="setting">
+        <button data-ref="exportSave">Exportar partida</button>
+        <button data-ref="importSave">Importar partida</button>
+        <input type="file" accept="application/json,.json" data-ref="importFile" hidden />
+      </div>
+      <p class="muted small-text" data-ref="saveNote"></p>
       <div class="setting">
         <button data-ref="deleteSave" class="danger">Borrar partida</button>
         <span class="muted" data-ref="deleteNote"></span>
@@ -112,6 +126,10 @@ export function mountSettings(root: HTMLElement): SettingsUi {
     volumeValue: ref('volumeValue'),
     deleteSave: ref('deleteSave'),
     deleteNote: ref('deleteNote'),
+    exportSave: ref('exportSave'),
+    importSave: ref('importSave'),
+    importFile: ref('importFile'),
+    saveNote: ref('saveNote'),
     back: ref('back'),
   };
 }
@@ -123,5 +141,6 @@ export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: bool
   ui.volume.value = String(Math.round(settings.volume * 100));
   setText(ui.volumeValue, `${Math.round(settings.volume * 100)}%`);
   ui.deleteSave.disabled = !hasSave;
+  ui.exportSave.disabled = !hasSave;
   setText(ui.deleteNote, hasSave ? '' : 'No hay partida guardada.');
 }

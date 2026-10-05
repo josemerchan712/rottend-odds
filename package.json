@@ -18,6 +18,7 @@
     "audit:helpers": "tsx sim/helpersAudit.ts",
     "plausibility": "tsx sim/plausibility.ts --full",
     "plausibility:quick": "tsx sim/plausibility.ts --quick",
+    "meta": "tsx scripts/meta.ts",
     "assets": "tsx scripts/assets.ts"
   },
   "devDependencies": {

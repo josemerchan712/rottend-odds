@@ -1,6 +1,8 @@
 import '@fontsource/vt323';
 import './ui/style.css';
-import { createApi, type CloudSave, type TokenResponse } from './api/client';
+import { createApi, ONLINE_ENABLED, type CloudSave, type TokenResponse } from './api/client';
+import { mountEnding, renderEnding } from './ui/ending';
+import { gameSummary, isGameFinished } from './game/summary';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
 import { setVolume, unlockAudio } from './audio';
@@ -24,7 +26,7 @@ import {
 import { mountUi, render, setText } from './ui/render';
 import { Scene } from './ui/scene';
 import { enterFullscreen, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
-import { loadSprites } from './ui/sprites';
+import { loadSprites, whenSpritesLoaded } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
 import { canBetManually, canCollectTrash, createRoomState, inTransition, toggleRoom, updateRooms } from './game/rooms';
 import { formatNumber } from './util/format';
@@ -109,7 +111,7 @@ const DEV_TABLE = DEV_MODE === 'mesa2' ? 2 : DEV_MODE === 'mesa3' ? 3 : DEV_MODE
 const saveKey = DEV_TABLE ? `${CONFIG.tech.saveKey}-dev${DEV_TABLE}` : CONFIG.tech.saveKey;
 if (DEV_TABLE && !loadGame(localStorage, saveKey)) saveGame(localStorage, saveKey, devState(DEV_TABLE), Date.now());
 
-type Screen = 'menu' | 'settings' | 'game' | 'auth' | 'sync' | 'ranking';
+type Screen = 'menu' | 'settings' | 'game' | 'auth' | 'sync' | 'ranking' | 'ending' | 'notice';
 
 // Contenedor raíz (toda la ventana; es lo que va a pantalla completa) con el escenario de 640x360
 // dentro: la escena de fondo, las pantallas HTML encima y el filtro CRT sobre todo.
@@ -124,6 +126,14 @@ app.innerHTML = `
       <div class="screen" data-screen="auth" hidden></div>
       <div class="screen" data-screen="sync" hidden></div>
       <div class="screen" data-screen="ranking" hidden></div>
+      <div class="screen" data-screen="ending" hidden></div>
+      <div class="screen" data-screen="notice" hidden>
+        <section class="panel menu small-screen">
+          <h1>Casino</h1>
+          <p>Este juego está pensado para ordenador, con ratón y teclado y una pantalla de al menos 900 px.</p>
+          <div class="menu-options"><button data-ref="noticeContinue">Seguir de todos modos</button></div>
+        </section>
+      </div>
     </div>
   </div>
 `;
@@ -131,7 +141,7 @@ const root = app.querySelector<HTMLElement>('[data-ref="root"]')!;
 const stage = app.querySelector<HTMLElement>('[data-ref="stage"]')!;
 const sceneCanvas = app.querySelector<HTMLCanvasElement>('[data-ref="scene"]')!;
 const screens = Object.fromEntries(
-  (['menu', 'settings', 'game', 'auth', 'sync', 'ranking'] as Screen[]).map((name) => [
+  (['menu', 'settings', 'game', 'auth', 'sync', 'ranking', 'ending', 'notice'] as Screen[]).map((name) => [
     name,
     app.querySelector<HTMLElement>(`[data-screen="${name}"]`)!,
   ]),
@@ -181,6 +191,8 @@ const coinUi = mountUi5(layers[4]);
 const authUi = mountAuth(screens.auth);
 const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
+const endingUi = mountEnding(screens.ending);
+if (!ONLINE_ENABLED) menuUi.online.hidden = true;
 
 const sprites = loadSprites();
 const scene = new Scene(sceneCanvas, sprites);
@@ -843,8 +855,16 @@ coinScene.onAwayResult = (chain) => {
 
 /** La última deuda: el Dueño dice su última línea y, al poco, sale la pantalla final. */
 function onFinalDebtPaid(): void {
-  showBanner('LA CASA ES TUYA', 'Has pagado al Dueño. Ya no debes nada a nadie.', 'Salir', () => toMenu());
+  // Primero la última línea del Dueño; al poco, la pantalla final.
+  window.setTimeout(() => {
+    if (!state || !isGameFinished(state)) return;
+    save();
+    renderEnding(endingUi, gameSummary(state));
+    state = null;
+    show('ending');
+  }, 4500);
 }
+endingUi.toMenu.addEventListener('click', () => show('menu'));
 
 let toast4Timer = 0;
 cardsScene.onAwayResult = (hand) => {
@@ -1010,6 +1030,10 @@ function showNote(text: string): void {
 /** Al saldar la deuda: aviso y, con sesión iniciada, registro del tiempo. Si falla, el juego sigue. */
 async function reportDebtPaid(): Promise<void> {
   const s = currentSession();
+  if (!ONLINE_ENABLED) {
+    showNote('Deuda saldada.');
+    return;
+  }
   if (!s || !state) {
     showNote('Deuda saldada. Inicia sesión desde el menú para salir en el ranking la próxima vez.');
     return;
@@ -1029,7 +1053,59 @@ async function reportDebtPaid(): Promise<void> {
 }
 
 applySettings();
-show('menu');
+// Pantalla pequeña o táctil: aviso (una vez por sesión del navegador) con la opción de seguir.
+const smallScreen = matchMedia('(pointer: coarse)').matches || window.innerWidth < 900 || window.innerHeight < 480;
+let noticeSeen = false;
+try {
+  noticeSeen = sessionStorage.getItem('casino-aviso-pantalla') === '1';
+} catch {
+  // Sin almacenamiento: se avisa igualmente.
+}
+show(smallScreen && !noticeSeen ? 'notice' : 'menu');
+screens.notice.querySelector<HTMLButtonElement>('[data-ref="noticeContinue"]')!.addEventListener('click', () => {
+  try {
+    sessionStorage.setItem('casino-aviso-pantalla', '1');
+  } catch {
+    // Igual que arriba.
+  }
+  show('menu');
+});
+
+// Pantalla de carga: la barra sigue a los sprites (y a la fuente); al terminar, se quita.
+const loadingEl = document.getElementById('loading');
+const loadingBar = document.getElementById('loading-bar');
+void Promise.all([
+  whenSpritesLoaded(sprites, (f) => {
+    if (loadingBar) loadingBar.style.width = `${Math.round(f * 100)}%`;
+  }),
+  document.fonts?.ready ?? Promise.resolve(),
+]).then(() => loadingEl?.remove());
+
+// Exportar e importar la partida (archivo JSON), desde Ajustes.
+settingsUi.exportSave.addEventListener('click', () => {
+  if (state) save();
+  const file = loadGame(localStorage, saveKey);
+  if (!file) return setText(settingsUi.saveNote, 'No hay partida que exportar.');
+  const blob = new Blob([serialize(file.state, Date.now())], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `casino-partida-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setText(settingsUi.saveNote, 'Partida exportada.');
+});
+settingsUi.importSave.addEventListener('click', () => settingsUi.importFile.click());
+settingsUi.importFile.addEventListener('change', async () => {
+  const picked = settingsUi.importFile.files?.[0];
+  settingsUi.importFile.value = '';
+  if (!picked) return;
+  const file = deserialize(await picked.text());
+  if (!file) return setText(settingsUi.saveNote, 'Ese archivo no es una partida válida.');
+  if (continueInfo(localStorage, saveKey) && !confirm('¿Sustituir la partida guardada por la del archivo?')) return;
+  saveGame(localStorage, saveKey, file.state, Date.now());
+  setText(settingsUi.saveNote, 'Partida importada. Pulsa Continuar en el menú.');
+  renderSettings(settingsUi, settings, true);
+});
 setInterval(save, autosaveInterval * 1000);
 window.addEventListener('beforeunload', save);
 document.addEventListener('visibilitychange', () => {

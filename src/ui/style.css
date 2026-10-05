@@ -357,3 +357,14 @@ kbd {
 .screen.game > .table-layer { position: absolute; inset: 0; pointer-events: none; }
 .table-layer > * { pointer-events: auto; }
 .screen.game > .table-fade { pointer-events: none; }
+
+/* Pantalla final. */
+.ending { width: 360px; }
+.ending-text { line-height: 1.2; margin: 4px 0 6px; }
+.ending-stats { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+.ending-stats td { padding: 1px 0; border-bottom: 1px solid var(--line); }
+.ending-stats td:last-child { text-align: right; color: var(--gold); }
+.ending a { color: var(--gold); }
+
+/* Aviso de pantallas pequeñas o táctiles. */
+.small-screen { width: 280px; text-align: center; }

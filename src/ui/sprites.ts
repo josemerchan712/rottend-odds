@@ -44,3 +44,24 @@ export function loadSprites(): Sprites {
 export function ready(img: HTMLImageElement | undefined): img is HTMLImageElement {
   return !!img && img.complete && img.naturalWidth > 0;
 }
+
+/** Avisa del progreso de carga (0-1) y se resuelve cuando todas las imágenes han cargado (o fallado). */
+export function whenSpritesLoaded(sprites: Sprites, progress: (fraction: number) => void): Promise<void> {
+  const all = Object.values(sprites).flatMap((group) => [...group.values()]);
+  return new Promise((resolve) => {
+    let done = 0;
+    const tick = () => {
+      done++;
+      progress(done / all.length);
+      if (done === all.length) resolve();
+    };
+    if (all.length === 0) return resolve();
+    for (const img of all) {
+      if (img.complete) tick();
+      else {
+        img.addEventListener('load', tick, { once: true });
+        img.addEventListener('error', tick, { once: true });
+      }
+    }
+  });
+}

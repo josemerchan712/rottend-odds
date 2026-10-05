@@ -58,9 +58,22 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
     propia (en vez de "jackpot"); botones Espacio/R/S (la A es el cajón de Ayuda); el pago final de momento
     muestra "LA CASA ES TUYA" (la pantalla final es del bloque 5).
 
+- [x] **B5 Final y publicación (sin desplegar).** Pantalla final al pagar al Dueño (su última línea y, a los
+  4,5 s, epílogo, estadísticas: tiempo total, apuestas, % ganadas, jackpots, veces sin fichas; créditos con el
+  arte por IA y la licencia OFL de VT323 en `public/licencias/`; volver al menú; sin prestigio). Build de
+  producción: pantalla de carga con barra (sprites y fuente), sin `console.log`, sin rastro de `?dev=` (comprobado
+  en el bundle), sprites PNG a compresión máxima (los originales de `assets/raw` no se empaquetan; 4,4 MB en
+  total). Sin `VITE_API_URL` se ocultan sesión, sincronizar y ranking (el juego va entero sin servidor).
+  `wrangler.jsonc` (Workers solo con assets) y `public/_headers` (caché larga para `/assets/*`, sin caché para
+  `index.html`, cabeceras de seguridad y CSP); **DEPLOY.md** con los comandos exactos (incluidos
+  `wrangler login` y el dominio personalizado). Aviso "pensado para ordenador" en pantallas táctiles o pequeñas
+  (con "Seguir de todos modos"). Metadatos: título, descripción, favicon pixel (una ficha) e imagen para compartir
+  (la mesa 5 a escala 2 con título; `npm run meta`). Exportar/importar la partida en JSON desde Ajustes.
+  Verificado con `vite preview`: arranca, carga una partida con la mesa 5 abierta, el Dueño habla al pagar y sale
+  la pantalla final; sin errores en consola.
+
 ### Pendiente
 
-- B5 final del juego y preparación para publicar (DEPLOY.md)
 - B6 sonido (opcional)
 
 ---

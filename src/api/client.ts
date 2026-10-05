@@ -50,7 +50,9 @@ export interface ApiOptions {
   fetch: typeof fetch;
 }
 
-export const DEFAULT_API_URL: string = import.meta.env?.VITE_API_URL ?? 'http://localhost:8080';
+/** URL del servidor (VITE_API_URL). Sin ella, el juego va sin servidor: se ocultan sesión, sincronizar y ranking. */
+export const DEFAULT_API_URL: string = import.meta.env?.VITE_API_URL ?? '';
+export const ONLINE_ENABLED = DEFAULT_API_URL !== '';
 
 export function createApi(options: Partial<ApiOptions> = {}) {
   const { baseUrl, timeoutMs, fetch: doFetch } = {

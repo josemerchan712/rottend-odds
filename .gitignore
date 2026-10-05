@@ -8,3 +8,4 @@ dist
 *.pem
 *.key
 server/target/
+sim/.cache

@@ -330,6 +330,59 @@ Empieza al pagar la deuda de la mesa 3 con el estado real de una partida (d) de 
 
 - **Sala**: el fondo de la mesa 4; la Crupier (96 px) tras la mesa, recortada por ella, con respiración; un tapete delante con las cartas de la banca y del jugador, que salen del zapato, se deslizan y **se voltean** (la de la banca boca abajo hasta que te plantas); caras dibujadas en código (papel viejo, índices, palo y una corona en las figuras) y el dorso del arte; **PEDIR, PLANTARSE, REPARTIR y ACEPTAR impresos en el propio tapete**; la última carta resaltada con una "D" para descartar; totales, manos, descartes, pozo y 7·7·7; la columna de fichas; el esqueleto a la derecha. Teclas: Espacio (repartir / plantarse), P, S, D, 1-4.
 
+## 4f. Mesa 5: Doble o nada (hecha, sesión 5)
+
+**Prestamista**: el Dueño de la casa. **Sin trastienda ni trabajo**. **Moneda**: oro. **Deuda**: 10M (la última: pagarla es el final del juego).
+
+### 4f.1 Desbloqueo y conversión
+
+- Al pagar la deuda de la mesa 4 sale **"Mesa 4 saldada"** y la pestaña **MESA 5**. Las mesas 1 a 4 siguen solas con sus ayudantes.
+- **Conversión**: `oro/s = max(1, 0,3 · (ingreso/s de la mesa 4)^0,5)` (ingreso esperado del esqueleto). Sin pasivo (solo el suelo) la mesa no se termina en una hora.
+
+### 4f.2 El juego
+
+- Se apuesta una cantidad (las fichas de siempre: 1%, 10%, 50% del techo y TODO) y se lanza una moneda: **CARA** dobla lo apostado y sigue en juego; **CRUZ** lo pierde todo. Tras cada cara se decide **RETIRARSE** (cobrar) o **SEGUIR** (otro lanzamiento con todo lo acumulado). Como mucho **10 caras** por cadena.
+- **Probabilidad**: primer lanzamiento `47% → 97%` con la suerte (curva 1,6; por debajo del 50% sin suerte: la casa gana), menos la penalización por apostar fuerte (la de siempre, sobre la apuesta inicial) y la **fatiga**: cada cara seguida resta **5 puntos** (el temple lo baja hasta 2). Con suerte máxima: 97%, 92%, 87%… así que dónde parar depende de la suerte.
+- **Tope por cadena**: el 25% de la deuda (2,5M); al llegar se cobra sola.
+- **Segunda oportunidad** (la mecánica del Dueño): cargas `1 + nivel/5` que se recargan solas (una cada `20 s × 0,93^nivel`); tras una cruz se puede gastar una para repetir el lanzamiento, o aceptar la pérdida. Reserva común con el ayudante.
+- **Jackpot**: completar las **10 caras**; además del valor de la cadena paga el **pozo progresivo** (semilla 50, +6% de cada apuesta, tope 25% de la deuda). Indicador `n/10` y pozo en el paño. Aporta < 1% del oro: no domina.
+- **Ayudante**: el **diablillo coronado** (quinto ayudante de la hoja). Criterio común de 4e; además cada perfil se retira en su rango de caras: **prudente 1-2**, **normal 3-4**, **agresivo 5-10** (elige dentro el de más crecimiento); usa una segunda oportunidad si ya llevaba alguna cara. +N/min y recomendado como los demás.
+
+### 4f.3 Mejoras
+
+| Mejora | Coste base | Crecimiento | Niveles |
+|---|---|---|---|
+| Suerte (y segundas oportunidades) | 400 | 1,25 | 20 |
+| Apuesta máxima (techo 3 × 2,5^nivel, máx. 28.610) | 350 | 2 | 10 |
+| Diablillo coronado | 1.200 | - | 1 |
+| Velocidad / perfil / suerte del diablillo | 700 / 2.500 / 1.800 | 1,6 / 4 / 1,8 | 15 / 2 / 10 |
+| Temple (−0,6 puntos de fatiga por nivel) | 3.000 | 2,2 | 5 |
+
+### 4f.4 Simulación (`npm run simulate:coin -- --cache`, 60 partidas)
+
+Empieza al pagar la mesa 4 con el estado real de una partida (d) de la mesa 4 (que viene de las anteriores). Cada decisión gasta una acción (0,5 s) y entre lanzamientos pasa al menos 1 s. La estrategia óptima decide apuesta y parada por programación dinámica sobre las caras que quedan (crecimiento logarítmico) y compra la suerte en cuanto puede.
+
+| Estrategia | Media | p10 | p90 | Tramo final | Mesas 1-5 |
+|---|---|---|---|---|---|
+| (a) Ficha mínima, se retira a la primera | >60:00 | | | - | |
+| (b) Siempre TODO y siempre sigue hasta 10 | 19:26 | 17:08 | 21:48 | 0:27 | 66:04 |
+| (b2) Apuesta óptima, siempre se retira a la primera | 12:40 | 12:02 | 13:13 | 0:34 | 59:18 |
+| (b3) Apuesta óptima, siempre sigue hasta 10 | 14:30 | 12:05 | 16:18 | 0:48 | 61:08 |
+| (c) Óptima, sin segunda oportunidad | 12:16 | 11:40 | 13:14 | 0:40 | 58:54 |
+| (d) Óptima, con segunda oportunidad | **11:42** | 10:42 | 12:52 | **0:40** | **58:20** |
+
+- Mesa 5 de ~12 minutos; **mesas 1 a 5 ≈ 58 min**.
+- Ninguna estrategia trivial gana: siempre hasta 10 tarda un 24% más (y con TODO quiebra en el 13-37% de las partidas en las fases media y alta); retirarse siempre a la primera, un 8% más.
+- La segunda oportunidad da una ventaja real (−5% frente a no usarla) y no es obligatoria. Sin bancarrotas con (b2), (b3), (c) y (d).
+- **Calibración (propuesta mínima)**: con techo 15 y suerte 150 × 1,5^n el final era una explosión (de 500K a 9M en 11 s: cada cadena multiplica la apuesta por 8-16) y el tramo final duraba 6 s. Techo base 3 y suerte 400 × 1,25^n: 11:42 y tramo final de **40 s** (algo por debajo de los 45 pedidos: bajar más el techo alarga la mesa entera sin estirar el final; se deja así).
+- Diablillo por perfil (VE por moneda apostada): prudente +75% / +189% / +288% en las fases media, alta y final; agresivo +149% / +2.655% / +13.199%. Ninguno deja el saldo a 0.
+
+### 4f.5 Escena y diálogo
+
+- **Despacho**: el fondo de la mesa 5 (lámpara de araña, retratos sin cara, montones de oro); el Dueño (96 px, 3 fases) sentado en su trono tras el escritorio, recortado por él; la **moneda** (cara: el rey coronado; cruz: la calavera) gira sobre el escritorio: sube, se estrecha entre sus dos caras y cae; la **cadena como una pila de monedas** que crece; el paño con `n/10`, pozo, "en juego", segundas oportunidades y los botones **APOSTAR / SEGUIR / RETIRARSE** (o **OTRA VEZ / ACEPTAR**). Teclas: Espacio (apostar, seguir o aceptar), R (retirarse), S (segunda oportunidad), 1-4 fichas. Temblor al perder una cadena grande y el CRT.
+- **El Dueño** (`src/content/dialogue5.es.ts`, pendiente de revisión): señorial, pausado, casi paternal y absoluto; oro, herencia y la casa. ≥5 líneas por disparador y fase, ≤90 caracteres, y líneas propias para el pago final.
+- Guardado v9 (la mesa 5 empieza vacía; una cadena a medias se cobra al cargar si estaba en cara). Servidor: versión 9, validación estructural de la mesa 5 (ranking sin cambios). `?dev=mesa5` con hueco de guardado aparte.
+
 ## 4e. Ayudantes: criterio común (sesión 5, auditoría)
 
 **Qué fallaba.** Cada ayudante apostaba una fracción fija del techo (limitada por su parte del saldo) tuviera o no ventaja. Con poca suerte el valor esperado es negativo (ventaja de la casa más la penalización por apostar fuerte) y perdían de forma sistemática: el crupier prudente acababa en negativo el 35% de las ventanas de 2 minutos con suerte baja. El **camarero fantasma** era el peor: elegía objetivo por crecimiento pero con una apuesta fija, así que con "Más de 9", "Doble" y "Doble seis" desbloqueados perseguía el doble seis (p ≈ 8%) incluso mejorado y con suerte alta (11% de ventanas negativas y p10 de −2 techos/min con el prudente), y su agresivo (todo el techo, 60% del saldo) perdía casi todo el saldo con suerte baja (caída máxima del 98-100%).

@@ -47,9 +47,19 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
   (Apagado/Suave/Fuerte, por defecto Suave, guardado en Ajustes v2) y recolocado al cambiar el dpr. Test de
   escala entera (11 tamaños x 7 dpr). Comprobado en el navegador a 1280x720 con dpr 1 y 1,5.
 
+- [x] **B4 Mesa 5: Doble o nada (el Dueño).** Lógica (`src/game/coin/`), guardado v9, servidor v9 (validación
+  estructural), assets procesados (Dueño 3 fases, moneda cara/cruz, fondo, diablillo = quinta celda de la hoja de
+  ayudantes), escena con la moneda que gira, pila de la cadena, n/10, pozo y botones en el paño, HUD/cajones,
+  tooltips, diálogo del Dueño (pendiente de revisión), `?dev=mesa5`. Simulación `npm run simulate:coin -- --cache`
+  (guarda en `sim/.cache/` los estados de salida de la mesa 4). Ver GAME_DESIGN 4f.
+  - Calibración: (d) 11:42, mesas 1-5 ≈ 58:20, tramo final 40 s (pedido 45-90: anotado; bajar el techo alarga la
+    mesa sin estirar el final). Ninguna estrategia trivial gana; la segunda oportunidad da −5%.
+  - Decisiones: deuda 10M como las otras; probabilidad base 47%, fatiga 5 puntos por cara, temple como mejora
+    propia (en vez de "jackpot"); botones Espacio/R/S (la A es el cajón de Ayuda); el pago final de momento
+    muestra "LA CASA ES TUYA" (la pantalla final es del bloque 5).
+
 ### Pendiente
 
-- B4 mesa 5 (doble o nada, el Dueño)
 - B5 final del juego y preparación para publicar (DEPLOY.md)
 - B6 sonido (opcional)
 

@@ -67,6 +67,8 @@ export interface CardsRunResult {
   jackpots: number;
   helper: Record<Phase, { bets: number; delta: number; staked: number; bankruptcies: number }>;
   passive: { start: number; end: number };
+  /** Estado al terminar (para empezar la mesa 5 desde ahí). */
+  finalState: GameState;
 }
 
 const SIDE: readonly CardUpgradeId[] = ['helperLuck', 'jackpot'];
@@ -106,6 +108,7 @@ export function runCards(strategy: CardsStrategy, seed: number, player: PlayerMo
     jackpots: 0,
     helper: { inicio: empty(), media: empty(), alta: empty(), final: empty() },
     passive: { start: cardsPassiveRate(state), end: 0 },
+    finalState: state,
   };
 
   let actionTimer = 0;

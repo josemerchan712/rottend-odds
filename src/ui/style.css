@@ -431,9 +431,9 @@ kbd {
 /* Menú principal: columna en la zona oscura del pasillo, hacia el centro y la derecha. */
 .title-menu {
   position: absolute;
-  left: 398px;
+  left: 392px;
   top: 166px;
-  width: 162px;
+  width: 176px;
   display: flex;
   flex-direction: column;
   gap: 6px;

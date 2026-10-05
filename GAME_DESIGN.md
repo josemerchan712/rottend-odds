@@ -1,6 +1,7 @@
-# Casino incremental de terror: documento de diseño
+# ROTTEN ODDS: documento de diseño
 
-Título provisional: por decidir.
+Título: **ROTTEN ODDS** · subtítulo: *La casa siempre cobra* (`GAME_TITLE` y `GAME_TAGLINE` en `src/game/config.ts`,
+sesión 7). El repositorio, el paquete y el Worker conservan el nombre técnico `casino-incremental`.
 
 ## 1. Resumen
 
@@ -423,7 +424,7 @@ Cada herencia sola (nivel 2) frente a (c): Cero dorado −5,6%, Retener −11,3%
 
 ## 4g. Final y publicación (sesión 5)
 
-- **Final**: al pagar al Dueño, su última línea (`debtPaid` de `dialogue5.es.ts`) y la **pantalla final**: epílogo corto, tiempo total, apuestas de las cinco mesas (jugador y ayudantes), % ganadas, jackpots, veces sin fichas (`state.stats.zeros`, cuenta cada vez que una mesa abierta baja de la apuesta mínima) y créditos (arte generado con IA; VT323 con la SIL Open Font License 1.1). Sin prestigio: la partida queda guardada y se puede seguir jugando.
+- **Final** (rehecho en la sesión 7, ver 9.1b): al pagar al Dueño, su última línea (`debtPaid` de `dialogue5.es.ts`) y la **pantalla final**: epílogo corto, tiempo total, apuestas de las cinco mesas (jugador y ayudantes), % ganadas, jackpots, veces sin fichas (`state.stats.zeros`, cuenta cada vez que una mesa abierta baja de la apuesta mínima) y créditos (arte generado con IA; VT323 con la SIL Open Font License 1.1). Sin prestigio: la partida queda guardada y se puede seguir jugando.
 - **Sin servidor**: sin `VITE_API_URL` el menú no enseña la sección en línea y al saldar deudas solo se avisa.
 - **Publicación**: web estática en Cloudflare (Workers con assets, `wrangler.jsonc`, `public/_headers`); pasos en DEPLOY.md. Pantalla de carga, favicon, descripción e imagen para compartir; aviso en pantallas táctiles o de menos de 900x480; exportar e importar la partida (JSON) en Ajustes.
 
@@ -522,15 +523,27 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 
 ## 9. Pantallas
 
-### 9.1 Pantalla de inicio
+### 9.1 Pantalla de título y menú (sesión 7)
 
-- Tres opciones: **Continuar**, **Nueva partida** y **Ajustes**.
-- **Continuar** solo aparece si hay una partida guardada, y muestra el tiempo de juego y el estado de la mesa (deuda reunida o saldada).
-- **Nueva partida** pide confirmación si ya existe un guardado, porque lo sobrescribe.
+- **Pulsa para entrar** tras la barra de carga (texto que respira sobre negro). El primer clic o tecla desbloquea el audio, pide pantalla completa si el ajuste está activo y funde a la portada. Una vez por carga de página.
+- **Portada**: `assets/raw/titulo.*` (ya trae el logo; no se dibuja en código) a pantalla completa, con efectos en código: halo de la lámpara verde que respira (~6 s), 40 motas de polvo lentas y oscilación de 1 px (sin oscilación con el CRT apagado). Subtítulo en la capa de texto (14 px, dorado apagado, contorno) bajo el título. Zumbido propio, más grave que las mesas.
+- **Menú** vertical en la zona oscura a la derecha del pasillo (x 392-568, desde y 166), botones con marco pixel en CSS: Continuar (si hay guardado; debajo «Mesa N · tiempo · deuda X%», «deuda saldada» o «casa saldada»), Nueva partida, Ajustes, Ranking e Iniciar sesión (solo con `VITE_API_URL`; Sincronizar solo con sesión), Ver final (solo con el juego completado), Créditos. Versión abajo a la izquierda, «Pantalla completa» en la esquina. Flechas, Intro, Esc y ratón; un único resaltado y un tic suave al cambiar.
+- **Diálogos propios** con el marco pixel (no `confirm()`): nueva partida con guardado, borrar partida, importar una que sobrescribe. Teclado y ratón; Esc cancela; el foco empieza en Cancelar.
+- **Ajustes** (misma estética; se guardan aparte de la partida): volumen, Filtro CRT (Apagado, Suave, Fuerte), iniciar en pantalla completa, diálogos de los prestamistas, silencio (también N), exportar, importar y borrar partida. Izquierda/derecha ajustan la fila resaltada.
+- **Créditos**: arte generado con IA, sonido sintetizado, VT323 con su licencia, autor; el repositorio solo si `REPO_URL` está definido.
+- **Pausa** en el juego: Esc sin cajones abiertos (o el botón Menú del HUD) → Reanudar, Ajustes, Menú principal (guarda antes). En pausa no avanza nada.
 - **Un solo hueco de guardado.**
-- **Ajustes**: filtro CRT (Apagado, Suave o Fuerte), volumen y borrar partida. Los ajustes se guardan aparte de la partida: borrarla no los borra. El botón de borrar partida solo está aquí, no en la pantalla de juego.
-- Desde el juego hay un botón para **volver al menú**, que guarda antes.
-- El clic en Continuar o Nueva partida es el gesto del usuario que activa el audio (requisito de los navegadores).
+
+### 9.1b Pantalla final (sesión 7)
+
+Al pagar al Dueño (máquina de estados pura `src/game/ending.ts`):
+
+1. Su última línea (`debtPaid`), 2 s de pausa al cerrarse el bocadillo y fundido a negro. La mesa queda bloqueada.
+2. **Epílogo**: `assets/raw/final.*` a pantalla completa (la luz de las puertas respira) y 4 líneas de `src/content/ending.es.ts` (pendientes de revisión) a máquina de escribir, una por clic o cada 5 s, en una caja oscura semitransparente en la franja inferior. El zumbido baja al 30%.
+3. **Libro de cuentas** (dos páginas de papel): tiempo total y por mesa (`stats.paidAt`), apuestas y % ganadas, jackpots, veces a cero, ganado por mesa en su moneda (`stats.won` de cada mesa) y total, ayudantes comprados y mejor racha de la mesa 5.
+4. **Créditos** que suben (se saltan con un clic); el zumbido vuelve.
+5. **Botones**: Volver al menú, Seguir jugando (todas las mesas activas, sin prestigio ni nada nuevo), Copiar resumen (portapapeles, sin servidor).
+6. Esc o mantener una tecla 1,2 s salta a los botones. `endingSeen` (guardado v11) evita que se repita sola; «Ver final» la repite desde el epílogo.
 
 ### 9.2 Pantalla de la mesa 1
 

@@ -61,6 +61,21 @@ Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.
     última línea y el fundido la mesa queda bloqueada (no se puede apostar ni pausar); el libro espera un clic
     (no avanza solo); «fichas totales ganadas» se muestra por mesa en su moneda y un total de todas juntas.
 
+- [x] **B3 Pruebas y cierre.**
+  - Tests nuevos: navegación del menú (con y sin guardado, con y sin servidor, sesión, Ver final), máquina de
+    estados del final, resumen y texto para copiar, migración v10→v11 y finalVisto, recorte del filo blanco,
+    título sin «CASINO». Cliente 311 tests en verde; servidor 29 en verde.
+  - Capturas automáticas con Chrome sin interfaz por CDP contra `vite preview` (build de producción): pulsa para
+    entrar, título, ajustes, créditos, pausa, última línea, fundido, epílogo, libro, créditos y botones, con dpr 1,
+    1,5 y 2, en ventana (1280x720) y en pantalla completa real (ventana de Chrome a pantalla completa +
+    `requestFullscreen`, 1920x1080), y el CRT en los tres niveles: 198 capturas, **0 errores en consola**, escala
+    entera en todas (escenario de 1280x720 a 3840x2160 píxeles físicos). Subtítulo y menú legibles sobre la
+    imagen también con el CRT fuerte (el menú y el texto van por encima del CRT). Hojas de contacto en
+    `docs/capturas/sesion7/`. Ajuste tras revisarlas: menú 14 unidades más ancho (la línea de Continuar rozaba).
+  - Build: en `vite preview` se cargó un guardado con la mesa 5 a punto de pagar y se recorrió el final entero
+    (lo hace el mismo script). `?dev=` no existe en el build: no se crea ninguna clave `-dev` y el bundle no
+    contiene `devState` ni el hueco de desarrollo.
+
 ## Sesión 6 (bloques 1-4: texto legible, barra superior, aciertos de los ayudantes, rediseño de la mesa 5)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Simulaciones de una en una, con --quick.

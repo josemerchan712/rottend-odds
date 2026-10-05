@@ -28,6 +28,15 @@ export interface HelperProfileDef {
   maxBalanceFraction: number;
   kelly: number;
   maxLossWindow: number;
+  /** Solo la opción (apuesta, objetivo, parada) con más probabilidad de ganar. */
+  safestOnly?: boolean;
+  /** Probabilidad mínima de ganar de la apuesta que hace (con su tamaño). */
+  minWinChance?: number;
+}
+
+/** Probabilidad de ganar algo (resultados con neto positivo). */
+export function winChanceOf(outcomes: readonly Outcome[]): number {
+  return outcomes.reduce((t, o) => (o.net > 0 ? t + o.p : t), 0);
 }
 
 export interface HelperChoice<K> {
@@ -182,8 +191,16 @@ export function chooseHelperBet<K>(
   if (cap < minBet) return null;
   const bets = candidates(cap, minBet);
   const n = Math.max(Math.round(RISK_WINDOW_SECONDS / Math.max(ctx.interval, 0.05)), 1);
+  // Restricción de probabilidad por perfil (sesión 6): antes de Kelly, qué opciones puede elegir.
+  const minWin = profile.minWinChance ?? 0;
+  let allowed = keys;
+  if (profile.safestOnly && keys.length > 1) {
+    const chance = (k: K) => winChanceOf(outcomes(k, minBet));
+    const top = Math.max(...keys.map(chance));
+    allowed = keys.filter((k) => chance(k) >= top - 1e-9);
+  }
   let best: (HelperChoice<K> & { score: number }) | null = null;
-  for (const key of keys) {
+  for (const key of allowed) {
     // Fracción de Kelly exacta para las probabilidades de esa misma apuesta: se parte del máximo y
     // se baja hasta que se estabiliza (la penalización crece con la apuesta).
     let kellyBet = cap;
@@ -211,7 +228,11 @@ export function chooseHelperBet<K>(
     // penalización baja y la probabilidad sube, así que basta una búsqueda binaria.
     const ok = (b: number) => {
       const out = outcomes(key, b);
-      return meanOf(out) > 0 && (profile.maxLossWindow >= 1 || lossWindowChance(out, n) <= profile.maxLossWindow);
+      return (
+        meanOf(out) > 0 &&
+        winChanceOf(out) >= minWin &&
+        (profile.maxLossWindow >= 1 || lossWindowChance(out, n) <= profile.maxLossWindow)
+      );
     };
     let lo = bets.findIndex((b) => b <= target);
     let hi = bets.length - 1;

@@ -61,3 +61,42 @@ export function markRecommended(buttons: HTMLElement[], recommended: number): vo
     }
   });
 }
+
+/** Segundos que se agregan los resultados del ayudante antes de enseñar su neto. */
+export const HELPER_NET_SECONDS = 2.5;
+
+/**
+ * Agrega los resultados del ayudante durante unos segundos y devuelve el neto al cerrar la ventana:
+ * en vez de un aviso rojo por cada apuesta perdida, uno solo con lo ganado o perdido en ese rato.
+ */
+export class NetAggregator {
+  private sum = 0;
+  private count = 0;
+  private age = -1;
+
+  constructor(private readonly seconds = HELPER_NET_SECONDS) {}
+
+  add(delta: number): void {
+    if (this.age < 0) this.age = 0;
+    this.sum += delta;
+    this.count++;
+  }
+
+  /** Avanza dt; al cerrar la ventana devuelve el neto y cuántas apuestas suma (si no, null). */
+  tick(dt: number): { net: number; count: number } | null {
+    if (this.age < 0) return null;
+    this.age += dt;
+    if (this.age < this.seconds) return null;
+    const out = { net: this.sum, count: this.count };
+    this.sum = 0;
+    this.count = 0;
+    this.age = -1;
+    return out;
+  }
+}
+
+/** Texto del neto agregado: "+1,2K" / "−300" y, si son varias apuestas, cuántas. */
+export function netText(net: number, count: number): string {
+  const sign = net >= 0 ? '+' : '−';
+  return `${sign}${formatNumber(Math.abs(Math.round(net)))}${count > 1 ? ` (${count})` : ''}`;
+}

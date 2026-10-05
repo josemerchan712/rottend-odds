@@ -30,7 +30,6 @@ import { enterFullscreen, fitHud, layoutStage, mountCrt, toggleFullscreen } from
 import { loadSprites, whenSpritesLoaded } from './ui/sprites';
 import { collectItem, collectNearest, itemAt } from './game/work';
 import { canBetManually, canCollectTrash, createRoomState, inTransition, toggleRoom, updateRooms } from './game/rooms';
-import { formatNumber } from './util/format';
 import { playerBet, selectBetFraction } from './game/actions';
 import { stateChips } from './game/betting';
 import { tooltipLines } from './ui/tooltips';
@@ -44,7 +43,7 @@ import {
   slotsLenderPhase,
 } from './game/slots/table';
 import { updateGame } from './game/update';
-import { helperMeters } from './ui/helperMeter';
+import { HELPER_NET_SECONDS, helperMeters, netText } from './ui/helperMeter';
 import { SLOT_UPGRADE_IDS, UPGRADE_IDS } from './game/config';
 import { createInitialState, type TableId } from './game/state';
 import { canSwitchTo } from './game/tables';
@@ -775,18 +774,44 @@ settingsUi.deleteSave.addEventListener('click', () => {
 });
 settingsUi.back.addEventListener('click', () => show('menu'));
 
+/**
+ * Aviso del ayudante en el HUD (cuando juega sin que se le vea): en vez de una línea por apuesta, el
+ * neto de los últimos segundos, agregado.
+ */
+function aggregatedToast(toast: HTMLElement, who: string): (delta: number, jackpot?: boolean) => void {
+  let sum = 0;
+  let count = 0;
+  let anyJackpot = false;
+  let timer = 0;
+  let hide = 0;
+  return (delta, jackpot = false) => {
+    sum += delta;
+    count++;
+    anyJackpot ||= jackpot;
+    if (timer) return;
+    timer = window.setTimeout(() => {
+      toast.textContent = `${who} ${netText(sum, count)}`;
+      toast.dataset.kind = anyJackpot ? 'jackpot' : sum >= 0 ? 'gana' : 'pierde';
+      toast.classList.add('show');
+      window.clearTimeout(hide);
+      hide = window.setTimeout(() => toast.classList.remove('show'), 1800);
+      sum = 0;
+      count = 0;
+      anyJackpot = false;
+      timer = 0;
+    }, HELPER_NET_SECONDS * 1000);
+  };
+}
+const toast1 = aggregatedToast(gameUi.toast, 'Ayudante');
+const toast2 = aggregatedToast(slotsUi.toast, 'Zombi');
+const toast3 = aggregatedToast(diceUi.toast, 'Camarero');
+const toast4 = aggregatedToast(cardsUi.toast, 'Esqueleto');
+const toast5 = aggregatedToast(coinUi.toast, 'Diablillo');
+
 // Juego
 gameUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
-// Fuera del casino, las tiradas del ayudante se avisan en el HUD.
-let toastTimer = 0;
-scene.onAwayResult = (spin) => {
-  const won = spin.delta >= 0;
-  gameUi.toast.textContent = `Ayudante ${won ? '+' : '−'}${formatNumber(Math.abs(spin.delta))}`;
-  gameUi.toast.dataset.kind = spin.outcome;
-  gameUi.toast.classList.add('show');
-  window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => gameUi.toast.classList.remove('show'), 1400);
-};
+// Fuera del casino, las tiradas del ayudante se avisan en el HUD (agregadas).
+scene.onAwayResult = (spin) => toast1(spin.delta, spin.outcome === 'jackpot');
 
 const toMenu = () => {
   save();
@@ -889,14 +914,7 @@ coinUi.statsToggle.addEventListener('click', () => {
   coinUi.statsBody.hidden = !coinUi.statsBody.hidden;
   coinUi.statsToggle.textContent = coinUi.statsBody.hidden ? 'Estadísticas ▸' : 'Estadísticas ▾';
 });
-let toast5Timer = 0;
-coinScene.onAwayResult = (chain) => {
-  coinUi.toast.textContent = `Diablillo ${chain.delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(chain.delta))}`;
-  coinUi.toast.dataset.kind = chain.jackpot > 0 ? 'jackpot' : chain.delta > 0 ? 'gana' : 'pierde';
-  coinUi.toast.classList.add('show');
-  window.clearTimeout(toast5Timer);
-  toast5Timer = window.setTimeout(() => coinUi.toast.classList.remove('show'), 1400);
-};
+coinScene.onAwayResult = (chain) => toast5(chain.delta, chain.jackpot > 0);
 
 /** La última deuda: el Dueño dice su última línea y, al poco, sale la pantalla final. */
 function onFinalDebtPaid(): void {
@@ -911,32 +929,11 @@ function onFinalDebtPaid(): void {
 }
 endingUi.toMenu.addEventListener('click', () => show('menu'));
 
-let toast4Timer = 0;
-cardsScene.onAwayResult = (hand) => {
-  cardsUi.toast.textContent = `Esqueleto ${hand.delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(hand.delta))}`;
-  cardsUi.toast.dataset.kind = hand.jackpot > 0 ? 'jackpot' : hand.result === 'gana' ? 'gana' : 'pierde';
-  cardsUi.toast.classList.add('show');
-  window.clearTimeout(toast4Timer);
-  toast4Timer = window.setTimeout(() => cardsUi.toast.classList.remove('show'), 1400);
-};
+cardsScene.onAwayResult = (hand) => toast4(hand.delta, hand.jackpot > 0);
 
-let toast3Timer = 0;
-diceScene.onAwayResult = (roll) => {
-  diceUi.toast.textContent = `Camarero ${roll.delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(roll.delta))}`;
-  diceUi.toast.dataset.kind = roll.jackpot > 0 ? 'jackpot' : roll.won ? 'gana' : 'pierde';
-  diceUi.toast.classList.add('show');
-  window.clearTimeout(toast3Timer);
-  toast3Timer = window.setTimeout(() => diceUi.toast.classList.remove('show'), 1400);
-};
+diceScene.onAwayResult = (roll) => toast3(roll.delta, roll.jackpot > 0);
 
-let toast2Timer = 0;
-slotsScene.onAwayResult = (spin) => {
-  slotsUi.toast.textContent = `Zombi ${spin.delta >= 0 ? '+' : '−'}${formatNumber(Math.abs(spin.delta))}`;
-  slotsUi.toast.dataset.kind = spin.outcome === 'nada' ? 'pierde' : spin.outcome === 'jackpot' ? 'jackpot' : 'gana';
-  slotsUi.toast.classList.add('show');
-  window.clearTimeout(toast2Timer);
-  toast2Timer = window.setTimeout(() => slotsUi.toast.classList.remove('show'), 1400);
-};
+slotsScene.onAwayResult = (spin) => toast2(spin.delta, spin.outcome === 'jackpot');
 
 // ---------------------------------------------------------------------------
 // En línea (opcional). Nada de esto bloquea el juego: si el servidor no responde, se avisa y ya.

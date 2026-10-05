@@ -14,6 +14,7 @@ import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
 import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
+import { NetAggregator, netText } from './helperMeter';
 
 /**
  * La escena de la mesa 4 (blackjack), en el mismo canvas de 640x360:
@@ -84,6 +85,8 @@ export class CardsScene {
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
+  /** Resultados del ayudante agregados unos segundos (un solo aviso con el neto). */
+  private readonly helperNet = new NetAggregator();
   private seenHands: number | null = null;
   private lenderTime = 0;
   private skeletonBob = 0;
@@ -187,8 +190,8 @@ export class CardsScene {
         if (h.bettor !== 'ayudante') continue;
         if (this.room === 'casino') {
           this.skeletonBob = 0.3;
-          const text = h.jackpot > 0 ? `JACKPOT +${formatNumber(h.jackpot)}` : h.delta > 0 ? `+${formatNumber(h.delta)}` : h.delta < 0 ? `−${formatNumber(-h.delta)}` : '=';
-          this.addFloat(text, SKELETON_SPOT.x, SKELETON_SPOT.y - 70, h.delta >= 0 ? TEXT : '#c0473d');
+          if (h.jackpot > 0) this.addFloat(`JACKPOT +${formatNumber(h.jackpot)}`, SKELETON_SPOT.x, SKELETON_SPOT.y - 70, TEXT);
+          else this.helperNet.add(h.delta);
         } else this.onAwayResult?.(h);
         this.onHandShown?.(h);
       }
@@ -233,6 +236,8 @@ export class CardsScene {
 
   private advance(state: GameState, dt: number): void {
     this.effects.update(dt);
+    const helperNet = this.helperNet.tick(dt);
+    if (helperNet) this.addFloat(netText(helperNet.net, helperNet.count), SKELETON_SPOT.x, SKELETON_SPOT.y - 70, helperNet.net >= 0 ? TEXT : '#c0473d');
     this.lenderTime += dt;
     this.skeletonBob = Math.max(0, this.skeletonBob - dt);
     for (const c of [...this.player, ...this.dealer]) {

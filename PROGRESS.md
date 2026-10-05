@@ -55,9 +55,75 @@ Remoto: `origin`. Push al final de cada bloque, nunca con force. Simulaciones de
     después de cambiar de pestaña: barra en una línea y misma altura. Zoom del navegador, otro monitor y pantalla
     completa no se pueden provocar en el panel; pasan por el mismo recolocado con debounce.
 
+- [x] **B3 Ayudantes que pierden demasiadas apuestas.** Auditoría con el **motor real** (`npm run audit:engine`:
+  updateGame, cinco mesas, tres perfiles, cuatro suertes, 30 min de juego, saldo inicial de 20 techos; 16 s).
+  - Causa (mesa 3): el criterio de Kelly sobre el crecimiento elegía el objetivo de más valor esperado: «Más de 9»
+    (5:1) con suerte media o alta y el doble seis (35:1) con suerte máxima, también con el perfil prudente. El neto
+    era positivo (no era un fallo de dinero), pero acertaba un 10-44% de las tiradas. Lo mismo el diablillo
+    agresivo (3-6% de cadenas ganadas) y el normal con suerte media (15%).
+  - Arreglo (en la decisión, sin tocar pagos): restricción de probabilidad por perfil además de Kelly
+    (`helperPolicy.ts`): **prudente** solo la apuesta u objetivo de más probabilidad y con ≥ 50%; **normal** ≥ 40%;
+    **agresivo** libre. Diablillo: paradas prudente 1, normal 1-4, agresivo 2-10. Zombi prudente con 10% de riesgo
+    en 2 min (con 3% no jugaba con suerte media: la pareja paga solo +0,5).
+  - Interfaz: el aviso del ayudante (flotante junto a él y aviso del HUD) muestra el **neto agregado de 2,5 s**
+    (con cuántas apuestas suma) en vez de una línea roja por apuesta perdida; los jackpots siguen al momento. El
+    +N/min junto al ayudante no cambia.
+  - Duraciones sin cambios (40 partidas, --quick): mesa 2 11:29, mesa 3 14:24, mesa 4 12:32, mesa 5 11:34. Ningún
+    número tocado: no hace falta regenerar plausibility.json.
+  - Test: con el motor real, prudente ≥ 50% y normal ≥ 40% de aciertos desde suerte media en las cinco mesas.
+
+Tabla (suerte media, alta y máxima; con suerte baja casi todos esperan, salvo el agresivo):
+
+| Ayudante | Suerte | Perfil | Ganadas antes → después | Neto/min (media · p10 · p90) después | Minutos + después | Caída máx. después | Elige antes → después |
+|---|---|---|---|---|---|---|---|
+| Crupier (mesa 1) | media | prudente | 63% → 63% | 0.79 · 0.20 · 2.90 | 93% | 1% | color 100% → color 100% |
+| Crupier (mesa 1) | media | normal | 66% → 66% | 5.87 · 0.80 · 13.0 | 100% | 4% | color 100% → color 100% |
+| Crupier (mesa 1) | media | agresivo | 60% → 60% | 5.92 · 1.00 · 9.00 | 93% | 11% | color 100% → color 100% |
+| Crupier (mesa 1) | alta | prudente | 82% → 82% | 1.88 · 1.05 · 4.05 | 100% | 1% | color 100% → color 100% |
+| Crupier (mesa 1) | alta | normal | 81% → 81% | 9.12 · 4.00 · 17.4 | 100% | 1% | color 100% → color 100% |
+| Crupier (mesa 1) | alta | agresivo | 77% → 77% | 20.4 · 9.50 · 39.5 | 100% | 6% | color 100% → color 100% |
+| Crupier (mesa 1) | máx | prudente | 97% → 97% | 2.72 · 1.95 · 4.05 | 100% | 0% | color 100% → color 100% |
+| Crupier (mesa 1) | máx | normal | 96% → 96% | 8.32 · 7.20 · 10.3 | 100% | 1% | color 100% → color 100% |
+| Crupier (mesa 1) | máx | agresivo | 96% → 96% | 19.6 · 18.0 · 21.1 | 100% | 1% | color 100% → color 100% |
+| Zombi (mesa 2) | media | prudente | 0% → 78% | 0.79 · 0.18 · 1.81 | 93% | 2% | - → retener 100% |
+| Zombi (mesa 2) | media | normal | 79% → 79% | 3.26 · 0.30 · 6.78 | 97% | 6% | retener 100% → retener 100% |
+| Zombi (mesa 2) | media | agresivo | 76% → 76% | 6.34 · 0.50 · 16.3 | 90% | 22% | retener 100% → retener 100% |
+| Zombi (mesa 2) | alta | prudente | 78% → 89% | 1.11 · 0.41 · 1.85 | 100% | 1% | tirar 100% → retener 100% |
+| Zombi (mesa 2) | alta | normal | 78% → 78% | 5.98 · 2.80 · 9.97 | 100% | 3% | tirar 100% → tirar 100% |
+| Zombi (mesa 2) | alta | agresivo | 78% → 78% | 15.1 · 5.75 · 27.8 | 97% | 4% | tirar 100% → tirar 100% |
+| Zombi (mesa 2) | máx | prudente | 97% → 99% | 1.49 · 0.51 · 2.65 | 100% | 0% | tirar 100% → retener 100% |
+| Zombi (mesa 2) | máx | normal | 97% → 97% | 9.17 · 5.66 · 14.0 | 100% | 1% | tirar 100% → tirar 100% |
+| Zombi (mesa 2) | máx | agresivo | 95% → 95% | 22.3 · 17.3 · 29.8 | 100% | 1% | tirar 100% → tirar 100% |
+| Camarero (mesa 3) | media | prudente | 29% → 72% | 1.19 · 0.50 · 1.63 | 93% | 2% | over9 100% → par 100% |
+| Camarero (mesa 3) | media | normal | 29% → 63% | 5.40 · 2.62 · 10.6 | 100% | 3% | over9 100% → over7 100% |
+| Camarero (mesa 3) | media | agresivo | 27% → 27% | 26.6 · 0.00 · 57.3 | 87% | 16% | over9 94%, over7 6% → over9 94%, over7 6% |
+| Camarero (mesa 3) | alta | prudente | 44% → 91% | 2.00 · 1.50 · 2.73 | 100% | 0% | over9 100% → par 100% |
+| Camarero (mesa 3) | alta | normal | 39% → 85% | 9.88 · 7.91 · 13.5 | 100% | 1% | over9 83%, boxcars 17% → over7 100% |
+| Camarero (mesa 3) | alta | agresivo | 38% → 38% | 60.2 · 30.0 · 94.4 | 100% | 14% | over9 100% → over9 100% |
+| Camarero (mesa 3) | máx | prudente | 10% → 98% | 2.30 · 1.90 · 3.45 | 100% | 0% | boxcars 100% → par 100% |
+| Camarero (mesa 3) | máx | normal | 13% → 56% | 21.0 · 15.8 · 26.4 | 100% | 3% | boxcars 97%, over9 3% → over9 100% |
+| Camarero (mesa 3) | máx | agresivo | 13% → 13% | 102.9 · 31.0 · 211.0 | 93% | 9% | boxcars 91%, over9 9% → boxcars 91%, over9 9% |
+| Esqueleto (mesa 4) | media | prudente | 73% → 73% | 1.02 · 0.55 · 1.91 | 100% | 2% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | media | normal | 73% → 73% | 3.98 · 1.80 · 6.73 | 97% | 3% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | media | agresivo | 68% → 68% | 9.29 · 4.20 · 16.3 | 100% | 5% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | alta | prudente | 89% → 89% | 1.72 · 1.25 · 2.49 | 100% | 0% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | alta | normal | 89% → 89% | 6.81 · 4.80 · 8.82 | 100% | 2% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | alta | agresivo | 85% → 85% | 18.2 · 13.8 · 25.3 | 100% | 3% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | máx | prudente | 99% → 99% | 2.13 · 1.90 · 2.52 | 100% | 0% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | máx | normal | 98% → 98% | 8.59 · 7.60 · 10.1 | 100% | 1% | mano 100% → mano 100% |
+| Esqueleto (mesa 4) | máx | agresivo | 98% → 98% | 25.6 · 22.8 · 30.5 | 100% | 2% | mano 100% → mano 100% |
+| Diablillo (mesa 5) | media | prudente | 48% → 63% | 0.54 · 0.10 · 0.96 | 93% | 1% | perdida 52%, 2 caras 48% → 1 caras 63%, perdida 37% |
+| Diablillo (mesa 5) | media | normal | 15% → 48% | 2.72 · 1.67 · 3.89 | 100% | 2% | perdida 85%, 4 caras 15% → perdida 52%, 2 caras 48% |
+| Diablillo (mesa 5) | media | agresivo | 3% → 22% | 12.6 · 1.50 · 25.5 | 90% | 11% | perdida 97%, 6 caras 2%, 5 caras 1% → perdida 78%, 3 caras 21%, 4 caras 0% |
+| Diablillo (mesa 5) | alta | prudente | 79% → 80% | 1.23 · 1.00 · 1.59 | 100% | 1% | 2 caras 79%, perdida 21% → 1 caras 80%, perdida 20% |
+| Diablillo (mesa 5) | alta | normal | 60% → 60% | 32.6 · 25.0 · 41.2 | 100% | 3% | 4 caras 60%, perdida 40% → 4 caras 60%, perdida 40% |
+| Diablillo (mesa 5) | alta | agresivo | 6% → 6% | 194.5 · -11.0 · 504.4 | 60% | 15% | perdida 94%, 9 caras 3%, 8 caras 2%, 7 caras 1%, 6 caras 0% → perdida 94%, 9 caras 3%, 8 caras 2%, 7 caras 1%, 6 caras 0% |
+| Diablillo (mesa 5) | máx | prudente | 96% → 97% | 1.97 · 1.85 · 2.10 | 100% | 0% | 2 caras 96%, perdida 4% → 1 caras 97%, perdida 3% |
+| Diablillo (mesa 5) | máx | normal | 96% → 96% | 45.6 · 44.6 · 48.0 | 100% | 1% | 4 caras 96%, perdida 4% → 4 caras 96%, perdida 4% |
+| Diablillo (mesa 5) | máx | agresivo | 72% → 72% | 617.6 · 431.9 · 781.9 | 100% | 3% | 8 caras 72%, perdida 28%, 7 caras 0% → 8 caras 72%, perdida 28%, 7 caras 0% |
+
 ### Pendiente
 
-- B3 aciertos de los ayudantes (auditoría con el motor real)
 - B4 rediseño de la mesa 5 (herencias, dos monedas, monedas del escritorio)
 
 ---

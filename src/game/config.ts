@@ -18,6 +18,10 @@ export interface HelperProfileConfig {
   maxBalanceFraction: number;
   kelly: number;
   maxLossWindow: number;
+  /** Solo la apuesta u objetivo de más probabilidad (prudente). */
+  safestOnly?: boolean;
+  /** Probabilidad mínima de ganar de lo que apuesta (prudente 50%, normal 40%). */
+  minWinChance?: number;
 }
 
 export const CONFIG = {
@@ -117,8 +121,8 @@ export const CONFIG = {
      * llega a la apuesta mínima, espera. Así el ayudante nunca deja el saldo a 0.
      */
     profiles: [
-      { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
-      { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+      { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03, safestOnly: true, minWinChance: 0.5 },
+      { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, minWinChance: 0.4 },
       { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1 },
     ] as readonly HelperProfileConfig[],
     /** Probabilidad extra por nivel de "Suerte del ayudante" (respeta el tope). */
@@ -264,9 +268,11 @@ export const CONFIG = {
       baseInterval: 4,
       speedReductionPerLevel: 0.12,
       /** Prudente: siempre seguro. Agresivo: solo compensa con suerte alta. */
+      // Prudente con 10% de riesgo en 2 min (no 3%): con la pareja a +0,5 ninguna apuesta llega al 3% con
+      // suerte media y el zombi se quedaba sin jugar (sesión 6).
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.1, safestOnly: true, minWinChance: 0.5 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, minWinChance: 0.4 },
         { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1 },
       ] as readonly HelperProfileConfig[],
       luckPerLevel: 0.005,
@@ -334,8 +340,8 @@ export const CONFIG = {
       baseInterval: 4,
       speedReductionPerLevel: 0.12,
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03, safestOnly: true, minWinChance: 0.5 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, minWinChance: 0.4 },
         // Agresivo: todo el techo y hasta el 60% del saldo, el doble de Kelly y sin umbral de riesgo.
         { id: 'agresivo', name: 'Agresivo', fraction: 1, maxBalanceFraction: 0.6, kelly: 2, maxLossWindow: 1 },
       ] as readonly HelperProfileConfig[],
@@ -403,8 +409,8 @@ export const CONFIG = {
        * negativo espera. Agresivo (2× Kelly) solo compensa cuando lo limita el techo (suerte alta).
        */
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03 },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15 },
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03, safestOnly: true, minWinChance: 0.5 },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, minWinChance: 0.4 },
         { id: 'agresivo', name: 'Agresivo', fraction: 0.6, maxBalanceFraction: 0.4, kelly: 2, maxLossWindow: 1 },
       ] as readonly HelperProfileConfig[],
       luckPerLevel: 0.005,
@@ -451,11 +457,15 @@ export const CONFIG = {
       /** Segundos entre lanzamientos (o decisiones) del diablillo. */
       baseInterval: 2,
       speedReductionPerLevel: 0.12,
-      /** `stops`: entre cuántas caras se retira cada perfil (elige dentro con el criterio común). */
+      /**
+       * `stops`: entre cuántas caras se retira cada perfil (elige dentro con el criterio común). Sesión 6:
+       * el prudente solo la parada más probable (1), el normal hasta 4 con al menos 40% de completarla y
+       * el agresivo de 2 a 10 (antes 1-2 / 3-4 / 5-10: el agresivo acertaba el 3-6% de sus cadenas).
+       */
       profiles: [
-        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03, stops: [1, 2] },
-        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, stops: [3, 4] },
-        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1, stops: [5, 10] },
+        { id: 'prudente', name: 'Prudente', fraction: 0.05, maxBalanceFraction: 0.03, kelly: 0.5, maxLossWindow: 0.03, safestOnly: true, minWinChance: 0.5, stops: [1, 2] },
+        { id: 'normal', name: 'Normal', fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 0.15, minWinChance: 0.4, stops: [1, 4] },
+        { id: 'agresivo', name: 'Agresivo', fraction: 0.5, maxBalanceFraction: 0.3, kelly: 2, maxLossWindow: 1, stops: [2, 10] },
       ] as readonly (HelperProfileConfig & { stops: readonly [number, number] })[],
       luckPerLevel: 0.005,
     },

@@ -14,6 +14,7 @@ import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
 import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
+import { NetAggregator, netText } from './helperMeter';
 
 /**
  * La escena de la mesa 2 (tragaperras), en el mismo canvas de 640x360 que la mesa 1:
@@ -58,6 +59,8 @@ export class SlotsScene {
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
+  /** Resultados del ayudante agregados unos segundos (un solo aviso con el neto). */
+  private readonly helperNet = new NetAggregator();
   private seenSpins: number | null = null;
   private lenderTime = 0;
   private zombieBob = 0;
@@ -151,8 +154,8 @@ export class SlotsScene {
       if (spin.bettor === 'ayudante') {
         if (this.room === 'casino') {
           this.zombieBob = ZOMBIE_BOB_SECONDS;
-          const text = spin.outcome === 'nada' ? `−${formatNumber(-spin.delta)}` : `+${formatNumber(spin.delta)}`;
-          this.addFloat(spin.outcome === 'jackpot' ? `JACKPOT +${formatNumber(spin.delta)}` : text, ZOMBIE_SPOT.x, ZOMBIE_SPOT.y - 70, spin.delta >= 0 ? TEXT : '#c0473d');
+          if (spin.outcome === 'jackpot') this.addFloat(`JACKPOT +${formatNumber(spin.delta)}`, ZOMBIE_SPOT.x, ZOMBIE_SPOT.y - 70, TEXT);
+          else this.helperNet.add(spin.delta);
         } else this.onAwayResult?.(spin);
         this.onSpinShown?.(spin);
       } else if (this.room === 'casino') {
@@ -173,6 +176,8 @@ export class SlotsScene {
 
   private advance(state: GameState, dt: number): void {
     this.effects.update(dt);
+    const helperNet = this.helperNet.tick(dt);
+    if (helperNet) this.addFloat(netText(helperNet.net, helperNet.count), ZOMBIE_SPOT.x, ZOMBIE_SPOT.y - 70, helperNet.net >= 0 ? TEXT : '#c0473d');
     this.lenderTime += dt;
     this.zombieBob = Math.max(0, this.zombieBob - dt);
     const landed = this.reels.update(dt);

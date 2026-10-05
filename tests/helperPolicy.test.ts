@@ -88,3 +88,31 @@ describe('medidor del ayudante (+N/min)', () => {
     expect(m.perMinute(2)).toBe(1);
   });
 });
+
+describe('probabilidad mínima por perfil (sesión 6)', () => {
+  it('prudente solo elige la opción más probable; normal nunca baja del 40%; agresivo puede ir a lo largo', async () => {
+    const { chooseHelperBet, binaryOutcomes, winChanceOf } = await import('../src/game/helperPolicy');
+    const ctx = { balance: 1e6, ceiling: 1000, minBet: 1, interval: 1 };
+    const options = { seguro: binaryOutcomes(0.8, 0.4), medio: binaryOutcomes(0.45, 2), largo: binaryOutcomes(0.1, 35) };
+    const keys = Object.keys(options) as (keyof typeof options)[];
+    const out = (k: keyof typeof options) => options[k];
+    const base = { fraction: 0.2, maxBalanceFraction: 0.1, kelly: 1, maxLossWindow: 1 };
+    expect(chooseHelperBet(keys, out, { ...base, safestOnly: true, minWinChance: 0.5 }, ctx)?.key).toBe('seguro');
+    const normal = chooseHelperBet(keys, out, { ...base, minWinChance: 0.4 }, ctx)!;
+    expect(winChanceOf(out(normal.key))).toBeGreaterThanOrEqual(0.4);
+    expect(chooseHelperBet(keys, out, base, ctx)?.key).toBe('largo'); // el de más crecimiento
+  });
+
+  it('en el juego (motor real): prudente acierta ≥ 50% y normal ≥ 40% desde suerte media, en las cinco mesas', async () => {
+    const { TABLES, auditTable } = await import('../sim/helpersEngineAudit');
+    for (const t of TABLES) {
+      for (const luck of [9, 15, 20]) {
+        const prudent = auditTable(t, luck, 0, 4, 1);
+        const normal = auditTable(t, luck, 1, 4, 1);
+        if (prudent.bets > 0) expect(prudent.winRate, `${t.name} suerte ${luck} prudente`).toBeGreaterThanOrEqual(0.5);
+        if (normal.bets > 0) expect(normal.winRate, `${t.name} suerte ${luck} normal`).toBeGreaterThanOrEqual(0.4);
+        expect(prudent.bets + normal.bets, `${t.name} suerte ${luck}: alguno apuesta`).toBeGreaterThan(0);
+      }
+    }
+  }, 60_000);
+});

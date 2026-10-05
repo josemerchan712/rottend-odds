@@ -13,6 +13,7 @@ import { SCENE_HEIGHT, SCENE_WIDTH } from './scene';
 import { ready, type Sprites } from './sprites';
 import { prepareCanvas } from './stage';
 import { drawChipColumn } from './tapeteView';
+import { NetAggregator, netText } from './helperMeter';
 
 /**
  * La escena de la mesa 5 (doble o nada), en el mismo canvas de 640x360: el despacho del Dueño, él
@@ -65,6 +66,8 @@ export class CoinScene {
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
+  /** Resultados del ayudante agregados unos segundos (un solo aviso con el neto). */
+  private readonly helperNet = new NetAggregator();
   private lenderTime = 0;
   private impBob = 0;
   private chain: CoinChain | null = null;
@@ -162,8 +165,8 @@ export class CoinScene {
       if (c.bettor !== 'ayudante') continue;
       if (this.room === 'casino') {
         this.impBob = 0.3;
-        const text = c.jackpot > 0 ? `10 CARAS +${formatNumber(c.jackpot)}` : c.delta > 0 ? `+${formatNumber(c.delta)}` : `−${formatNumber(-c.delta)}`;
-        this.addFloat(text, IMP_SPOT.x, IMP_SPOT.y - 70, c.delta >= 0 ? TEXT : BAD);
+        if (c.jackpot > 0) this.addFloat(`10 CARAS +${formatNumber(c.jackpot)}`, IMP_SPOT.x, IMP_SPOT.y - 70, TEXT);
+        else this.helperNet.add(c.delta);
       } else this.onAwayResult?.(c);
       this.onChainShown?.(c);
     }
@@ -184,6 +187,8 @@ export class CoinScene {
 
   private advance(state: GameState, dt: number): void {
     this.effects.update(dt);
+    const helperNet = this.helperNet.tick(dt);
+    if (helperNet) this.addFloat(netText(helperNet.net, helperNet.count), IMP_SPOT.x, IMP_SPOT.y - 70, helperNet.net >= 0 ? TEXT : '#c0473d');
     this.lenderTime += dt;
     this.impBob = Math.max(0, this.impBob - dt);
     if (this.flipAge !== null) {

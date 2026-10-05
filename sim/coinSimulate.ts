@@ -18,9 +18,11 @@ const arg = (name: string) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const runs = Number(arg('runs') ?? 120);
+// --quick: 40 partidas y sin los estudios (para calibrar sin gastar).
+const quick = args.includes('--quick');
+const runs = Number(arg('runs') ?? (quick ? 40 : 120));
 const only = arg('only')?.split(',');
-const noStudy = args.includes('--no-study');
+const noStudy = quick || args.includes('--no-study');
 const useCache = args.includes('--cache');
 const overridePath = arg('override');
 if (overridePath) applyOverrides(CONFIG as unknown as Record<string, unknown>, JSON.parse(readFileSync(overridePath, 'utf-8')));

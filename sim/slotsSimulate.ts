@@ -16,7 +16,9 @@ const arg = (name: string) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const runs = Number(arg('runs') ?? 200);
+// --quick: 40 partidas y sin los estudios (para calibrar sin gastar).
+const quick = args.includes('--quick');
+const runs = Number(arg('runs') ?? (quick ? 40 : 200));
 const only = arg('only')?.split(',');
 const overridePath = arg('override');
 if (overridePath) applyOverrides(CONFIG as unknown as Record<string, unknown>, JSON.parse(readFileSync(overridePath, 'utf-8')));
@@ -92,6 +94,7 @@ table(
   }),
 );
 
+if (!quick) {
 section('Cuánto importa la conversión: (d) con y sin pasivo de la mesa 1');
 {
   const d = SLOT_STRATEGIES.find((s) => s.id === 'd')!;
@@ -128,6 +131,8 @@ table(
 );
 console.log('  VE: cambio medio del saldo por moneda apostada por el zombi en esa fase.');
 console.log('  quiebra: % de partidas en que una tirada del ZOMBI deja el saldo a 0 en esa fase.');
+
+}
 
 console.log(`\n(${((Date.now() - started) / 1000).toFixed(1)} s de cálculo)\n`);
 

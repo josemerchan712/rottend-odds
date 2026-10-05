@@ -16,6 +16,7 @@
     "simulate:cards": "tsx sim/cardsSimulate.ts",
     "simulate:coin": "tsx sim/coinSimulate.ts",
     "audit:helpers": "tsx sim/helpersAudit.ts",
+    "audit:engine": "tsx sim/helpersEngineAudit.ts",
     "plausibility": "tsx sim/plausibility.ts --full",
     "plausibility:quick": "tsx sim/plausibility.ts --quick",
     "meta": "tsx scripts/meta.ts",

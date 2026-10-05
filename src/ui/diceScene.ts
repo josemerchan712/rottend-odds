@@ -13,6 +13,7 @@ import { ready, type Sprites } from './sprites';
 import { drawChipColumn } from './tapeteView';
 import { drawButton, drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
+import { NetAggregator, netText } from './helperMeter';
 
 /**
  * La escena de la mesa 3 (dados), en el mismo canvas de 640x360:
@@ -78,6 +79,8 @@ export class DiceScene {
   private hover: { x: number; y: number } | null = null;
   private room: Room = 'casino';
   private floats: FloatingText[] = [];
+  /** Resultados del ayudante agregados unos segundos (un solo aviso con el neto). */
+  private readonly helperNet = new NetAggregator();
   private seenRolls: number | null = null;
   private lenderTime = 0;
   private ghostBob = 0;
@@ -174,8 +177,8 @@ export class DiceScene {
       if (roll.bettor === 'ayudante') {
         if (this.room === 'casino') {
           this.ghostBob = 0.3;
-          const text = roll.jackpot > 0 ? `JACKPOT +${formatNumber(roll.jackpot)}` : roll.delta >= 0 ? `+${formatNumber(roll.delta)}` : `−${formatNumber(-roll.delta)}`;
-          this.addFloat(text, GHOST_SPOT.x, GHOST_SPOT.y - 70, roll.delta >= 0 ? TEXT : '#c0473d');
+          if (roll.jackpot > 0) this.addFloat(`JACKPOT +${formatNumber(roll.jackpot)}`, GHOST_SPOT.x, GHOST_SPOT.y - 70, TEXT);
+          else this.helperNet.add(roll.delta);
         } else this.onAwayResult?.(roll);
         this.onRollShown?.(roll);
         continue;
@@ -198,6 +201,8 @@ export class DiceScene {
 
   private advance(state: GameState, dt: number): void {
     this.effects.update(dt);
+    const helperNet = this.helperNet.tick(dt);
+    if (helperNet) this.addFloat(netText(helperNet.net, helperNet.count), GHOST_SPOT.x, GHOST_SPOT.y - 70, helperNet.net >= 0 ? TEXT : '#c0473d');
     this.time += dt;
     this.lenderTime += dt;
     this.ghostBob = Math.max(0, this.ghostBob - dt);

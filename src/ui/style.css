@@ -259,6 +259,10 @@ kbd {
 }
 .drawer[data-open='false'] .drawer-body { display: none; }
 .drawer-sub { margin-top: 6px; }
+/* Segundo cajón del lado izquierdo (Herencias en la mesa 5): su pestaña, debajo de la de Mesa. */
+.drawer.left.second .drawer-tab { margin-top: 112px; height: 84px; }
+.drawer.left.second[data-open='false'] { pointer-events: none; }
+.drawer.left.second .drawer-tab { pointer-events: auto; }
 .small-text { font-size: 10px; margin: 2px 0; }
 .shop-row { padding: 2px 0 3px; border-top: 1px solid var(--line); }
 .shop-row:first-of-type { border-top: 0; }

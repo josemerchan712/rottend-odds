@@ -444,10 +444,32 @@ export const CONFIG = {
     risk: { penaltyFactorAtMinLuck: 0.2, penaltyFactorAtMaxLuck: 0.04, penaltyExponent: 1.5 },
     /** Como mucho 10 caras por cadena; una cadena paga como mucho el 25% de la deuda. */
     chain: { maxWins: 10, payoutCapDebtFraction: 0.25 },
-    /** Segundas oportunidades: como los relanzamientos (máximo 1 + nivel / 5, una cada 20 s × 0,93^nivel). */
-    seconds: { base: 1, perLevels: 5, rechargeSeconds: 20, rechargeFactor: 0.93 },
-    /** Jackpot: completar las 10 caras. Paga el pozo (semilla 50, +6% de cada apuesta), como mucho el 25% de la deuda. */
-    jackpot: { potSeed: 50, potContribution: 0.06, payoutCapDebtFraction: 0.25 },
+    /**
+     * Herencias (sesión 6): cada mesa saldada presta su mecánica a la mesa 5 como una herramienta con
+     * cargas por cadena (nivel 0-3 = cargas; se recargan al empezar cada cadena, no con el tiempo). Se
+     * compran con la moneda de su mesa de origen, en el cajón Herencias.
+     * - Cero dorado (ruleta): tras una cruz, salva la cadena devolviendo `refund` (25%) de lo acumulado.
+     * Costes por moneda, a la escala de cada mesa (al llegar a la mesa 5 sus ayudantes llevan cientos de
+     * millones): el nivel 1 se paga al llegar y el 2 hacia la mitad de la mesa.
+     * - Retener (tragaperras): el siguiente acierto no suma fatiga.
+     * - Relanzar (dados): repite un lanzamiento fallido (la antigua "segunda oportunidad"); el repetido
+     *   cuenta `extraFatigue` caras más de fatiga (sin eso, una carga casi duplicaba las cadenas completas).
+     * - Marcar (cartas): enseña el resultado del siguiente lanzamiento antes de decidir.
+     */
+    heirlooms: {
+      zero: { name: 'Cero dorado', key: 'Z', refund: 0.25, ...shared.coin.heirlooms.zero },
+      hold: { name: 'Retener', key: 'H', ...shared.coin.heirlooms.hold },
+      reroll: { name: 'Relanzar', key: 'S', extraFatigue: 8, ...shared.coin.heirlooms.reroll },
+      mark: { name: 'Marcar', key: 'C', ...shared.coin.heirlooms.mark },
+    },
+    /**
+     * Moneda cargada (se desbloquea con una mejora): `ratio` de la probabilidad de la justa (mismo valor
+     * esperado base: 2 × p = 3 × 2/3 p), paga ×3 y cuenta como un paso; la suerte la mejora hasta un
+     * `luckBonusMax` más, como la docena y el número de la ruleta.
+     */
+    loaded: { ratio: 2 / 3, payout: 3, luckBonusMax: 0.06 },
+    /** Jackpot: completar las 10 caras. Paga el pozo (semilla 400.000 de la casa, +35% de cada apuesta), como mucho el 25% de la deuda. Sesión 6: con semilla 50 y +6% el pozo valía poco y el jackpot no llegaba al 1% del oro. */
+    jackpot: { potSeed: 400_000, potContribution: 0.35, payoutCapDebtFraction: 0.25 },
     /**
      * Techo: 3 × 2,5^nivel (máximo 28.610). Más bajo que en las otras mesas porque una cadena multiplica
      * la apuesta por 8-16: con techo 15 el final era una explosión de segundos (tramo final de 6 s).
@@ -480,6 +502,7 @@ export const CONFIG = {
       helperProfile: { name: 'Perfil del diablillo', ...shared.coin.upgrades.helperProfile },
       helperLuck: { name: 'Suerte del diablillo', ...shared.coin.upgrades.helperLuck },
       temple: { name: 'Temple', ...shared.coin.upgrades.temple },
+      loaded: { name: 'Moneda cargada', ...shared.coin.upgrades.loaded },
     },
   },
 
@@ -514,3 +537,6 @@ export type CardUpgradeId = keyof typeof CONFIG.cards.upgrades;
 export const CARD_UPGRADE_IDS = Object.keys(CONFIG.cards.upgrades) as CardUpgradeId[];
 export type CoinUpgradeId = keyof typeof CONFIG.coin.upgrades;
 export const COIN_UPGRADE_IDS = Object.keys(CONFIG.coin.upgrades) as CoinUpgradeId[];
+export type HeirloomId = keyof typeof CONFIG.coin.heirlooms;
+export const HEIRLOOM_IDS = Object.keys(CONFIG.coin.heirlooms) as HeirloomId[];
+export type CoinKind = 'justa' | 'cargada';

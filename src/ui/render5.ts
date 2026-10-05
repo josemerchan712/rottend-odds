@@ -1,8 +1,11 @@
-import { CONFIG, type CoinUpgradeId } from '../game/config';
-import { coinFatigue, coinLuckChance, coinMaxBet, maxSeconds, secondsInterval } from '../game/coin/game';
+import { CONFIG, HEIRLOOM_IDS, type CoinUpgradeId, type HeirloomId } from '../game/config';
+import { coinFatigue, coinLuckChance, coinMaxBet, heirloomCharges } from '../game/coin/game';
 import type { CoinState } from '../game/coin/state';
 import {
   canBuyCoin,
+  canBuyHeirloom,
+  heirloomNextCost,
+  heirloomWallet,
   canPayCoinDebt,
   coinDebtProgress,
   coinNextCost,
@@ -23,10 +26,20 @@ import { markRecommended, renderHelperNet } from './helperMeter';
 
 /** HUD y cajones de la mesa 5, con la misma forma que los de las otras mesas. */
 export const DRAWERS5 = {
-  mesa: { upgrades: ['luck', 'maxBet', 'temple'] as CoinUpgradeId[] },
+  mesa: { upgrades: ['luck', 'maxBet', 'temple', 'loaded'] as CoinUpgradeId[] },
   ayuda: { upgrades: ['imp', 'helperSpeed', 'helperProfile', 'helperLuck'] as CoinUpgradeId[] },
 } as const;
-export type Drawer5Id = keyof typeof DRAWERS5;
+/** Mesa, Ayuda y Herencias (las herramientas de las mesas anteriores, con su moneda). */
+export type Drawer5Id = keyof typeof DRAWERS5 | 'herencias';
+
+/** Moneda de cada mesa de origen de las herencias. */
+export const HEIRLOOM_CURRENCY = { table1: 'fichas', slots: 'monedas', dice: 'chapas', cards: 'fichas negras' } as const;
+const HEIRLOOM_EFFECT: Record<HeirloomId, string> = {
+  zero: 'Tras una cruz, salva la cuarta parte de lo acumulado',
+  hold: 'El siguiente acierto no cansa',
+  reroll: 'Repite una cruz (con alguna cara), más difícil',
+  mark: 'Enseña el próximo lanzamiento',
+};
 
 interface ShopRow {
   row: HTMLElement;
@@ -49,6 +62,7 @@ export interface Ui5 {
   tooltip: HTMLElement;
   drawers: Record<Drawer5Id, Drawer>;
   shop: Record<CoinUpgradeId, ShopRow>;
+  heirlooms: Record<HeirloomId, ShopRow & { wallet: HTMLElement }>;
   stats: HTMLElement;
   statsToggle: HTMLButtonElement;
   statsBody: HTMLElement;
@@ -100,6 +114,22 @@ export function mountUi5(root: HTMLElement): Ui5 {
       <button class="drawer-tab" title="Mesa (M)"><span>MESA</span><i class="dot" hidden></i></button>
     </aside>
 
+    <aside class="drawer left second" data-drawer="herencias" data-open="false">
+      <div class="drawer-body pixel-frame">
+        <h2>Herencias <span class="muted">(E)</span></h2>
+        <p class="small-text muted">Cargas por cadena: se recargan al empezar cada cadena. Se pagan con la moneda de su mesa.</p>
+        ${HEIRLOOM_IDS.map(
+          (id) => `
+          <div class="shop-row" data-heirloom="${id}">
+            <div class="shop-line"><span class="name">${CONFIG.coin.heirlooms[id].name} [${CONFIG.coin.heirlooms[id].key}]</span><span class="level"></span></div>
+            <div class="shop-line"><span class="effect"></span></div>
+            <div class="shop-line"><span class="effect" data-wallet></span><button class="buy small"></button></div>
+          </div>`,
+        ).join('')}
+      </div>
+      <button class="drawer-tab" title="Herencias (E)"><span>HERENCIAS</span><i class="dot" hidden></i></button>
+    </aside>
+
     <aside class="drawer right" data-drawer="ayuda" data-open="false">
       <button class="drawer-tab" title="Ayuda (A)"><span>AYUDA</span><i class="dot" hidden></i></button>
       <div class="drawer-body pixel-frame">
@@ -138,7 +168,14 @@ export function mountUi5(root: HTMLElement): Ui5 {
     toMenu: ref('toMenu'),
     toast: ref('toast'),
     tooltip: ref('tooltip'),
-    drawers: { mesa: drawer('mesa'), ayuda: drawer('ayuda') },
+    drawers: { mesa: drawer('mesa'), ayuda: drawer('ayuda'), herencias: drawer('herencias') },
+    heirlooms: Object.fromEntries(
+      HEIRLOOM_IDS.map((id) => {
+        const row = root.querySelector<HTMLElement>(`[data-heirloom="${id}"]`)!;
+        const effects = row.querySelectorAll<HTMLElement>('.effect');
+        return [id, { row, level: row.querySelector('.level')!, effect: effects[0], wallet: effects[1], buy: row.querySelector('.buy')! }];
+      }),
+    ) as Ui5['heirlooms'],
     shop,
     stats: ref('stats'),
     statsToggle: ref('statsToggle'),
@@ -164,7 +201,7 @@ export function render5(ui: Ui5, state: GameState): void {
   const headRate = st.flips ? st.heads / st.flips : 0;
   setText(
     ui.stats,
-    `Tiempo en la mesa ${formatTime(coin.playTime)} · ${st.chains} cadenas · ${st.flips} lanzamientos · ${formatPercent(headRate)} caras · mejor cadena ${st.bestChain} · ${st.seconds} segundas oportunidades · ${st.jackpots} jackpots · ${formatNumber(st.passiveEarned)} de la mesa 4`,
+    `Tiempo en la mesa ${formatTime(coin.playTime)} · ${st.chains} cadenas · ${st.flips} lanzamientos · ${formatPercent(headRate)} caras · mejor cadena ${st.bestChain} · ${st.heirloomsUsed} herencias usadas · ${st.loadedFlips} con la cargada · ${st.jackpots} jackpots · ${formatNumber(st.passiveEarned)} de la mesa 4`,
   );
 
   const on = hasImp(coin);
@@ -182,7 +219,7 @@ export function render5(ui: Ui5, state: GameState): void {
     markRecommended(ui.profileButtons, recommendedImpProfile(coin));
   }
 
-  for (const id of Object.keys(DRAWERS5) as Drawer5Id[]) {
+  for (const id of Object.keys(DRAWERS5) as (keyof typeof DRAWERS5)[]) {
     let anyBuyable = false;
     for (const upgrade of DRAWERS5[id].upgrades) {
       const row = ui.shop[upgrade];
@@ -199,6 +236,25 @@ export function render5(ui: Ui5, state: GameState): void {
     }
     ui.drawers[id].dot.hidden = !anyBuyable;
   }
+
+  // Herencias: nivel, efecto, saldo de la mesa de origen y coste en su moneda.
+  let anyHeirloom = false;
+  for (const id of HEIRLOOM_IDS) {
+    const row = ui.heirlooms[id];
+    const def = CONFIG.coin.heirlooms[id];
+    const level = heirloomCharges(coin, id);
+    const cost = heirloomNextCost(coin, id);
+    const buyable = canBuyHeirloom(state, id);
+    anyHeirloom ||= buyable;
+    const currency = HEIRLOOM_CURRENCY[def.from as keyof typeof HEIRLOOM_CURRENCY];
+    row.row.classList.toggle('unaffordable', !buyable && cost !== null);
+    setText(row.level, `${level}/${def.maxLevel}`);
+    setText(row.effect, `${HEIRLOOM_EFFECT[id]} · ${level} por cadena`);
+    setText(row.wallet, `Tienes ${formatNumber(heirloomWallet(state, id))} ${currency}`);
+    setText(row.buy, cost === null ? 'MÁX' : `${formatNumber(cost)} ${currency}`);
+    row.buy.disabled = !buyable;
+  }
+  ui.drawers.herencias.dot.hidden = !anyHeirloom;
 }
 
 function describe(coin: CoinState, id: CoinUpgradeId): string {
@@ -207,9 +263,7 @@ function describe(coin: CoinState, id: CoinUpgradeId): string {
   const arrow = (now: string, next: string) => (maxed ? now : `${now} → ${next}`);
   switch (id) {
     case 'luck':
-      return maxed
-        ? `Cara ${formatPercent(coinLuckChance(lvl))} · ${maxSeconds(lvl)} segundas`
-        : `Cara ${formatPercent(coinLuckChance(lvl))} → ${formatPercent(coinLuckChance(lvl + 1))} · segundas ${maxSeconds(lvl)} cada ${formatSeconds(secondsInterval(lvl))}`;
+      return arrow(`Cara ${formatPercent(coinLuckChance(lvl))}`, formatPercent(coinLuckChance(lvl + 1)));
     case 'maxBet':
       return arrow(`Techo ${formatNumber(coinMaxBet(lvl))}`, formatNumber(coinMaxBet(lvl + 1)));
     case 'temple':
@@ -224,13 +278,19 @@ function describe(coin: CoinState, id: CoinUpgradeId): string {
     }
     case 'helperLuck':
       return arrow(`+${formatPercent(impLuckBonus(lvl))}`, `+${formatPercent(impLuckBonus(lvl + 1))}`);
+    case 'loaded':
+      return maxed ? 'Moneda cargada: ×3 (Q para cambiar)' : 'Desbloquea la moneda cargada (×3)';
   }
 }
 
 export function toggleDrawer5(ui: Ui5, id: Drawer5Id): void {
-  ui.drawers[id].root.dataset.open = String(ui.drawers[id].root.dataset.open !== 'true');
+  const open = ui.drawers[id].root.dataset.open !== 'true';
+  // Mesa y Herencias comparten el lado izquierdo: abrir uno cierra el otro.
+  if (open && id === 'mesa') ui.drawers.herencias.root.dataset.open = 'false';
+  if (open && id === 'herencias') ui.drawers.mesa.root.dataset.open = 'false';
+  ui.drawers[id].root.dataset.open = String(open);
 }
 
 export function closeDrawers5(ui: Ui5): void {
-  for (const id of Object.keys(DRAWERS5) as Drawer5Id[]) ui.drawers[id].root.dataset.open = 'false';
+  for (const id of ['mesa', 'ayuda', 'herencias'] as Drawer5Id[]) ui.drawers[id].root.dataset.open = 'false';
 }

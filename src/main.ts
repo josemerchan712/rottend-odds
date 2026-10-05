@@ -67,9 +67,25 @@ import { CoinScene } from './ui/coinScene';
 import { closeDrawers5, mountUi5, render5, toggleDrawer5 } from './ui/render5';
 import { coinTooltip } from './ui/tooltips5';
 import { DIALOGUE5_ES } from './content/dialogue5.es';
-import { acceptLoss, cashOut, chainInPlay, coinCeiling, coinChips, continueChain, selectCoinChip, selectedCoinChip, startChain, useSecondChance } from './game/coin/game';
-import { buyCoinUpgrade, coinLenderPhase, payCoinDebt, selectImpProfile } from './game/coin/table';
-import { COIN_UPGRADE_IDS } from './game/config';
+import {
+  acceptLoss,
+  armHold,
+  cashOut,
+  chainInPlay,
+  coinCeiling,
+  coinChips,
+  continueChain,
+  selectCoinChip,
+  selectCoinKind,
+  selectedCoinChip,
+  startChain,
+  useGoldenZero,
+  useMark,
+  useReroll,
+} from './game/coin/game';
+import type { HeirloomId } from './game/config';
+import { buyCoinUpgrade, buyHeirloom, coinLenderPhase, payCoinDebt, selectImpProfile } from './game/coin/table';
+import { COIN_UPGRADE_IDS, HEIRLOOM_IDS } from './game/config';
 import { CARD_UPGRADE_IDS } from './game/config';
 import { closeDrawers3, mountUi3, render3, toggleDrawer3 } from './ui/render3';
 import { diceTooltip } from './ui/tooltips3';
@@ -88,6 +104,7 @@ import { lenderPhase } from './game/lender';
 import {
   createWatch,
   noteRoomEntered,
+  noteChainMilestone,
   noteSessionStart,
   noteSpinShown,
   notePlayerActivity,
@@ -269,13 +286,17 @@ cardsScene.onHandShown = (hand) => {
   if (!w || !state) return;
   noteSpinShown(w, { bettor: hand.bettor, bet: hand.bet, outcome: hand.jackpot > 0 ? 'jackpot' : hand.result === 'gana' ? 'gana' : 'pierde' }, cardsCeiling(state.cards));
 };
+coinScene.onChainStep = (wins) => {
+  const w = watches[5];
+  if (w) noteChainMilestone(w, wins);
+};
 coinScene.onChainShown = (chain) => {
   const outcome = chain.jackpot > 0 ? 'jackpot' : chain.delta > 0 ? 'gana' : 'pierde';
   if (state) outcomeSound(chain.bettor, outcome, chain.stake * 2 ** chain.wins, coinCeiling(state.coin));
   const w = watches[5];
   if (!w || !state) return;
   // Lo que se arriesgaba al final: la apuesta doblada tantas veces como caras.
-  const atRisk = Math.min(chain.stake * 2 ** Math.max(chain.wins, 0), state.coin.balance + chain.stake * 2 ** chain.wins);
+  const atRisk = chain.value;
   noteSpinShown(w, { bettor: chain.bettor, bet: chain.result === 'perdido' ? atRisk : chain.stake, outcome }, coinCeiling(state.coin));
 };
 diceScene.onRollShown = (roll) => {
@@ -500,22 +521,38 @@ function cardsAction(kind: 'deal' | 'hit' | 'stand' | 'accept' | 'discard'): voi
   else discardCard(cards, hand, defaultRng);
 }
 
-/** Clic en la escena de la mesa 5: ficha, apostar, seguir, retirarse, segunda oportunidad o aceptar. */
+/** Clic en la escena de la mesa 5: ficha, moneda, herencias, apostar, seguir, retirarse o aceptar. */
 function clickCoin(current: GameState, point: { x: number; y: number }): void {
   const hit = coinScene.target(current, point);
   if (hit?.kind === 'chip') selectCoinChip(current.coin, hit.chip.index);
+  else if (hit?.kind === 'coin') selectCoinKind(current.coin, hit.coin);
+  else if (hit?.kind === 'tool') coinTool(hit.tool);
   else if (hit) coinAction(hit.kind);
 }
 
+/** Usa una herencia en la cadena del jugador (Z cero dorado, H retener, S relanzar, C marcar). */
+function coinTool(tool: HeirloomId): void {
+  if (!state || !canBetManually(rooms) || coinScene.flipping()) return;
+  const coin = state.coin;
+  const chain = coin.chain;
+  if (!chain || chain.status === 'fin') return;
+  let used = false;
+  if (tool === 'zero') used = useGoldenZero(coin, chain);
+  else if (tool === 'hold') used = armHold(coin, chain);
+  else if (tool === 'reroll') used = useReroll(coin, chain, defaultRng) !== null;
+  else used = useMark(coin, chain, defaultRng);
+  if (used) sfx(tool === 'reroll' ? 'coin' : 'chip');
+}
+
 /** Una decisión en la mesa 5 (sin la moneda en el aire). */
-function coinAction(kind: 'bet' | 'more' | 'stop' | 'second' | 'accept'): void {
+function coinAction(kind: 'bet' | 'more' | 'stop' | 'accept'): void {
   if (!state || !canBetManually(rooms) || coinScene.flipping()) return;
   const coin = state.coin;
   const chain = coin.chain;
   if (kind === 'bet') {
     if (chainInPlay(coin)) return;
     const chip = selectedCoinChip(coin);
-    if (chip.affordable && startChain(coin, { bettor: 'jugador', stake: chip.amount }, defaultRng)) sfx('coin');
+    if (chip.affordable && startChain(coin, { bettor: 'jugador', stake: chip.amount, kind: coin.coinChoice }, defaultRng)) sfx('coin');
     return;
   }
   if (!chain || chain.status === 'fin') return;
@@ -527,10 +564,7 @@ function coinAction(kind: 'bet' | 'more' | 'stop' | 'second' | 'accept'): void {
       sfx('chip');
       coinScene.notifyResolved();
     }
-  } else if (kind === 'second') {
-    if (useSecondChance(coin, chain, defaultRng)) sfx('coin');
-  }
-  else {
+  } else {
     acceptLoss(coin, chain);
     coinScene.notifyResolved();
   }
@@ -607,7 +641,7 @@ window.addEventListener('keydown', (event) => {
   if (table5) {
     const coin = state.coin;
     const key = event.key.toLowerCase();
-    // Espacio: apostar, seguir (tras una cara) o aceptar (tras una cruz); R retirarse; S segunda oportunidad.
+    // Espacio: apostar, seguir o aceptar; R retirarse; Q moneda; Z/H/S/C herencias; E cajón Herencias.
     if (event.key === ' ') {
       event.preventDefault();
       const chain = coin.chain;
@@ -616,7 +650,12 @@ window.addEventListener('keydown', (event) => {
       const chip = coinChips(coin)[Number(event.key) - 1];
       if (chip) selectCoinChip(coin, chip.index);
     } else if (key === 'r') coinAction('stop');
-    else if (key === 's') coinAction('second');
+    else if (key === 'q') selectCoinKind(coin, coin.coinChoice === 'justa' ? 'cargada' : 'justa');
+    else if (key === 'e') toggleDrawer5(coinUi, 'herencias');
+    else if (key === 'z') coinTool('zero');
+    else if (key === 'h') coinTool('hold');
+    else if (key === 's') coinTool('reroll');
+    else if (key === 'c') coinTool('mark');
     return;
   }
   if (table4) {
@@ -909,7 +948,14 @@ coinUi.payDebt.addEventListener('click', () => {
 });
 coinUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
 coinUi.toMenu.addEventListener('click', toMenu);
-for (const id of ['mesa', 'ayuda'] as const) coinUi.drawers[id].tab.addEventListener('click', () => toggleDrawer5(coinUi, id));
+for (const id of ['mesa', 'ayuda', 'herencias'] as const) coinUi.drawers[id].tab.addEventListener('click', () => toggleDrawer5(coinUi, id));
+for (const id of HEIRLOOM_IDS) {
+  coinUi.heirlooms[id].buy.addEventListener('click', () => {
+    if (!state) return;
+    if (buyHeirloom(state, id)) sfx('chip');
+    renderHud(state);
+  });
+}
 coinUi.statsToggle.addEventListener('click', () => {
   coinUi.statsBody.hidden = !coinUi.statsBody.hidden;
   coinUi.statsToggle.textContent = coinUi.statsBody.hidden ? 'Estadísticas ▸' : 'Estadísticas ▾';
@@ -1310,7 +1356,9 @@ function devState(table: 2 | 3 | 4 | 5): GameState {
     dev.cards.playTime = 12 * 60;
     dev.cards.balance = 80_000;
     dev.playTime = 46 * 60;
-    dev.coin.balance = 4_000;
+    dev.coin.balance = 8_000; // llega para desbloquear la moneda cargada
+    // Moneda de las otras mesas para probar el cajón Herencias (cuestan cientos de millones).
+    dev.balance = dev.slots.balance = dev.dice.balance = dev.cards.balance = 1e9;
   }
   return dev;
 }

@@ -1,5 +1,5 @@
 import shared from '../../shared/config.json';
-import { CARD_UPGRADE_IDS, CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS, COIN_UPGRADE_IDS } from './config';
+import { CARD_UPGRADE_IDS, CONFIG, DICE_TARGETS, DICE_UPGRADE_IDS, SLOT_UPGRADE_IDS, UPGRADE_IDS, COIN_UPGRADE_IDS, HEIRLOOM_IDS } from './config';
 import { createCardsState } from './cards/state';
 import { chainValue } from './coin/game';
 import { createCoinState } from './coin/state';
@@ -67,6 +67,14 @@ const migrations: Record<number, (state: Json) => Json> = {
   },
   // v9: mesa 5 (doble o nada). Empieza de cero.
   8: (state) => ({ ...state, coin: createCoinState() }),
+  // v10: mesa 5 rediseñada (sesión 6): herencias de las mesas anteriores y moneda cargada. La
+  // segunda oportunidad (con el tiempo) pasa a ser la herencia Relanzar (cargas por cadena): sus
+  // cargas viejas se descartan y las herencias empiezan a 0; lo demás se conserva.
+  9: (state) => {
+    const coin = isRecord(state.coin) ? { ...state.coin } : {};
+    delete coin.seconds;
+    return { ...state, coin };
+  },
 };
 
 /** Mejoras de trabajo que existían en las mesas 2 a 4 hasta el guardado v7, con sus costes de entonces. */
@@ -285,7 +293,8 @@ function settleCoinChains(state: Json): Json {
     if (!isRecord(raw) || raw.status !== 'decidir') continue;
     const stake = Math.min(Math.max(Number(raw.stake) || 0, 0), CONFIG.coin.debt.amount);
     const wins = Math.min(Math.max(Math.floor(Number(raw.wins) || 0), 0), CONFIG.coin.chain.maxWins);
-    if (wins > 0) balance += chainValue(stake, wins);
+    const value = Number(raw.value);
+    if (wins > 0) balance += Number.isFinite(value) && value > 0 ? Math.min(value, CONFIG.coin.debt.amount * CONFIG.coin.chain.payoutCapDebtFraction) : chainValue(stake, wins);
   }
   copy.balance = balance;
   copy.chain = null;
@@ -309,9 +318,10 @@ function sanitizeCoin(state: GameState): void {
   coin.helper.timer = nonNegative(coin.helper.timer);
   coin.helper.profile = Math.min(clampIndex(coin.helper.profile, C.helper.profiles.length), coin.upgrades.helperProfile);
   coin.helper.stopAt = Math.min(Math.max(Math.floor(Number(coin.helper.stopAt) || 1), 1), C.chain.maxWins);
-  const maxCharges = C.seconds.base + Math.floor(coin.upgrades.luck / C.seconds.perLevels);
-  coin.seconds.charges = Math.min(Math.floor(nonNegative(coin.seconds.charges)), maxCharges);
-  coin.seconds.timer = nonNegative(coin.seconds.timer);
+  for (const id of HEIRLOOM_IDS) {
+    coin.heirlooms[id] = Math.min(Math.floor(nonNegative(coin.heirlooms[id])), C.heirlooms[id].maxLevel);
+  }
+  if (coin.coinChoice !== 'cargada' || coin.upgrades.loaded <= 0) coin.coinChoice = 'justa';
   coin.passiveCarry = Math.min(nonNegative(coin.passiveCarry), 1);
   coin.pot = Math.min(Math.max(nonNegative(coin.pot), C.jackpot.potSeed), C.debt.amount * C.jackpot.payoutCapDebtFraction);
   // Las cadenas a medias ya se liquidaron antes de fusionar (settleCoinChains); aquí ya no hay.

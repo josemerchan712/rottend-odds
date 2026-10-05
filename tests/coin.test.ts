@@ -9,12 +9,19 @@ import {
   coinLuckChance,
   continueChain,
   flipChance,
+  armHold,
+  markedFace,
+  selectCoinKind,
   startChain,
-  useSecondChance,
+  useGoldenZero,
+  useMark,
+  useReroll,
 } from '../src/game/coin/game';
 import { createCoinState, type CoinState } from '../src/game/coin/state';
 import {
   buyCoinUpgrade,
+  buyHeirloom,
+  heirloomNextCost,
   coinPassiveRate,
   impBet,
   isCoinUnlocked,
@@ -71,29 +78,85 @@ describe('mesa 5: la moneda', () => {
     expect(chain.result).toBe('retirado');
   });
 
-  it('cruz sin cargas: se pierde todo; con cargas, segunda oportunidad o aceptar', () => {
+  it('cruz sin herencias: se pierde todo; con alguna cara y cargas, relanzar, cero dorado o aceptar', () => {
     const coin = fresh({ balance: 100 });
-    coin.seconds.charges = 0;
     const lost = startChain(coin, { bettor: 'jugador', stake: 10 }, TAILS)!;
     expect(lost.result).toBe('perdido');
     expect(coin.balance).toBe(90);
 
-    coin.seconds.charges = 1;
-    const chain = startChain(coin, { bettor: 'jugador', stake: 10 }, HEADS)!;
-    continueChain(coin, chain, TAILS);
-    expect(chain.status).toBe('fallo');
-    expect(useSecondChance(coin, chain, HEADS)).toBe('cara');
-    expect(coin.seconds.charges).toBe(0);
-    expect(chain.wins).toBe(2);
-    continueChain(coin, chain, TAILS);
-    expect(chain.result).toBe('perdido'); // sin cargas ya no hay segunda oportunidad
+    coin.heirlooms.reroll = 1;
+    coin.heirlooms.zero = 1;
+    // Sin ninguna cara no hay nada que proteger: la primera cruz se pierde aunque haya cargas.
+    expect(startChain(coin, { bettor: 'jugador', stake: 10 }, TAILS)!.result).toBe('perdido');
     expect(coin.balance).toBe(80);
 
-    coin.seconds.charges = 1;
-    const other = startChain(coin, { bettor: 'jugador', stake: 10 }, TAILS)!;
-    expect(other.status).toBe('fallo');
+    const chain = startChain(coin, { bettor: 'jugador', stake: 10 }, HEADS)!;
+    expect(chain.charges).toMatchObject({ reroll: 1, zero: 1 });
+    continueChain(coin, chain, TAILS);
+    expect(chain.status).toBe('fallo');
+    expect(useReroll(coin, chain, HEADS)).toBe('cara');
+    expect(chain.charges.reroll).toBe(0);
+    expect(chain.wins).toBe(2);
+    expect(chain.fatigue).toBe(2); // la fatiga extra del relanzamiento es solo para ese lanzamiento
+    continueChain(coin, chain, TAILS);
+    expect(chain.status).toBe('fallo'); // aún queda el cero dorado
+    expect(useGoldenZero(coin, chain)).toBe(true);
+    expect(chain.result).toBe('salvado');
+    expect(coin.balance).toBe(70 + Math.floor(40 * C.heirlooms.zero.refund));
+
+    const other = startChain(coin, { bettor: 'jugador', stake: 10 }, HEADS)!;
+    continueChain(coin, other, TAILS);
     acceptLoss(coin, other);
     expect(other.result).toBe('perdido');
+  });
+
+  it('retener: el siguiente acierto no cansa; marcar enseña el próximo lanzamiento', () => {
+    const coin = fresh({ balance: 100 });
+    coin.heirlooms.hold = 1;
+    coin.heirlooms.mark = 1;
+    const chain = startChain(coin, { bettor: 'jugador', stake: 10 }, HEADS)!;
+    expect(chain.fatigue).toBe(1);
+    expect(armHold(coin, chain)).toBe(true);
+    expect(armHold(coin, chain)).toBe(false); // una carga por cadena
+    continueChain(coin, chain, HEADS);
+    expect(chain.fatigue).toBe(1);
+    expect(useMark(coin, chain, TAILS)).toBe(true);
+    expect(markedFace(coin, chain)).toBe('cruz');
+    expect(cashOut(coin, chain)).toBe(true); // visto venir: se retira a tiempo
+    expect(coin.balance).toBe(90 + 40);
+    // Las cargas se rellenan en la siguiente cadena.
+    expect(startChain(coin, { bettor: 'jugador', stake: 10 }, HEADS)!.charges).toMatchObject({ hold: 1, mark: 1 });
+  });
+
+  it('moneda cargada: acierta menos y paga ×3; solo con su mejora; la suerte la mejora más', () => {
+    const coin = fresh({ balance: 100 });
+    expect(selectCoinKind(coin, 'cargada')).toBe(false);
+    expect(startChain(coin, { bettor: 'jugador', stake: 10, kind: 'cargada' }, HEADS)).toBeNull();
+    coin.upgrades.loaded = 1;
+    expect(selectCoinKind(coin, 'cargada')).toBe(true);
+    const chain = startChain(coin, { bettor: 'jugador', stake: 10, kind: 'cargada' }, HEADS)!;
+    expect(chain.value).toBe(30);
+    continueChain(coin, chain, HEADS, 0, 'justa'); // cada lanzamiento elige moneda
+    expect(chain.value).toBe(60);
+    expect(coin.stats.loadedFlips).toBe(1);
+    for (const luck of [0, 10, 20]) expect(flipChance(luck, 0, 0, 0, 0, 'cargada')).toBeLessThan(flipChance(luck, 0, 0, 0));
+    // Mismo valor esperado de base; con suerte, la cargada sale ganando.
+    const ev = (luck: number, kind: 'justa' | 'cargada') => flipChance(luck, 0, 0, 0, 0, kind) * (kind === 'cargada' ? 3 : 2);
+    expect(ev(20, 'cargada') / ev(20, 'justa')).toBeGreaterThan(ev(0, 'cargada') / ev(0, 'justa'));
+  });
+
+  it('herencias: se compran con la moneda de su mesa de origen, hasta su nivel máximo', () => {
+    const state = createInitialState();
+    const cost = heirloomNextCost(state.coin, 'mark')!;
+    expect(buyHeirloom(state, 'mark')).toBe(false);
+    state.cards.balance = cost;
+    expect(buyHeirloom(state, 'mark')).toBe(true);
+    expect(state.cards.balance).toBe(0);
+    expect(state.coin.heirlooms.mark).toBe(1);
+    state.dice.balance = 1e12;
+    for (let i = 0; i < 10; i++) buyHeirloom(state, 'reroll');
+    expect(state.coin.heirlooms.reroll).toBe(C.heirlooms.reroll.maxLevel);
+    expect(heirloomNextCost(state.coin, 'reroll')).toBeNull();
   });
 
   it('diez caras: la cadena completa paga y además se lleva el pozo', () => {
@@ -198,5 +261,20 @@ describe('mesa 5: diablillo, desbloqueo, conversión y guardado', () => {
     const loaded = deserialize(serialize(state, 1))!;
     expect(loaded.state.coin.chain).toBeNull();
     expect(loaded.state.coin.balance).toBe(90 + 40); // se cobra lo acumulado
+  });
+
+  it('guardado: una partida v9 pierde las segundas oportunidades y gana herencias vacías; las herencias se acotan', () => {
+    const state = createInitialState();
+    const v9 = { version: 9, savedAt: 1, state: { ...state, coin: { ...state.coin, seconds: { charges: 2, timer: 3 }, heirlooms: undefined, coinChoice: undefined } } };
+    const file = deserialize(JSON.stringify(v9))!;
+    expect('seconds' in file.state.coin).toBe(false);
+    expect(file.state.coin.heirlooms).toEqual({ zero: 0, hold: 0, reroll: 0, mark: 0 });
+    expect(file.state.coin.coinChoice).toBe('justa');
+
+    state.coin.heirlooms = { zero: 99, hold: -3, reroll: 2, mark: 1 };
+    (state.coin as { coinChoice: string }).coinChoice = 'trucada';
+    const back = deserialize(serialize(state, 1))!;
+    expect(back.state.coin.heirlooms).toEqual({ zero: C.heirlooms.zero.maxLevel, hold: 0, reroll: 2, mark: 1 });
+    expect(back.state.coin.coinChoice).toBe('justa');
   });
 });

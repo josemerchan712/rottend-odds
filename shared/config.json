@@ -1,5 +1,5 @@
 {
-  "saveVersion": 9,
+  "saveVersion": 10,
   "debt": { "amount": 10000000 },
   "upgrades": {
     "luck": { "baseCost": 3, "growth": 1.55, "maxLevel": 20 },
@@ -62,14 +62,21 @@
   "coin": {
     "debt": { "amount": 10000000 },
     "upgrades": {
-      "luck": { "baseCost": 400, "growth": 1.25, "maxLevel": 20 },
+      "luck": { "baseCost": 560, "growth": 1.25, "maxLevel": 20 },
       "maxBet": { "baseCost": 350, "growth": 2, "maxLevel": 10 },
       "imp": { "baseCost": 1200, "growth": 1, "maxLevel": 1 },
       "helperSpeed": { "baseCost": 700, "growth": 1.6, "maxLevel": 15 },
       "helperProfile": { "baseCost": 2500, "growth": 4, "maxLevel": 2 },
       "helperLuck": { "baseCost": 1800, "growth": 1.8, "maxLevel": 10 },
-      "temple": { "baseCost": 3000, "growth": 2.2, "maxLevel": 5 }
+      "temple": { "baseCost": 3000, "growth": 2.2, "maxLevel": 5 },
+      "loaded": { "baseCost": 5000, "growth": 1, "maxLevel": 1 }
     },
-    "helperProfiles": 3
+    "helperProfiles": 3,
+    "heirlooms": {
+      "zero": { "from": "table1", "maxLevel": 3, "costs": [200000000, 315000000, 600000000] },
+      "hold": { "from": "slots", "maxLevel": 3, "costs": [100000000, 170000000, 350000000] },
+      "reroll": { "from": "dice", "maxLevel": 3, "costs": [50000000, 80000000, 160000000] },
+      "mark": { "from": "cards", "maxLevel": 3, "costs": [15000000, 40000000, 90000000] }
+    }
   }
 }

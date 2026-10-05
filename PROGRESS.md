@@ -108,7 +108,7 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
 | Asset | Archivo | Tamaño | Prompt de Nano Banana |
 |---|---|---|---|
 | Jugador en reposo (idle) | hoja magenta de 2 frames → `assets/sprites/player/idle-1.png`, `idle-2.png` | 64x64 | "Pixel art, el mismo jugador harapiento de casino de terror de pie y quieto, respirando, 2 frames de animación idle, vista lateral, fondo magenta plano, contorno negro" |
-| Ruleta limpia sin bola ni marcador | `assets/raw/ruleta-limpia.*` | 192x192 (o mayor, cuadrada) | "Pixel art, ruleta de casino vista desde arriba, vieja y oxidada, números legibles en anillo, sin bola y sin ningún marcador, centrada sobre fondo magenta plano, contorno negro" |
+| Ruleta limpia sin bola ni marcador | `assets/raw/ruleta-limpia.*` | 150x150 (o mayor, cuadrada) | "Pixel art, ruleta de casino vista desde arriba, vieja y oxidada, números legibles en anillo, sin bola y sin ningún marcador, centrada sobre fondo magenta plano, contorno negro" |
 | Bola y marcador | hoja magenta: bola de marfil manchada y flecha verde del marcador | 16x16 cada uno | "Pixel art, dos objetos pequeños sobre fondo magenta plano: una bola de ruleta de marfil manchada de sangre y una flecha marcadora verde enfermizo, contorno negro" |
 
 - **Desplegar**: seguir DEPLOY.md (`npm ci`, `npm test`, `npm run build`, `npx wrangler login`, `npx wrangler deploy`

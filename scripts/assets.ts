@@ -20,6 +20,7 @@ import {
   removeBackground,
   removeSpecks,
   resizeNearest,
+  trimBrightEdges,
   type RgbaImage,
 } from './pipeline/image';
 
@@ -65,6 +66,8 @@ interface Background {
   size: [number, number];
   /** Si falta el original, se avisa y se sigue (la escena usa un provisional). */
   optional?: boolean;
+  /** Quita antes una línea clara fina de los bordes (imágenes generadas con un filo blanco). */
+  trimEdges?: boolean;
 }
 
 type Sheet = BlockSheet | GridSheet | BoxSheet | Background;
@@ -252,6 +255,24 @@ const SHEETS: Sheet[] = [
     size: [640, 360],
   },
   {
+    // Pantalla de título: la imagen ya trae el logo dibujado (no se dibuja en código).
+    kind: 'background',
+    source: 'assets/raw/titulo.*',
+    out: 'assets/sprites/screens/titulo.png',
+    size: [640, 360],
+    optional: true,
+    trimEdges: true,
+  },
+  {
+    // Pantalla final: la figura subiendo hacia las puertas abiertas.
+    kind: 'background',
+    source: 'assets/raw/final.*',
+    out: 'assets/sprites/screens/final.png',
+    size: [640, 360],
+    optional: true,
+    trimEdges: true,
+  },
+  {
     // Lo genera el diseñador; mientras no exista, la escena usa el casino reflejado y oscurecido.
     kind: 'background',
     source: 'assets/raw/trastienda.*',
@@ -300,7 +321,12 @@ for (const sheet of SHEETS) {
     }
     throw new Error(`No existe ${sheet.source}`);
   }
-  const img = await load(source);
+  const loaded = await load(source);
+  const trimmed = sheet.kind === 'background' && sheet.trimEdges ? trimBrightEdges(loaded) : null;
+  const img = trimmed ? crop(loaded, trimmed) : loaded;
+  if (trimmed && (trimmed.width !== loaded.width || trimmed.height !== loaded.height)) {
+    console.log(`${source}: filo claro recortado (${loaded.width}x${loaded.height} → ${trimmed.width}x${trimmed.height} en ${trimmed.x},${trimmed.y})`);
+  }
   if (sheet.kind === 'background') {
     // Recorte centrado a la proporción del destino y reescalado con vecino más próximo.
     const [w, h] = sheet.size;

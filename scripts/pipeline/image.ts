@@ -277,3 +277,29 @@ export function resizeNearest(img: RgbaImage, width: number, height: number): Rg
   }
   return { width, height, data };
 }
+
+/**
+ * Línea clara fina en los bordes (algunas imágenes generadas traen 1-4 píxeles blancos en un lado):
+ * por cada lado quita las filas o columnas con brillo medio > `threshold` (como mucho `max`) y una
+ * más de margen, porque el JPEG mezcla la línea con la vecina. Devuelve la caja que queda.
+ */
+export function trimBrightEdges(img: RgbaImage, threshold = 100, max = 8): Box {
+  const mean = (x0: number, y0: number, dx: number, dy: number, n: number) => {
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const p = ((y0 + dy * i) * img.width + (x0 + dx * i)) * 4;
+      sum += (img.data[p] + img.data[p + 1] + img.data[p + 2]) / 3;
+    }
+    return sum / n;
+  };
+  const count = (line: (i: number) => number) => {
+    let n = 0;
+    while (n < max && line(n) > threshold) n++;
+    return n > 0 ? n + 1 : 0;
+  };
+  const top = count((i) => mean(0, i, 1, 0, img.width));
+  const bottom = count((i) => mean(0, img.height - 1 - i, 1, 0, img.width));
+  const left = count((i) => mean(i, 0, 0, 1, img.height));
+  const right = count((i) => mean(img.width - 1 - i, 0, 0, 1, img.height));
+  return { x: left, y: top, width: img.width - left - right, height: img.height - top - bottom };
+}

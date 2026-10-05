@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crop, findBlocks, fitNearest, removeBackground, removeSpecks, type RgbaImage } from '../scripts/pipeline/image';
+import { crop, findBlocks, fitNearest, removeBackground, removeSpecks, trimBrightEdges, type RgbaImage } from '../scripts/pipeline/image';
 
 const MAGENTA = [240, 0, 240];
 const BLOOD = [130, 20, 25];
@@ -109,5 +109,21 @@ describe('pipeline de assets', () => {
     expect(pixel(7, 7)).toEqual([...BLOOD, 255]);
     const tall = fitNearest(image(['o', 'o']), 8, 8); // 1x2 → 4x8 centrado
     expect(alpha(tall)[7]).toBe('..####..');
+  });
+
+  it('recorta el filo blanco fino de los bordes (y una línea más de margen), sin tocar una imagen oscura', () => {
+    const w = 20;
+    const h = 12;
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const white = y >= h - 2 || x >= w - 1;
+        const v = white ? 250 : 12;
+        data.set([v, v, v, 255], (y * w + x) * 4);
+      }
+    }
+    expect(trimBrightEdges({ width: w, height: h, data })).toEqual({ x: 0, y: 0, width: w - 2, height: h - 3 });
+    const dark = new Uint8ClampedArray(w * h * 4).fill(10);
+    expect(trimBrightEdges({ width: w, height: h, data: dark })).toEqual({ x: 0, y: 0, width: w, height: h });
   });
 });

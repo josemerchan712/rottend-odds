@@ -23,9 +23,23 @@ Remoto: `origin` (GitHub, privado). Push al final de cada bloque, nunca con forc
     sin cambios. Mesas 1-4 ≈ 46 min.
   - Decisión: los diálogos de entrar/salir de la trastienda de las mesas 2-4 quedan vacíos (`{}`).
 
+- [x] **B2 Auditoría de ayudantes.** `npm run audit:helpers` (cada ayudante solo, 4 suertes, sin y con
+  mejoras, saldo de 10 y 2 techos). Criterio común nuevo en `src/game/helperPolicy.ts`: Kelly exacto sobre
+  la probabilidad real de la apuesta (penalización, suerte propia, retener/relanzar), riesgo máximo en 2 min
+  por perfil (prudente 3%, normal 15%, agresivo sin límite) y espera si no compensa. Interfaz: neto del
+  último minuto (+N/min verde, −N/min rojo, "Esperando") y estrellita en el perfil recomendado.
+  - **Qué hacía perder al camarero**: apostaba una fracción fija del techo aunque no tuviera ventaja, y con
+    "Más de 9/Doble/Doble seis" desbloqueados perseguía el doble seis (p ≈ 8%) también mejorado y con suerte
+    alta (11% de ventanas de 2 min negativas, p10 −2 techos/min con el prudente); su agresivo (100% del
+    techo, 60% del saldo) perdía el 98-100% con suerte baja. Lo mismo, en menor grado, en todas las mesas
+    (crupier prudente: 35% de ventanas negativas con suerte baja).
+  - Ahora: ningún perfil llega a 0; prudente ≤ 4% de ventanas negativas; normal 0-5% desde suerte media con
+    mejoras; agresivo el más rápido con suerte alta en las 4 mesas.
+  - Números: mesa 3 conversión k 0,3 → 0,38 (sin eso, 15:57 en vez de ~14). Mesas 1, 2 y 4 sin cambios.
+  - Rendimiento: memoria del riesgo y del ingreso para el pasivo (las simulaciones iban 10× más lentas).
+
 ### Pendiente
 
-- B2 auditoría de ayudantes (+N/min y "recomendado" en la interfaz)
 - B3 texto nítido (canvas a resolución física, fuente bitmap, HTML con zoom entero, CRT de tres niveles)
 - B4 mesa 5 (doble o nada, el Dueño)
 - B5 final del juego y preparación para publicar (DEPLOY.md)

@@ -1,6 +1,6 @@
 import { currentMaxBet } from '../betting';
 import { CONFIG, type SlotUpgradeId } from '../config';
-import { chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, type HelperChoice } from '../helperPolicy';
+import { bucket, chooseHelperBet, memoRate, stateKey, HELPER_RETRY_SECONDS, recommendedProfile, type HelperChoice } from '../helperPolicy';
 import { hasHelper, helperBetAmount, helperInterval, helperLuckBonus } from '../helper';
 import { expectedValue } from '../luck';
 import type { Rng } from '../rng';
@@ -126,13 +126,23 @@ export function zombieChoiceFor(slots: SlotsState, profileIndex = slots.helper.p
       ];
     },
     profile,
-    { balance: slots.balance, ceiling, minBet: S.bet.minBet, interval: zombieInterval(slots.upgrades.helperSpeed) },
+    {
+      balance: slots.balance,
+      ceiling,
+      minBet: S.bet.minBet,
+      interval: zombieInterval(slots.upgrades.helperSpeed),
+    },
   );
 }
 
 /** Perfil recomendado del zombi para la suerte y el saldo de ahora. */
 export function recommendedZombieProfile(slots: SlotsState): number {
-  return recommendedProfile(Math.min(slots.upgrades.helperProfile, S.helper.profiles.length - 1), (i) => zombieChoiceFor(slots, i));
+  return memoRate(
+    slots,
+    'recommendedZombieProfile',
+    stateKey(slots.upgrades, bucket(slots.balance), Math.floor(slots.playTime * 2), holdableReel(slots.helper.reels) !== null ? 1 : 0),
+    () => recommendedProfile(Math.min(slots.upgrades.helperProfile, S.helper.profiles.length - 1), (i) => zombieChoiceFor(slots, i)),
+  );
 }
 
 /** Apuesta del zombi. 0 = espera. */
@@ -160,7 +170,17 @@ export function updateZombie(slots: SlotsState, dt: number, rng: Rng): SlotSpin[
     const bonus = zombieLuckBonus(slots.upgrades.helperLuck);
     let hold = choice.key === 'retener' ? holdableReel(slots.helper.reels) : null;
     if (hold !== null && slots.balance < bet + Math.ceil(bet * S.hold.feeFraction)) hold = null;
-    const result = spinSlots(slots, { bettor: 'ayudante', bet, hold, from: slots.helper.reels, luckBonus: bonus }, rng);
+    const result = spinSlots(
+      slots,
+      {
+        bettor: 'ayudante',
+        bet,
+        hold,
+        from: slots.helper.reels,
+        luckBonus: bonus,
+      },
+      rng,
+    );
     if (!result) break;
     slots.helper.reels = result.reels;
     results.push(result);
@@ -176,11 +196,27 @@ export function updateZombie(slots: SlotsState, dt: number, rng: Rng): SlotSpin[
  * su apuesta actual entre su intervalo, si es positivo) más su ayudante de limpieza.
  */
 export function table1IncomeRate(state: GameState): number {
+  return memoRate(
+    state,
+    'table1IncomeRate',
+    stateKey(state.upgrades, state.helper.profile, bucket(state.balance), Math.floor(state.playTime)),
+    () => computeTable1IncomeRate(state),
+  );
+}
+
+function computeTable1IncomeRate(state: GameState): number {
   let rate = cleanerIncomeRate(WORK_DEF, state.upgrades.cleaner, bagMultiplier(state));
   if (hasHelper(state)) {
     const bet = helperBetAmount(state);
     if (bet > 0) {
-      const ev = expectedValue('color', bet, currentMaxBet(state), state.upgrades.luck, state.upgrades.jackpot, helperLuckBonus(state.upgrades.helperLuck));
+      const ev = expectedValue(
+        'color',
+        bet,
+        currentMaxBet(state),
+        state.upgrades.luck,
+        state.upgrades.jackpot,
+        helperLuckBonus(state.upgrades.helperLuck),
+      );
       rate += Math.max(ev, 0) / helperInterval(state.upgrades.helperSpeed);
     }
   }

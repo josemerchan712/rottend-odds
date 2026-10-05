@@ -1,7 +1,16 @@
 import { CONFIG, type CardUpgradeId } from '../config';
 import { diceCeiling, targetExpectedValue } from '../dice/game';
 import { ghostChoiceFor, ghostInterval, ghostLuckBonus, hasGhost } from '../dice/table';
-import { binaryOutcomes, chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, type HelperChoice } from '../helperPolicy';
+import {
+  binaryOutcomes,
+  bucket,
+  chooseHelperBet,
+  memoRate,
+  stateKey,
+  HELPER_RETRY_SECONDS,
+  recommendedProfile,
+  type HelperChoice,
+} from '../helperPolicy';
 import type { LenderPhase } from '../lender';
 import type { Rng } from '../rng';
 import type { GameState } from '../state';
@@ -129,13 +138,23 @@ export function skeletonChoiceFor(cards: CardsState, profileIndex = cards.helper
       return binaryOutcomes(win, 1, pushChanceFor(win));
     },
     profile,
-    { balance: cards.balance, ceiling, minBet: K.bet.minBet, interval: skeletonInterval(cards.upgrades.helperSpeed) },
+    {
+      balance: cards.balance,
+      ceiling,
+      minBet: K.bet.minBet,
+      interval: skeletonInterval(cards.upgrades.helperSpeed),
+    },
   );
 }
 
 /** Perfil recomendado del esqueleto para la suerte y el saldo de ahora. */
 export function recommendedSkeletonProfile(cards: CardsState): number {
-  return recommendedProfile(Math.min(cards.upgrades.helperProfile, K.helper.profiles.length - 1), (i) => skeletonChoiceFor(cards, i));
+  return memoRate(
+    cards,
+    'recommendedSkeletonProfile',
+    stateKey(cards.upgrades, bucket(cards.balance), Math.floor(cards.playTime * 2)),
+    () => recommendedProfile(Math.min(cards.upgrades.helperProfile, K.helper.profiles.length - 1), (i) => skeletonChoiceFor(cards, i)),
+  );
 }
 
 /** Apuesta del esqueleto. 0 = espera. */
@@ -156,7 +175,15 @@ export function updateSkeleton(cards: CardsState, dt: number, rng: Rng): CardHan
       break;
     }
     cards.helper.timer -= interval;
-    const hand = dealHand(cards, { bettor: 'ayudante', bet, luckBonus: skeletonLuckBonus(cards.upgrades.helperLuck) }, rng);
+    const hand = dealHand(
+      cards,
+      {
+        bettor: 'ayudante',
+        bet,
+        luckBonus: skeletonLuckBonus(cards.upgrades.helperLuck),
+      },
+      rng,
+    );
     if (!hand) break;
     playHandAuto(cards, hand, rng);
     hands.push(hand);
@@ -169,6 +196,21 @@ export function updateSkeleton(cards: CardsState, dt: number, rng: Rng): CardHan
 
 /** Ingreso esperado por segundo de la mesa 3 jugando sola: su camarero (sin relanzar). */
 export function table3IncomeRate(state: GameState): number {
+  return memoRate(
+    state.dice,
+    'table3IncomeRate',
+    stateKey(
+      state.dice.upgrades,
+      state.dice.helper.profile,
+      bucket(state.dice.balance),
+      state.dice.rerolls.charges,
+      Math.floor(state.dice.playTime),
+    ),
+    () => computeTable3IncomeRate(state),
+  );
+}
+
+function computeTable3IncomeRate(state: GameState): number {
   const dice = state.dice;
   let rate = 0;
   if (hasGhost(dice)) {

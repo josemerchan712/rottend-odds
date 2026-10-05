@@ -1,6 +1,15 @@
 import { currentMaxBet } from './betting';
 import { CONFIG } from './config';
-import { binaryOutcomes, chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, type HelperChoice } from './helperPolicy';
+import {
+  binaryOutcomes,
+  bucket,
+  chooseHelperBet,
+  memoRate,
+  stateKey,
+  HELPER_RETRY_SECONDS,
+  recommendedProfile,
+  type HelperChoice,
+} from './helperPolicy';
 import { betWinChance } from './luck';
 import type { Rng } from './rng';
 import { spin } from './roulette';
@@ -35,13 +44,20 @@ export function helperChoiceFor(state: GameState, profileIndex = state.helper.pr
     ['color'] as const,
     (_, bet) => binaryOutcomes(betWinChance('color', state.upgrades.luck, bet / ceiling, bonus), CONFIG.betTypes.color.payout),
     profile,
-    { balance: state.balance, ceiling, minBet: CONFIG.bet.minBet, interval: helperInterval(state.upgrades.helperSpeed) },
+    {
+      balance: state.balance,
+      ceiling,
+      minBet: CONFIG.bet.minBet,
+      interval: helperInterval(state.upgrades.helperSpeed),
+    },
   );
 }
 
 /** Perfil recomendado del ayudante para la suerte y el saldo de ahora. */
 export function recommendedHelperProfile(state: GameState): number {
-  return recommendedProfile(Math.min(state.upgrades.helperProfile, CONFIG.helper.profiles.length - 1), (i) => helperChoiceFor(state, i));
+  return memoRate(state, 'recommendedHelperProfile', stateKey(state.upgrades, bucket(state.balance), Math.floor(state.playTime * 2)), () =>
+    recommendedProfile(Math.min(state.upgrades.helperProfile, CONFIG.helper.profiles.length - 1), (i) => helperChoiceFor(state, i)),
+  );
 }
 
 /** Apuesta del ayudante (0 = espera: sin ventaja suficiente para su perfil o sin saldo). */

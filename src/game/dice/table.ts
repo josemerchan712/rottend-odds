@@ -1,11 +1,32 @@
 import { CONFIG, type DiceTarget, type DiceUpgradeId } from '../config';
 import type { LenderPhase } from '../lender';
 import type { Rng } from '../rng';
-import { binaryOutcomes, chooseHelperBet, HELPER_RETRY_SECONDS, recommendedProfile, RISK_WINDOW_SECONDS, type HelperChoice } from '../helperPolicy';
+import {
+  binaryOutcomes,
+  bucket,
+  chooseHelperBet,
+  memoRate,
+  stateKey,
+  HELPER_RETRY_SECONDS,
+  recommendedProfile,
+  RISK_WINDOW_SECONDS,
+  type HelperChoice,
+} from '../helperPolicy';
 import { hasZombie, zombieBet, zombieInterval, zombieLuckBonus } from '../slots/table';
 import { slotCeiling, slotExpectedValue } from '../slots/machine';
 import type { GameState } from '../state';
-import { bestReroll, closeRoll, diceCeiling, rerollInterval, rerollRescue, rollDice, reroll, targetChance, updateRerolls, unlockedTargets } from './game';
+import {
+  bestReroll,
+  closeRoll,
+  diceCeiling,
+  rerollInterval,
+  rerollRescue,
+  rollDice,
+  reroll,
+  targetChance,
+  updateRerolls,
+  unlockedTargets,
+} from './game';
 import type { DiceRoll, DiceState } from './state';
 
 /**
@@ -131,7 +152,12 @@ export function ghostChoiceFor(dice: DiceState, profileIndex = dice.helper.profi
 
 /** Perfil recomendado del camarero para la suerte y el saldo de ahora. */
 export function recommendedGhostProfile(dice: DiceState): number {
-  return recommendedProfile(Math.min(dice.upgrades.helperProfile, D.helper.profiles.length - 1), (i) => ghostChoiceFor(dice, i));
+  return memoRate(
+    dice,
+    'recommendedGhostProfile',
+    stateKey(dice.upgrades, bucket(dice.balance), dice.rerolls.charges, Math.floor(dice.playTime * 2)),
+    () => recommendedProfile(Math.min(dice.upgrades.helperProfile, D.helper.profiles.length - 1), (i) => ghostChoiceFor(dice, i)),
+  );
 }
 
 /** Apuesta del camarero. 0 = espera. */
@@ -156,7 +182,16 @@ export function updateGhost(dice: DiceState, dt: number, rng: Rng): DiceRoll[] {
     }
     const bet = choice.bet;
     dice.helper.timer -= interval;
-    const roll = rollDice(dice, { bettor: 'ayudante', target: choice.key, bet, luckBonus: ghostLuckBonus(dice.upgrades.helperLuck) }, rng);
+    const roll = rollDice(
+      dice,
+      {
+        bettor: 'ayudante',
+        target: choice.key,
+        bet,
+        luckBonus: ghostLuckBonus(dice.upgrades.helperLuck),
+      },
+      rng,
+    );
     if (!roll) break;
     if (!roll.final) {
       const best = bestReroll(roll.target, roll.dice);
@@ -173,6 +208,21 @@ export function updateGhost(dice: DiceState, dt: number, rng: Rng): DiceRoll[] {
 
 /** Ingreso esperado por segundo de la mesa 2 jugando sola: su zombi (sin retener). */
 export function table2IncomeRate(state: GameState): number {
+  return memoRate(
+    state.slots,
+    'table2IncomeRate',
+    stateKey(
+      state.slots.upgrades,
+      state.slots.helper.profile,
+      bucket(state.slots.balance),
+      bucket(state.slots.pot),
+      Math.floor(state.slots.playTime),
+    ),
+    () => computeTable2IncomeRate(state),
+  );
+}
+
+function computeTable2IncomeRate(state: GameState): number {
   const slots = state.slots;
   let rate = 0;
   if (hasZombie(slots)) {

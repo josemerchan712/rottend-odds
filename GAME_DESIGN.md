@@ -221,7 +221,7 @@ Empieza al pagar la deuda de la mesa 1, con el estado real de una partida (c) de
 ### 4c.1 Desbloqueo y conversión
 
 - Al pagar la deuda de la mesa 2 sale el cartel **"Mesa 2 saldada"** y aparece la pestaña **MESA 3**. Las mesas 1 y 2 siguen jugando solas con sus ayudantes.
-- **Conversión**: `chapas/s = k * (ingreso/s de la mesa 2)^0,5`, con **k = 0,3**. Suelo de 1 chapa/s. El ingreso de la mesa 2 es el esperado de su zombi (sin retener). Sin pasivo, la mesa 3 tarda ~57 min (la mitad no termina en una hora); con él, ~13.
+- **Conversión**: `chapas/s = k * (ingreso/s de la mesa 2)^0,5`, con **k = 0,38** (0,3 hasta la sesión 5; ver 4e). Suelo de 1 chapa/s. El ingreso de la mesa 2 es el esperado de su zombi (sin retener). Sin pasivo, la mesa 3 tarda ~57 min (la mitad no termina en una hora); con él, ~13.
 
 ### 4c.2 El juego
 
@@ -330,6 +330,29 @@ Empieza al pagar la deuda de la mesa 3 con el estado real de una partida (d) de 
 
 - **Sala**: el fondo de la mesa 4; la Crupier (96 px) tras la mesa, recortada por ella, con respiración; un tapete delante con las cartas de la banca y del jugador, que salen del zapato, se deslizan y **se voltean** (la de la banca boca abajo hasta que te plantas); caras dibujadas en código (papel viejo, índices, palo y una corona en las figuras) y el dorso del arte; **PEDIR, PLANTARSE, REPARTIR y ACEPTAR impresos en el propio tapete**; la última carta resaltada con una "D" para descartar; totales, manos, descartes, pozo y 7·7·7; la columna de fichas; el esqueleto a la derecha. Teclas: Espacio (repartir / plantarse), P, S, D, 1-4.
 
+## 4e. Ayudantes: criterio común (sesión 5, auditoría)
+
+**Qué fallaba.** Cada ayudante apostaba una fracción fija del techo (limitada por su parte del saldo) tuviera o no ventaja. Con poca suerte el valor esperado es negativo (ventaja de la casa más la penalización por apostar fuerte) y perdían de forma sistemática: el crupier prudente acababa en negativo el 35% de las ventanas de 2 minutos con suerte baja. El **camarero fantasma** era el peor: elegía objetivo por crecimiento pero con una apuesta fija, así que con "Más de 9", "Doble" y "Doble seis" desbloqueados perseguía el doble seis (p ≈ 8%) incluso mejorado y con suerte alta (11% de ventanas negativas y p10 de −2 techos/min con el prudente), y su agresivo (todo el techo, 60% del saldo) perdía casi todo el saldo con suerte baja (caída máxima del 98-100%).
+
+**Criterio nuevo** (`src/game/helperPolicy.ts`, igual en las cuatro mesas y en la 5):
+
+1. Probabilidades de la apuesta concreta: penalización por su tamaño, suerte propia del ayudante y lo que suman sus recursos (el zombi decide si retiene con la probabilidad de la retención y su extra; el camarero cuenta los relanzamientos que puede pagar con sus cargas).
+2. Tamaño por **Kelly** (aproximación de segundo orden, media / E[x²], con la probabilidad de esa misma apuesta): `kelly ×` esa fracción, como mucho la parte del techo y del saldo del perfil.
+3. **Riesgo por perfil**: con las apuestas que caben en 2 minutos, la probabilidad exacta (binomial; para la tragaperras, suma sobre el número de tríos) de acabar la ventana en negativo no puede pasar de `maxLossWindow`: **prudente 3%**, **normal 15%**, **agresivo sin límite** (le basta valor esperado positivo). Si no llega, baja la apuesta; si ni la mínima llega, **espera** ("Esperando: ahora no le compensa apostar").
+4. Entre opciones (objetivos, retener o no) gana la de más crecimiento a su fracción de Kelly.
+
+| Perfil | Techo | Saldo | Kelly | Riesgo máx. en 2 min |
+|---|---|---|---|---|
+| Prudente | 5% | 3% | ½ | 3% |
+| Normal | 20% | 10% | 1 | 15% |
+| Agresivo | 50% (camarero 100%, esqueleto 60%) | 30% (60%, 40%) | 2 | sin límite |
+
+**Auditoría** (`npm run audit:helpers`, cada ayudante solo, sin pasivo ni jugador, suerte 3/9/15/20, sin y con mejoras, saldo inicial de 10 y de 2 techos): ningún perfil deja el saldo por debajo de la apuesta mínima; el prudente acaba en negativo como mucho el 4% de las ventanas de 2 minutos (antes hasta el 61%); el normal, desde suerte media y con mejoras, en el 0-5%; el agresivo puede perder con suerte baja o media pero es el más rápido con suerte alta en las cuatro mesas. El precio: con poca ventaja el prudente espera (con suerte baja, y el zombi hasta suerte alta si no tiene velocidad).
+
+**Efecto en las duraciones** (simulación tras el cambio): mesa 1 sin cambios (8:18 / 7:50); mesa 2 (d) 11:31 y tramo final 48 s; mesa 4 (d) 12:26. La mesa 3 pasaba de 13:38 a 15:57 porque el pasivo que le llega de la mesa 2 (el ingreso esperado del zombi, que ahora apuesta lo que le deja Kelly) bajaba de 126 a 81 chapas/s al empezar; propuesta mínima: **k de la conversión de la mesa 3 de 0,3 a 0,38** → 14:20 (60 partidas), tramo 1:08.
+
+**Interfaz**: junto a cada ayudante, su neto del **último minuto** (`+N/min` en verde, `−N/min` en rojo, o "Esperando") y una estrellita discreta en el perfil **recomendado** para la suerte y el saldo de ahora (el de más crecimiento esperado del saldo; si ninguno apuesta, el prudente). Sin porcentajes. Al comprar un ayudante empieza en prudente.
+
 ## 5. Conversión de monedas entre mesas
 
 - Cada mesa tiene su moneda (fichas, monedas, etc.).
@@ -370,6 +393,8 @@ Cambio de fase: **% de la deuda de su mesa reunido** (0-33% calmado, 33-66% inqu
 - Paleta: negro casi puro, verde enfermizo, rojo sangre seco, naranja óxido, dorado sucio, blanco hueso.
 - Filtro CRT: scanlines, viñeta, grano, parpadeo leve. Debe poder desactivarse.
 - Implementado en la mesa 1 (hito 6): con el ajuste "Filtro CRT" activado, la escena tiene scanlines, viñeta, grano, parpadeo y apagones breves de las 5 lámparas del fondo, y temblor de pantalla al perder una apuesta grande (la apuesta era al menos el 25% del saldo). Con el ajuste desactivado no se dibuja ninguno de estos efectos. Los efectos se aplican solo a la escena, no a los paneles HTML. Pendiente: el glitch por tensión de la deuda.
+- **Texto nítido (sesión 5)**. Diagnóstico: (1) el canvas era de 640x360 y el navegador lo estiraba; el texto se pintaba con `fillText` antialias a 1 píxel por unidad (con VT323 a 10-12 px, el 92-100% de los píxeles del texto eran grises), así que al estirar salían manchas; (2) el HTML iba dentro de un `transform: scale(k/dpr)`, que con dpr fraccionario o en pantalla completa se rasteriza escalado; (3) encima, la capa CRT (grano al 60%, scanlines al 22%) y una segunda capa CRT muerta en el canvas. Arreglo: el escenario usa `zoom` = k/dpr (variable `--u`; el HTML se maqueta a su tamaño final y cada unidad son k píxeles físicos exactos, con la esquina alineada a píxel físico); el canvas tiene resolución física (640k x 360k) y dibuja con transformación k sin suavizado (el 99,98% de los píxeles de juego salen como bloques k x k uniformes); el texto del canvas sale de máscaras umbralizadas a 1 píxel por unidad (`src/ui/pixelText.ts`); la capa CRT es independiente, sin eventos ni filtros sobre el contenido, con scanlines de 1 unidad. Se recoloca al cambiar el dpr (otro monitor, zoom del navegador). Test: k entero en píxeles físicos para 11 tamaños de ventana y 7 dpr.
+- **Filtro CRT de tres niveles** (Ajustes, guardado con ellos; los ajustes viejos sí/no pasan a Suave/Apagado): **Apagado** (sin scanlines, viñeta ni grano; tampoco parpadeo ni temblor), **Suave** (por defecto: scanlines al 10%, viñeta al 35%, grano al 20%) y **Fuerte** (el aspecto de antes: 22%, 60%, 60%).
 - Efectos: la pantalla tiembla al perder una apuesta grande, glitch cuando sube la tensión de la deuda, luces parpadeantes en los fondos.
 - Las mesas viejas se ven más podridas cuando las dejas atrás (versión sana y rota de cada asset).
 - Sonido (después de la lógica): zumbido de fondo, fichas huecas, susurro al perder, sonido de la ruleta. Efectos libres de Freesound.
@@ -425,7 +450,7 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 - **Continuar** solo aparece si hay una partida guardada, y muestra el tiempo de juego y el estado de la mesa (deuda reunida o saldada).
 - **Nueva partida** pide confirmación si ya existe un guardado, porque lo sobrescribe.
 - **Un solo hueco de guardado.**
-- **Ajustes**: interruptor del filtro CRT, volumen y borrar partida. Los ajustes se guardan aparte de la partida: borrarla no los borra. El botón de borrar partida solo está aquí, no en la pantalla de juego.
+- **Ajustes**: filtro CRT (Apagado, Suave o Fuerte), volumen y borrar partida. Los ajustes se guardan aparte de la partida: borrarla no los borra. El botón de borrar partida solo está aquí, no en la pantalla de juego.
 - Desde el juego hay un botón para **volver al menú**, que guarda antes.
 - El clic en Continuar o Nueva partida es el gesto del usuario que activa el audio (requisito de los navegadores).
 

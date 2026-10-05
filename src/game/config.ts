@@ -341,8 +341,8 @@ export const CONFIG = {
       ] as readonly HelperProfileConfig[],
       luckPerLevel: 0.005,
     },
-    /** Conversión: chapas/s = k * (ingreso/s de la mesa 2)^0,5. */
-    conversion: { k: 0.3, floor: 1 },
+    /** Conversión: chapas/s = max(suelo, k * (ingreso/s de la mesa 2)^0,5). k 0,3 → 0,38 en la sesión 5 (el zombi con criterio de Kelly rinde menos al empezar la mesa 3). */
+    conversion: { k: 0.38, floor: 1 },
     debt: { amount: shared.dice.debt.amount },
     upgrades: {
       luck: { name: 'Suerte', ...shared.dice.upgrades.luck },

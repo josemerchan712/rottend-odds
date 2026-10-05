@@ -64,6 +64,26 @@ function growthOf(outcomes: readonly Outcome[], x: number): number {
   return g;
 }
 
+/**
+ * Fracción del saldo que maximiza el crecimiento esperado (criterio de Kelly), por bisección sobre la
+ * derivada del crecimiento: Σ p·g / (1 + g·x) = 0. 0 si el valor esperado no es positivo.
+ */
+export function kellyFraction(outcomes: readonly Outcome[]): number {
+  if (meanOf(outcomes) <= 0) return 0;
+  let hi = 1;
+  for (const o of outcomes) if (o.p > 0 && o.net < 0) hi = Math.min(hi, 1 / -o.net);
+  hi *= 0.999;
+  let lo = 0;
+  const slope = (x: number) => outcomes.reduce((t, o) => (o.p > 0 ? t + (o.p * o.net) / (1 + o.net * x) : t), 0);
+  if (slope(hi) >= 0) return hi;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (slope(mid) > 0) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+
 function meanOf(outcomes: readonly Outcome[]): number {
   return outcomes.reduce((m, o) => m + o.p * o.net, 0);
 }
@@ -89,6 +109,20 @@ function binomialCdf(k: number, m: number, p: number): number {
  * Los empates no cuentan. Con más de dos premios, los pequeños cuentan como el menor (cota prudente).
  */
 export function lossWindowChance(outcomes: readonly Outcome[], n: number): number {
+  // Memoria: se pregunta a menudo por las mismas probabilidades (una por apuesta candidata).
+  let key = String(n);
+  for (const o of outcomes) key += `|${o.p.toFixed(5)}:${o.net}`;
+  const hit = riskCache.get(key);
+  if (hit !== undefined) return hit;
+  const value = lossWindowChanceRaw(outcomes, n);
+  if (riskCache.size >= 50_000) riskCache.clear();
+  riskCache.set(key, value);
+  return value;
+}
+
+const riskCache = new Map<string, number>();
+
+function lossWindowChanceRaw(outcomes: readonly Outcome[], n: number): number {
   const live = outcomes.filter((o) => o.p > 0);
   const wins = live.filter((o) => o.net > 0).sort((x, y) => x.net - y.net);
   const push = live.filter((o) => o.net === 0).reduce((t, o) => t + o.p, 0);
@@ -150,17 +184,27 @@ export function chooseHelperBet<K>(
   const n = Math.max(Math.round(RISK_WINDOW_SECONDS / Math.max(ctx.interval, 0.05)), 1);
   let best: (HelperChoice<K> & { score: number }) | null = null;
   for (const key of keys) {
-    // Fracción de Kelly: la apuesta candidata con más crecimiento.
-    let kellyBet = 0;
-    let kellyGrowth = 0;
-    for (const b of bets) {
-      const g = growthOf(outcomes(key, b), b / balance);
-      if (g > kellyGrowth) {
-        kellyGrowth = g;
-        kellyBet = b;
+    // Fracción de Kelly exacta para las probabilidades de esa misma apuesta: se parte del máximo y
+    // se baja hasta que se estabiliza (la penalización crece con la apuesta).
+    let kellyBet = cap;
+    for (let i = 0; i < 6; i++) {
+      const out = outcomes(key, Math.max(kellyBet, minBet));
+      const mean = meanOf(out);
+      if (mean <= 0) {
+        kellyBet = Math.floor(kellyBet / 2);
+        if (kellyBet < minBet) break;
+        continue;
       }
+      const next = Math.min(cap, Math.floor(kellyFraction(out) * balance));
+      if (next >= kellyBet) break;
+      kellyBet = next;
     }
-    if (kellyBet <= 0 || (best !== null && kellyGrowth <= best.score)) continue;
+    if (kellyBet < minBet) {
+      if (meanOf(outcomes(key, minBet)) <= 0) continue;
+      kellyBet = minBet;
+    }
+    const kellyGrowth = growthOf(outcomes(key, kellyBet), kellyBet / balance);
+    if (kellyGrowth <= 0 || (best !== null && kellyGrowth <= best.score)) continue;
     // Si el Kelly de verdad pasa del máximo del perfil, manda el perfil.
     const target = kellyBet >= cap ? cap : Math.min(cap, Math.floor(kellyBet * profile.kelly));
     // Riesgo: la mayor apuesta (hasta la objetivo) que lo cumple. Con apuestas más pequeñas la
@@ -179,7 +223,13 @@ export function chooseHelperBet<K>(
     }
     const b = bets[lo];
     const out = outcomes(key, b);
-    best = { key, bet: b, ev: meanOf(out) * b, growth: growthOf(out, b / balance), score: kellyGrowth };
+    best = {
+      key,
+      bet: b,
+      ev: meanOf(out) * b,
+      growth: growthOf(out, b / balance),
+      score: kellyGrowth,
+    };
   }
   return best && { key: best.key, bet: best.bet, ev: best.ev, growth: best.growth };
 }
@@ -214,4 +264,34 @@ export function recommendedProfile(unlocked: number, choiceFor: (profile: number
     }
   }
   return best;
+}
+
+const rateCache = new WeakMap<object, Map<string, { sig: number; value: number }>>();
+
+/** Cubo logarítmico (~9%) de una cantidad, para las firmas de la memoria. */
+export function bucket(x: number): number {
+  return Math.round(Math.log2(1 + Math.max(x, 0)) * 8);
+}
+
+/**
+ * Memoria del ingreso esperado de un ayudante (el pasivo de la mesa siguiente lo pide en cada
+ * paso): se recalcula solo si cambia la firma (mejoras, perfil, saldo en cubos del ~9%, cada
+ * segundo de juego...).
+ */
+export function memoRate(owner: object, name: string, sig: number, compute: () => number): number {
+  let byName = rateCache.get(owner);
+  if (!byName) rateCache.set(owner, (byName = new Map()));
+  const hit = byName.get(name);
+  if (hit && hit.sig === sig) return hit.value;
+  const value = compute();
+  byName.set(name, { sig, value });
+  return value;
+}
+
+/** Firma numérica barata de unas mejoras y unos números (para memoRate). */
+export function stateKey(upgrades: Readonly<Record<string, number>>, ...extra: number[]): number {
+  let h = 17;
+  for (const k in upgrades) h = (h * 31 + upgrades[k]) | 0;
+  for (const e of extra) h = (h * 1_000_003 + e) | 0;
+  return h;
 }

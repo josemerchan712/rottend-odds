@@ -1,5 +1,5 @@
 import { CONFIG, HEIRLOOM_IDS, type CoinUpgradeId, type HeirloomId } from '../game/config';
-import { coinFatigue, coinLuckChance, coinMaxBet, heirloomCharges } from '../game/coin/game';
+import { coinLuckChance, coinMaxBet, decayExponent, heirloomCharges } from '../game/coin/game';
 import type { CoinState } from '../game/coin/state';
 import {
   canBuyCoin,
@@ -267,7 +267,7 @@ function describe(coin: CoinState, id: CoinUpgradeId): string {
     case 'maxBet':
       return arrow(`Techo ${formatNumber(coinMaxBet(lvl))}`, formatNumber(coinMaxBet(lvl + 1)));
     case 'temple':
-      return arrow(`Fatiga −${formatPercent(coinFatigue(lvl), 1)} por cara`, `−${formatPercent(coinFatigue(lvl + 1), 1)}`);
+      return arrow(`Caída ^${decayExponent(lvl).toFixed(2)} por paso`, `^${decayExponent(lvl + 1).toFixed(2)}`);
     case 'imp':
       return maxed ? 'Contratado' : 'Lanza por ti';
     case 'helperSpeed':
@@ -279,7 +279,7 @@ function describe(coin: CoinState, id: CoinUpgradeId): string {
     case 'helperLuck':
       return arrow(`+${formatPercent(impLuckBonus(lvl))}`, `+${formatPercent(impLuckBonus(lvl + 1))}`);
     case 'loaded':
-      return maxed ? 'Moneda cargada: ×3 (Q para cambiar)' : 'Desbloquea la moneda cargada (×3)';
+      return maxed ? 'Moneda cargada: ×1,5 el factor (Q para cambiar)' : 'Desbloquea la moneda cargada (×1,5 el factor)';
   }
 }
 

@@ -308,7 +308,7 @@ coinScene.onChainStep = (wins) => {
 };
 coinScene.onChainShown = (chain) => {
   const outcome = chain.jackpot > 0 ? 'jackpot' : chain.delta > 0 ? 'gana' : 'pierde';
-  if (state) outcomeSound(chain.bettor, outcome, chain.stake * 2 ** chain.wins, coinCeiling(state.coin));
+  if (state) outcomeSound(chain.bettor, outcome, chain.value, coinCeiling(state.coin));
   const w = watches[5];
   if (!w || !state) return;
   // Lo que se arriesgaba al final: la apuesta doblada tantas veces como caras.

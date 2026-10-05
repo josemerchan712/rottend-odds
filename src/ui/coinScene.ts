@@ -1,11 +1,11 @@
 import type { SelectorChip } from '../game/betting';
 import { CONFIG, HEIRLOOM_IDS, type CoinKind, type HeirloomId } from '../game/config';
-import { COIN_JACKPOT_CAP, coinChips, heirloomCharges, loadedUnlocked, markedFace, selectedCoinChip } from '../game/coin/game';
+import { CHAIN_CAP, COIN_JACKPOT_CAP, coinChips, heirloomCharges, loadedUnlocked, markedFace, selectedCoinChip, stepMultiplier } from '../game/coin/game';
 import type { CoinChain, CoinFace } from '../game/coin/state';
 import { coinLenderPhase, hasImp } from '../game/coin/table';
 import { fadeAlpha, type Room, type RoomState } from '../game/rooms';
 import type { GameState } from '../game/state';
-import { formatNumber } from '../util/format';
+import { formatFactor, formatNumber } from '../util/format';
 import { chipAt } from './casinoLayout';
 import { Effects } from './effects';
 import { drawButton, drawFloatTexts, drawText } from './sceneText';
@@ -39,8 +39,8 @@ export const ZONES5 = {
 };
 /** Selector de moneda (Q): justa ×2 y cargada ×3. */
 export const COIN_TOGGLE: Record<CoinKind, { x: number; y: number; width: number; height: number; label: string }> = {
-  justa: { x: PANEL.x + 132, y: ROW.stake - 9, width: 60, height: 18, label: 'JUSTA ×2' },
-  cargada: { x: PANEL.x + 194, y: ROW.stake - 9, width: 62, height: 18, label: 'CARGADA ×3' },
+  justa: { x: PANEL.x + 132, y: ROW.stake - 9, width: 60, height: 18, label: 'JUSTA' },
+  cargada: { x: PANEL.x + 194, y: ROW.stake - 9, width: 62, height: 18, label: 'CARGADA' },
 };
 /** Botones de las herencias, con su tecla. */
 const TOOL_LABEL: Record<HeirloomId, string> = { zero: 'CERO', hold: 'RETENER', reroll: 'RELANZAR', mark: 'MARCAR' };
@@ -116,7 +116,7 @@ export class CoinScene {
   /** El Dueño se inclina al empujar o barrer (segundos que quedan del gesto). */
   private gesture = 0;
   onChainShown: ((chain: CoinChain) => void) | null = null;
-  /** La cadena del jugador llega a una cara nueva (para los hitos 3, 6 y 9 del Dueño). */
+  /** La cadena del jugador llega a una cara nueva (para los hitos del Dueño: CONFIG.coin.milestones). */
   onChainStep: ((wins: number) => void) | null = null;
   onAwayResult: ((chain: CoinChain) => void) | null = null;
 
@@ -257,7 +257,7 @@ export class CoinScene {
       this.slides.push({ from: HOUSE_PILE, to: PILE, count: Math.max(target - this.pileShown, 1), age: 0, fade: false });
       this.pileShown = target;
       this.gesture = SLIDE_SECONDS;
-      if (chain.status !== 'fin') this.addFloat(`CARA ×${chain.coins[chain.coins.length - 1] === 'cargada' ? 3 : 2}`, COIN.x, COIN.y - 30);
+      if (chain.status !== 'fin') this.addFloat(`CARA ${formatFactor(stepMultiplier(chain.wins, chain.coins[chain.coins.length - 1]))}`, COIN.x, COIN.y - 30);
       if (chain.bettor === 'jugador') this.onChainStep?.(chain.wins);
     } else if (chain.status === 'fallo') this.addFloat('CRUZ', COIN.x, COIN.y - 30, BAD);
     if (chain.status === 'fin') this.finish(state);
@@ -409,7 +409,7 @@ export class CoinScene {
     const chain = this.chain;
     const open = chain !== null && chain.status !== 'fin';
     const wins = open || this.flipping() ? (chain?.wins ?? 0) : 0;
-    // Fila 1: la cadena (10 casillas, las de la cargada en rojo), n/10 y el pozo.
+    // Fila 1: la cadena (una casilla por paso, las de la cargada en rojo), n/máximo, el siguiente paso y el pozo.
     const max = CONFIG.coin.chain.maxWins;
     for (let i = 0; i < max; i++) {
       const x = p.x + 8 + i * 12;
@@ -421,14 +421,21 @@ export class CoinScene {
       ctx.fillRect(x + 1, ROW.chain - 4, 8, 8);
     }
     drawText(ctx, 'label', `${wins}/${max}`, p.x + 8 + max * 12 + 4, ROW.chain + 1, 'left');
-    drawText(ctx, wins >= 7 ? 'value' : 'muted', `POZO ${formatNumber(Math.min(coin.pot, COIN_JACKPOT_CAP))}`, p.x + p.width - 6, ROW.chain + 1, 'right');
-    // Fila 2: en juego / apuesta, y la moneda elegida.
+    drawText(ctx, wins >= max - 1 ? 'value' : 'muted', `POZO ${formatNumber(Math.min(coin.pot, COIN_JACKPOT_CAP))}`, p.x + p.width - 6, ROW.chain + 1, 'right');
+    // El siguiente paso: su factor (con la moneda elegida) y lo acumulado que quedaría.
+    const step = open && chain ? chain.wins + 1 : 1;
+    const base = open && chain ? chain.value : selectedCoinChip(coin).amount;
+    if ((!open || chain!.status === 'decidir') && step <= max) {
+      const mult = stepMultiplier(step, coin.coinChoice);
+      drawText(ctx, 'value', `SIGUIENTE ${formatFactor(mult)} → ${formatNumber(Math.min(base * mult, CHAIN_CAP))}`, p.x + 8 + max * 12 + 30, ROW.chain + 1, 'left');
+    }
+    // Fila 2: lo acumulado (lo que cobras si te retiras) o la apuesta, y la moneda elegida con su factor.
     const stakeText = open && chain ? `EN JUEGO ${formatNumber(chain.value)}` : `APUESTA ${formatNumber(selectedCoinChip(coin).amount)}`;
     drawText(ctx, 'label', stakeText, p.x + 8, ROW.stake + 1, 'left');
     for (const kind of ['justa', 'cargada'] as const) {
       const r = COIN_TOGGLE[kind];
       const locked = kind === 'cargada' && !loadedUnlocked(coin);
-      const label = locked ? 'CARGADA –' : r.label;
+      const label = locked ? 'CARGADA –' : `${r.label} ${formatFactor(stepMultiplier(Math.min(step, max), kind))}`;
       drawButton(ctx, r, label, locked ? 'disabled' : coin.coinChoice === kind ? 'hover' : hit?.kind === 'coin' && hit.coin === kind ? 'active' : 'disabled');
     }
     // Fila 3: las herencias (nombre y cargas que le quedan a la cadena, o las que tendrá).
@@ -443,14 +450,15 @@ export class CoinScene {
     });
     // Fila 4: los botones principales.
     const busy = this.flipping();
-    const zone = (z: (typeof ZONES5)[keyof typeof ZONES5], active: boolean, hovered: boolean) =>
-      drawButton(ctx, z, z.label, !active ? 'disabled' : hovered ? 'hover' : 'active');
+    const zone = (z: (typeof ZONES5)[keyof typeof ZONES5], active: boolean, hovered: boolean, label = z.label) =>
+      drawButton(ctx, z, label, !active ? 'disabled' : hovered ? 'hover' : 'active');
     if (!open) {
       zone(ZONES5.bet, !busy, hit?.kind === 'bet');
       zone(ZONES5.stop, false, false);
     } else if (chain!.status === 'decidir') {
       zone(ZONES5.more, !busy, hit?.kind === 'more');
-      zone(ZONES5.stop, !busy, hit?.kind === 'stop');
+      // RETIRARSE con lo que se cobra.
+      zone(ZONES5.stop, !busy, hit?.kind === 'stop', `RETIRARSE ${formatNumber(chain!.value)} [R]`);
     } else {
       zone(ZONES5.more, false, false);
       zone(ZONES5.accept, !busy, hit?.kind === 'accept');

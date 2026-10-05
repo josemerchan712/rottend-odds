@@ -86,9 +86,11 @@ export function noteSpinShown(watch: DialogueWatch, spin: ShownSpin, ceiling: nu
 
 /** Mesa 5: la cadena del jugador acaba de llegar a 3, 6 o 9 caras. */
 export function noteChainMilestone(watch: DialogueWatch, wins: number): void {
-  if (wins === 3) push(watch, 'chain3');
-  else if (wins === 6) push(watch, 'chain6');
-  else if (wins === 9) push(watch, 'chain9');
+  const m = CONFIG.coin.milestones;
+  if (wins <= 0) return;
+  if (wins === m.chain9) push(watch, 'chain9');
+  else if (wins === m.chain6) push(watch, 'chain6');
+  else if (wins === m.chain3) push(watch, 'chain3');
 }
 
 /** El jugador ha terminado de cambiar de sala. */

@@ -9,3 +9,5 @@ dist
 *.key
 server/target/
 sim/.cache
+# Fotogramas del vídeo del portfolio (npm run capture:portfolio)
+capture-frames/

@@ -4,6 +4,21 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 9 (cajón «Mesa» de la mesa 5 e informe del backend)
+
+- [x] **Bug: la pestaña «MESA» de la mesa 5 no abría con clic** (con M sí). Causa: en la sesión 8 se puso
+  `.drawer { pointer-events: none }` para que el cajón solo recibiera el ratón en su pestaña y su cuerpo, pero
+  `.table-layer > * { pointer-events: auto }` es igual de específica y va después, así que la anulaba. El `aside` de
+  Herencias cerrado (pegado al borde, encima en el DOM, de toda la altura) se tragaba el clic de la pestaña Mesa;
+  la regla antigua que lo evitaba (`.drawer.left.second[data-open='false']`) se quitó en la sesión 8. Arreglo:
+  `.table-layer > .drawer { pointer-events: none }` y `> * { auto }`, después y más específicas.
+  - Nuevo: un clic fuera de los cajones los cierra (antes no); si cae en la escena, solo cierra (no apuesta).
+  - Prueba de extremo a extremo con clics reales (`npm run build && npm run test:e2e`, `scripts/e2e/drawers.ts`):
+    Chrome sin interfaz contra `vite preview`, cinco mesas, dpr 1 y 1,5, ventana y pantalla completa; comprueba que
+    nada tapa ninguna pestaña, que un clic abre y otro cierra, que abrir uno cierra el otro del mismo lado, que un
+    clic fuera y Esc cierran, y que ningún texto queda cortado ni tapado. Con el build anterior falla (Mesa tapada
+    por «drawer left second»); con el arreglo pasa entero. Test de vitest de la cascada CSS.
+
 ## Sesión 8 (bugs de interfaz, ruleta nueva, multiplicadores acumulativos en la mesa 5)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.

@@ -20,7 +20,8 @@
     "plausibility": "tsx sim/plausibility.ts --full",
     "plausibility:quick": "tsx sim/plausibility.ts --quick",
     "meta": "tsx scripts/meta.ts",
-    "assets": "tsx scripts/assets.ts"
+    "assets": "tsx scripts/assets.ts",
+    "test:e2e": "tsx scripts/e2e/drawers.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

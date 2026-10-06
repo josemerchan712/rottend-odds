@@ -27,8 +27,10 @@ app:
   cors:
     origins: ${CORS_ORIGINS:http://localhost:5173}
   rate-limit:
-    # Intentos por IP y minuto en /api/auth/login y /api/auth/register.
+    # Intentos por IP y minuto en login, registro y restablecer la contraseña.
     auth-per-minute: ${AUTH_RATE_LIMIT:10}
+    # Consultas por IP y minuto de la disponibilidad del nombre (mientras se escribe, con debounce).
+    name-check-per-minute: ${NAME_CHECK_RATE_LIMIT:30}
   save:
     max-bytes: 65536
 

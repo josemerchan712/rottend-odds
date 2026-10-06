@@ -1,10 +1,19 @@
+-- Cuentas sin email (sesión 11): el nombre de jugador es el identificador de login y el nombre público
+-- del ranking. Se guarda como lo escribió el jugador (player_name) y es único sin distinguir mayúsculas por
+-- su forma normalizada (player_name_key, en minúsculas). Sin email no hay recuperación por correo: el código
+-- de recuperación se muestra una vez al registrarse y aquí solo queda su hash BCrypt.
+--
+-- Esta V1 se reescribió en la sesión 11 en vez de añadir una V2: el backend nunca se había desplegado ni
+-- aplicado a una base real (solo H2 en los tests). Si alguien tiene un volumen local de antes, Flyway avisará
+-- de que la V1 no coincide: basta con `docker compose down -v`.
 create table users (
-    id               uuid primary key,
-    email            varchar(254) not null unique,
-    display_name     varchar(20)  not null,
-    display_name_key varchar(20)  not null unique,
-    password_hash    varchar(100) not null,
-    created_at       timestamp with time zone not null
+    id                 uuid primary key,
+    player_name        varchar(20)  not null,
+    player_name_key    varchar(20)  not null,
+    password_hash      varchar(100) not null,
+    recovery_code_hash varchar(100) not null,
+    created_at         timestamp with time zone not null,
+    constraint uq_users_player_name_key unique (player_name_key)
 );
 
 -- Un único hueco de guardado por usuario. `revision` sube con cada escritura y sirve para

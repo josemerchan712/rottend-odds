@@ -61,7 +61,7 @@ public class RankingService {
         List<RankingDtos.Entry> entries = IntStream.range(0, rows.getContent().size())
                 .mapToObj(i -> {
                     var row = rows.getContent().get(i);
-                    return new RankingDtos.Entry(offset + i + 1, row.displayName(), row.playTimeSeconds(), row.achievedAt());
+                    return new RankingDtos.Entry(offset + i + 1, row.playerName(), row.playTimeSeconds(), row.achievedAt());
                 })
                 .toList();
         return new RankingDtos.Page(entries, page, size, rows.getTotalElements(), rows.getTotalPages());

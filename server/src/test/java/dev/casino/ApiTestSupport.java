@@ -51,14 +51,20 @@ public abstract class ApiTestSupport {
         return post(url).with(ip(uniqueIp())).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body));
     }
 
+    /** Contraseña de prueba de los tests (solo existe en la base H2 en memoria de los tests). */
+    protected static final String PASSWORD = "contraseña-larga";
+
     /** Registra un usuario nuevo y devuelve su token. */
     protected String registerUser() throws Exception {
-        String name = unique("jugador");
-        String body = mvc.perform(jsonPost("/api/auth/register",
-                        Map.of("email", name + "@example.com", "password", "contraseña-larga", "displayName", name)))
+        return register(unique("jugador")).get("token").asText();
+    }
+
+    /** Registra un nombre y devuelve la respuesta (token, nombre y código de recuperación). */
+    protected JsonNode register(String name) throws Exception {
+        String body = mvc.perform(jsonPost("/api/auth/register", Map.of("playerName", name, "password", PASSWORD)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("token").asText();
+        return json.readTree(body);
     }
 
     protected static String bearer(String token) {

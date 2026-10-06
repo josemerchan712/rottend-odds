@@ -31,11 +31,11 @@ public class JwtService {
                 .subject(user.getId().toString())
                 .issuedAt(now)
                 .expiresAt(expiresAt)
-                .claim("name", user.getDisplayName())
+                .claim("name", user.getPlayerName())
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         String token = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new AuthDtos.TokenResponse(token, expiresAt, user.getDisplayName());
+        return new AuthDtos.TokenResponse(token, expiresAt, user.getPlayerName());
     }
 
     public static UUID userId(Jwt jwt) {

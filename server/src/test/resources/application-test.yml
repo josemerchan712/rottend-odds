@@ -9,3 +9,4 @@ app:
     secret: test-secret-only-for-automated-tests-0123456789
   rate-limit:
     auth-per-minute: 5
+    name-check-per-minute: 8

@@ -17,7 +17,7 @@ public record AppProperties(Jwt jwt, Cors cors, RateLimit rateLimit, Save save) 
         // Sin ninguna propiedad app.jwt.* el registro anidado ni se construye: también es un error.
         if (jwt == null) throw new IllegalStateException("Falta la variable de entorno JWT_SECRET");
         if (cors == null) cors = new Cors(java.util.List.of("http://localhost:5173"));
-        if (rateLimit == null) rateLimit = new RateLimit(10);
+        if (rateLimit == null) rateLimit = new RateLimit(10, 30);
         if (save == null) save = new Save(65_536);
     }
 
@@ -43,7 +43,17 @@ public record AppProperties(Jwt jwt, Cors cors, RateLimit rateLimit, Save save) 
 
     public record Cors(List<String> origins) {}
 
-    public record RateLimit(int authPerMinute) {}
+    /**
+     * Intentos por IP y minuto: `authPerMinute` en login, registro y restablecer la contraseña;
+     * `nameCheckPerMinute` en la consulta de disponibilidad del nombre (más alta: se usa mientras se escribe,
+     * con debounce, pero limitada para que no sirva para listar usuarios).
+     */
+    public record RateLimit(int authPerMinute, int nameCheckPerMinute) {
+        public RateLimit {
+            if (authPerMinute <= 0) authPerMinute = 10;
+            if (nameCheckPerMinute <= 0) nameCheckPerMinute = 30;
+        }
+    }
 
     public record Save(int maxBytes) {}
 }

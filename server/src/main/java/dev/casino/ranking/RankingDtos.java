@@ -27,9 +27,9 @@ public final class RankingDtos {
             boolean newBest) {}
 
     /** Fila tal como sale de la base de datos. */
-    public record Row(String displayName, double playTimeSeconds, Instant achievedAt) {}
+    public record Row(String playerName, double playTimeSeconds, Instant achievedAt) {}
 
-    public record Entry(long rank, String displayName, double playTimeSeconds, Instant achievedAt) {}
+    public record Entry(long rank, String playerName, double playTimeSeconds, Instant achievedAt) {}
 
     public record Page(List<Entry> content, int page, int size, long totalElements, int totalPages) {}
 }

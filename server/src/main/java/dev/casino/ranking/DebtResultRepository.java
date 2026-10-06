@@ -10,7 +10,7 @@ public interface DebtResultRepository extends JpaRepository<DebtResult, UUID> {
 
     /** Solo resultados verificados, del más rápido al más lento (a igualdad, el primero en llegar). */
     @Query(value = """
-            select new dev.casino.ranking.RankingDtos$Row(u.displayName, r.playTimeSeconds, r.createdAt)
+            select new dev.casino.ranking.RankingDtos$Row(u.playerName, r.playTimeSeconds, r.createdAt)
             from DebtResult r join User u on u.id = r.userId
             where r.verified = true
             order by r.playTimeSeconds asc, r.createdAt asc

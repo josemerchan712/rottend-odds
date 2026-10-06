@@ -45,7 +45,8 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/reset").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/name-available").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ranking").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
@@ -82,6 +83,7 @@ public class SecurityConfig {
         config.addAllowedMethod("GET");
         config.addAllowedMethod("POST");
         config.addAllowedMethod("PUT");
+        config.addAllowedMethod("DELETE");
         config.addAllowedHeader("Authorization");
         config.addAllowedHeader("Content-Type");
         config.addExposedHeader("Retry-After");

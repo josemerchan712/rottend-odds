@@ -19,6 +19,19 @@ no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneD
     clic fuera y Esc cierran, y que ningún texto queda cortado ni tapado. Con el build anterior falla (Mesa tapada
     por «drawer left second»); con el arreglo pasa entero. Test de vitest de la cascada CSS.
 
+- [x] **Primeros pasos en la mesa 1** (probador: al empezar con 0 fichas no se veía que el dinero sale de la
+  trastienda). Rótulo con flecha sobre la puerta de la trastienda, aviso en el tapete al intentar apostar sin
+  fichas y líneas de partida nueva del Encargado que nombran la trastienda (pendientes de revisión). Todo se
+  deriva del guardado (`stats.workEarned` y `stats.bets`, que solo crecen): **sin campo nuevo, sin migración ni
+  cambios en el servidor, sin regenerar plausibility.json**. Economía intacta. Tests `tests/onboarding.test.ts`.
+  - Decisiones: el rótulo va en tres líneas («TRASTIENDA / aquí se gana / el primer dinero») porque en una o
+    dos la pestaña del cajón Mesa (HTML, por encima del canvas) tapaba el principio y el final rozaba la ruleta;
+    el aviso corto («A la trastienda.») sigue saliendo si se queda sin fichas después de haber recogido algo (es
+    un recordatorio, no el rótulo); con el CRT apagado el rótulo no parpadea.
+  - Capturas con el build, dpr 1 y 1,5, ventana y pantalla completa, con los diálogos desactivados: el rótulo se
+    ve, no toca la ruleta ni el Encargado, y el aviso sale bajo el tapete; 0 errores en consola
+    (`docs/capturas/sesion9/mesa1-trastienda-rotulo-y-aviso.jpg`).
+
 ## Sesión 8 (bugs de interfaz, ruleta nueva, multiplicadores acumulativos en la mesa 5)
 
 Remoto: `origin`. Push al final de cada bloque, nunca con force. Sin desplegar.

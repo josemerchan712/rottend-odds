@@ -103,6 +103,15 @@ El saldo nunca baja de 0 y no se puede apostar más de lo que se tiene. Si te qu
 - Implementado (hito 4): la basura aparece en una zona del suelo de la escena (640x360), con una distancia mínima entre objetos para que no se tapen. El suelo empieza lleno. La zona de clic es un radio de 26 px alrededor de cada objeto, y al pasar el ratón se resalta. El jugador está fijo abajo a la izquierda y no camina: al recoger se agacha y levanta el objeto, y sale un "+N" flotante. La animación es solo visual: la basura se suma al hacer clic.
 - Efecto en la economía: la basura está limitada por su aparición (1 cada 2 s), así que para un jugador activo las pinzas y el ayudante de limpieza no dan más fichas (sí ahorran clics y sirven cuando no se atiende el suelo). Solo la bolsa grande sube los ingresos.
 
+### 4.2b Primeros pasos: la trastienda (sesión 9)
+
+Al empezar con 0 fichas no había ninguna pista de que el primer dinero sale de la trastienda. Sin tocar la economía:
+
+- **Rótulo** sobre la puerta de la trastienda, en el casino de la mesa 1: «TRASTIENDA / aquí se gana / el primer dinero» (VT323 14 px, con contorno) y una flecha pixel hacia la puerta. Parpadeo suave (nunca desaparece); con el filtro CRT apagado, quieto. A la derecha de la pestaña del cajón Mesa y lejos de la ruleta y del Encargado.
+- **Aviso en el tapete** al intentar apostar sin fichas (saldo por debajo de la apuesta mínima), bajo el tapete: «Sin fichas. Ve a la trastienda a recoger basura.» si nunca ha recogido nada; «Sin fichas. A la trastienda.» si ya recogió alguna vez y se ha quedado sin fichas (recordatorio).
+- **Encargado**: todas sus líneas de partida nueva nombran la trastienda (mismo motor y enfriamientos; pendientes de revisión). Es un añadido: el rótulo y el aviso se ven aunque los diálogos estén desactivados.
+- **Se apagan solos**: el rótulo se deriva del estado guardado, sin campos nuevos (`src/game/onboarding.ts`): sale solo si no ha recogido nada (`stats.workEarned = 0`), no ha apostado nunca (`stats.bets = 0`) y no tiene fichas. Las dos cifras solo crecen: una vez apagado no vuelve. Nada de esto existe en las mesas 2 a 5.
+
 ### 4.3 Mejoras (valores calibrados con simulación)
 
 Fórmula de coste: `coste(n) = base * crecimiento^n` (redondeado).

@@ -8,7 +8,7 @@
  */
 export const ENDING_LINES_ES: readonly string[] = [
   'El Dueño cierra el libro. Ya no queda ninguna cuenta a tu nombre.',
-  'Arriba, las puertas ceden sin llave. Fuera el aire corta como el hielo.',
+  'Arriba, las puertas ceden sin llave. Fuera hace frío, y la luz duele.',
   'Llevas la bolsa de basura del primer día. Pesa exactamente lo mismo.',
   'Subes despacio. Tu sombra tarda en seguirte, como si algo abajo la sujetara.',
 ];

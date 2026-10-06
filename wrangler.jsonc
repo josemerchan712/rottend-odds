@@ -6,7 +6,7 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
-  }
-  // Dominio personalizado (ver DEPLOY.md, paso 5): descomentar y poner el dominio propio.
-  // "routes": [{ "pattern": "casino.example.com", "custom_domain": true }]
+  },
+  // Dominio personalizado (ver DEPLOY.md, paso 5).
+  "routes": [{ "pattern": "rottenodds.josemariamerchan.dev", "custom_domain": true }]
 }

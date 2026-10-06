@@ -4,6 +4,37 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 11 (cuentas sin email y preparación para un VPS)
+
+### Parte A: cuentas sin email
+
+- [x] **Servidor:** registro, login, «¿nombre disponible?», restablecer con código, borrar cuenta y exportar datos
+  (`AuthController`, `AuthService`, `PlayerNames`, `RecoveryCodes`). Sin email en API, BD, DTO, OpenAPI ni tests.
+- [x] **Cliente:** pantalla de cuenta con modos entrar / crear / contraseña nueva / código de recuperación
+  (`src/ui/online.ts`), aviso del nombre al escribir (formato al momento, disponibilidad con debounce de 400 ms),
+  sugerencias como botones, «No uses tu nombre real», código con Copiar y Descargar .txt. Validación local del
+  formato en `src/api/playerName.ts` (la misma regla que el servidor). Tests `tests/accounts.test.ts`.
+- [x] README (API, decisiones y limitaciones) y `.env.example` (`NAME_CHECK_RATE_LIMIT`).
+- Decisiones propias:
+  - **Flyway: se reescribe `V1__init.sql`** en vez de añadir una V2: la V1 nunca se ha aplicado a una base real (no
+    hay despliegue). Un volumen local antiguo de Docker hay que borrarlo (`docker compose down -v`).
+  - Restricción única sobre `player_name_key` (el nombre en minúsculas); se guarda también el nombre tal cual.
+  - Filtro de nombres: lista de reservados (admin, moderador, sistema, claude, anthropic, rottenodds, lacasa, personajes
+    y prestamista…, también con números detrás) y de insultos ES/EN con sustitución leet y sin separadores. Para no
+    bloquear palabras normales («Reputacion», «Computadora», «Assassin»), algunas raíces solo cuentan al principio o
+    al final. Límites: es una lista corta; se esquiva con faltas creativas.
+  - Sugerencias: candidatos intercalados (sufijo temático, número, sufijo…), se filtran con las mismas reglas y se
+    comprueban libres en una sola consulta; hasta 5.
+  - Carrera de dos registros: inserción en transacción corta (`TransactionTemplate`); el choque con la restricción
+    única → 409 con sugerencias buscadas fuera de esa transacción (en PostgreSQL una transacción fallida no admite
+    más consultas).
+  - Límites por IP: login, registro y restablecer comparten cubo (10/min); la disponibilidad tiene el suyo (30/min).
+  - Código de recuperación: 16 caracteres de un alfabeto sin 0/O/1/I, en grupos de 4; se compara sin guiones ni
+    mayúsculas. Restablecer también inicia sesión y muestra el código nuevo con la misma pantalla.
+  - En `localStorage` la sesión sigue usando el campo `displayName` (se rellena con `playerName`): así no se
+    invalidan sesiones guardadas ni hay que migrar nada.
+  - Esc no cierra la pantalla del código de recuperación (hay que pulsar «Lo he guardado, continuar»).
+
 ## Sesión 10 (preparación para el portfolio)
 
 - [x] **Modo demo público** (`src/game/demo.ts`): menú «Modo demo · Ver todas las mesas sin jugar» y enlaces

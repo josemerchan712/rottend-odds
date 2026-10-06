@@ -163,9 +163,13 @@ Documentación de la API: http://localhost:8080/swagger-ui.html (OpenAPI en `/v3
 
 | Método | Ruta | Auth | Qué hace |
 |---|---|---|---|
-| POST | `/api/auth/register` | — | Crea la cuenta y devuelve un JWT |
+| POST | `/api/auth/register` | — | Crea la cuenta (nombre de jugador + contraseña) y devuelve un JWT y el código de recuperación (una vez) |
 | POST | `/api/auth/login` | — | Devuelve un JWT válido 24 h |
+| GET | `/api/auth/name-available?name=` | — | ¿Nombre libre? Si no, por qué y sugerencias |
+| POST | `/api/auth/reset` | — | Contraseña nueva con nombre + código de recuperación; devuelve un código nuevo |
 | GET | `/api/me` | JWT | Datos del usuario |
+| DELETE | `/api/me` | JWT | Borra la cuenta, el guardado y el ranking |
+| GET | `/api/me/export` | JWT | Descarga todos los datos de la cuenta (JSON) |
 | GET | `/api/save` | JWT | Guardado de la nube (404 si no hay) |
 | PUT | `/api/save` | JWT | `{baseRevision, data}` → 200, 409 con el guardado del servidor, o 422 |
 | POST | `/api/debt-paid` | JWT | Registra la mesa 1 saldada; guarda el mejor resultado |
@@ -223,13 +227,29 @@ regenera, fallan los tests de los dos lados y el servidor no arranca. Para regen
 - **JWT HS256 sin estado** con el resource server de Spring Security, sin librerías extra de JWT.
   Caduca en 24 h y no hay refresh token.
 - **El servidor no arranca** si `JWT_SECRET` falta o tiene menos de 32 caracteres.
-- **Límite de intentos** por IP en login y registro (Bucket4j, 10 por minuto por defecto), con 429 y
-  `Retry-After`.
-- **Login con mensaje genérico** y comparación contra un hash de relleno: no delata qué emails
-  existen por el mensaje ni por el tiempo de respuesta. El registro sí dice si un email ya existe,
-  como casi todos los servicios.
-- **Nombre público** de 3-20 caracteres, único sin distinguir mayúsculas y sin formato de email: el
-  ranking nunca muestra emails.
+- **Cuentas sin email:** nombre de jugador + contraseña. El nombre es a la vez el identificador para
+  entrar y el nombre público del ranking: 3-20 caracteres (letras ASCII, dígitos, `-` y `_`, sin
+  empezar ni acabar con símbolo), único sin distinguir mayúsculas (restricción única en la base de
+  datos sobre el nombre en minúsculas) pero mostrado tal como se escribió. No se guarda ningún dato
+  de contacto.
+- **Nombres reservados y filtro ofensivo** (`PlayerNames.java`): admin, moderador, sistema, el nombre
+  del juego, sus personajes… y una lista corta de insultos en español e inglés (con `0→o`, `1→i`… y sin
+  separadores). Límites conocidos: es una lista, no un moderador; se escapa con faltas creativas o
+  palabras que no están, y para no bloquear palabras normales algunas raíces solo cuentan al principio
+  o al final del nombre.
+- **Nombre ocupado:** 409 con hasta cinco sugerencias que están libres en ese momento y pasan el filtro
+  (números y sufijos `_Deuda`, `_Cero`, `_Casa`…). Dos registros simultáneos con el mismo nombre: la
+  restricción única rechaza el segundo y se responde 409, nunca 500.
+- **Código de recuperación** de 16 caracteres legibles (sin `0/O` ni `1/I`), que se muestra una sola
+  vez y se guarda solo su hash BCrypt. Restablecer con nombre + código invalida ese código y entrega
+  uno nuevo. Sin email, es la única forma de recuperar la cuenta.
+- **Límite de intentos** por IP (Bucket4j), con 429 y `Retry-After`: login, registro y restablecer
+  comparten cubo (10 por minuto por defecto); la consulta de disponibilidad tiene el suyo (30 por
+  minuto) para que no sirva para listar usuarios.
+- **Login y restablecer con mensaje genérico** y comparación contra un hash de relleno: no delatan qué
+  nombres existen por el mensaje ni por el tiempo de respuesta. El registro y la consulta de
+  disponibilidad sí dicen si un nombre está ocupado: es inevitable si el nombre es público.
+- **Contraseña** de 10 caracteres o más, distinta del nombre, guardada con BCrypt.
 - **Ni contraseñas ni tokens en logs:** los `toString` de peticiones, respuestas y propiedades los
   ocultan, y los errores nunca devuelven el cuerpo de la petición.
 - **Un solo hueco de guardado por usuario**, con la fila bloqueada durante la escritura para que dos
@@ -267,7 +287,8 @@ sistema antitrampas:
   `textContent`). No hay refresh token: a las 24 h hay que volver a iniciar sesión.
 - El límite de intentos es por IP y en memoria: se reinicia con el servidor, no se comparte entre
   varias instancias, y detrás de un proxy habría que configurar la IP real (`X-Forwarded-For`).
-- Sin verificación de email ni recuperación de contraseña.
+- Sin email no hay recuperación de cuenta si se pierde el código de recuperación: se avisa al crear la
+  cuenta y se puede copiar o descargar.
 - Sin progreso offline ni sincronización automática: se sincroniza con el botón.
 - No hay despliegue: el `Dockerfile` y el `docker-compose.yml` son para desarrollo local.
 - Las mesas 2 a 4 no tienen validación estadística: dentro de los niveles y la estructura válidos, el

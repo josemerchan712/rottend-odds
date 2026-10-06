@@ -1,0 +1,81 @@
+# Producción en el VPS: Caddy (HTTPS) → API → PostgreSQL. Ver DEPLOY.md, «Backend en el VPS».
+#   docker compose -f docker-compose.prod.yml --env-file /ruta/fuera/del/repo/.env.prod up -d --build
+# El .env de producción vive FUERA del repositorio (plantilla: .env.prod.example).
+# Solo Caddy publica puertos (80 y 443). La API y la base de datos solo están en la red interna, que no tiene
+# salida a Internet; Caddy tiene una IP fija en ella y es el único proxy cuyo X-Forwarded-For se acepta.
+name: rottenodds
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Define API_DOMAIN en el .env de producción}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge: {}
+      internal:
+        ipv4_address: 172.28.0.10
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.prod
+    image: rottenodds-api:${API_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/casino
+      DB_USER: ${DB_USER:-casino}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el .env de producción}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en el .env de producción (32+ caracteres)}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Define CORS_ORIGINS en el .env de producción}
+      # La IP fija de Caddy (abajo): solo de ella se acepta X-Forwarded-For.
+      TRUSTED_PROXY_REGEX: 172\.28\.0\.10
+    networks:
+      - internal
+    mem_limit: 1g
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: casino
+      POSTGRES_USER: ${DB_USER:-casino}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el .env de producción}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d casino"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+    mem_limit: 768m
+
+networks:
+  internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+  edge: {}
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

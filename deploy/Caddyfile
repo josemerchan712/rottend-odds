@@ -1,0 +1,25 @@
+# Caddy delante de la API: HTTPS automático (Let's Encrypt) para API_DOMAIN, p. ej.
+# rottenodds-api.josemariamerchan.dev. Necesita que el DNS apunte al VPS y los puertos 80 y 443 abiertos.
+#
+# X-Forwarded-For: Caddy no tiene proxies de confianza configurados, así que IGNORA la cabecera que mande el
+# cliente y pone la IP real de la conexión. La API solo acepta esa cabecera si viene de Caddy (IP fija).
+# Sin registro de accesos: no se guardan IPs ni rutas en logs.
+
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	# Límite de tamaño de las peticiones (el guardado más grande son 64 KB; la API tiene además su límite).
+	request_body {
+		max_size 256KB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+
+	reverse_proxy api:8080
+}

@@ -2,7 +2,7 @@
 #   docker compose up --build
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_DB: casino
       POSTGRES_USER: ${DB_USER:-casino}
@@ -30,6 +30,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env (32+ caracteres)}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-10}
     ports:
       - "8080:8080"
 

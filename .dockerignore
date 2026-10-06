@@ -5,3 +5,9 @@ assets
 server/target
 .env
 *.log
+.env.*
+!.env.example
+capture-frames
+docs
+backups
+deploy

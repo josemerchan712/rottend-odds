@@ -11,6 +11,12 @@ export const GAME_VERSION: string = pkg.version;
 export const GAME_AUTHOR = 'José María Merchán Martos';
 /** Enlace al repositorio en los créditos; null = no se muestra (el repositorio es privado). */
 export const REPO_URL: string | null = null;
+/**
+ * Dirección pública del juego, sin barra final. El build la escribe en los metadatos de index.html
+ * (og:url, og:image, twitter:image: tienen que ser URLs absolutas para que la vista previa al compartir
+ * el enlace funcione). Para otro dominio, cámbiala aquí o define SITE_URL al construir.
+ */
+export const SITE_URL = 'https://rottenodds.josemariamerchan.dev';
 
 /**
  * Mesa 5 (sesión 8): cada acierto de la cadena multiplica lo acumulado por un factor creciente,

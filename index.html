@@ -8,11 +8,17 @@
     <meta name="theme-color" content="#050403" />
     <link rel="icon" type="image/png" href="./favicon.png" />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="%SITE_URL%/" />
     <meta property="og:title" content="%GAME_TITLE%" />
     <meta name="application-name" content="%GAME_TITLE%" />
     <meta property="og:description" content="%GAME_TAGLINE%. Debes diez millones: paga cinco deudas y sal de la casa." />
-    <meta property="og:image" content="./og.png" />
+    <meta property="og:image" content="%SITE_URL%/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="%GAME_TITLE%" />
+    <meta name="twitter:description" content="%GAME_TAGLINE%. Debes diez millones: paga cinco deudas y sal de la casa." />
+    <meta name="twitter:image" content="%SITE_URL%/og.png" />
     <style>
       /* Pantalla de carga: visible antes de que llegue el código; main.ts la quita al cargar los sprites. */
       #loading { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #000; color: #c9a443; font: 16px monospace; letter-spacing: 2px; }

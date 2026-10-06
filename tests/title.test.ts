@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GAME_TAGLINE, GAME_TITLE } from '../src/game/config';
+import { GAME_TAGLINE, GAME_TITLE, SITE_URL } from '../src/game/config';
 
 /** Todos los .ts de una carpeta, recursivo. */
 function tsFiles(dir: string): string[] {
@@ -38,5 +38,14 @@ describe('nombre del juego', () => {
       return provisional.filter((re) => re.test(text)).map((re) => `${file}: ${re}`);
     });
     expect(offenders).toEqual([]);
+  });
+
+  it('metadatos para compartir: og:url, og:image y twitter:image absolutas con el dominio de config', () => {
+    expect(SITE_URL).toMatch(/^https:\/\/[^/]+[^/]$/);
+    const html = read('index.html');
+    expect(html).toContain('<meta property="og:url" content="%SITE_URL%/" />');
+    expect(html).toContain('<meta property="og:image" content="%SITE_URL%/og.png" />');
+    expect(html).toContain('<meta name="twitter:image" content="%SITE_URL%/og.png" />');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image" />');
   });
 });

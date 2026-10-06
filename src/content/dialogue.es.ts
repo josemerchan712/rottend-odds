@@ -10,14 +10,16 @@ import type { DialogueLines } from '../game/dialogue';
  * Las claves de fase: calm (0-33% de la deuda), uneasy (33-66%), deformed (66-100%) y any.
  */
 export const DIALOGUE_ES: DialogueLines = {
+  // PENDIENTE DE REVISIÓN (sesión 9): al empezar, todas nombran la trastienda (primeros pasos, sin
+  // explicar la mecánica). Las de antes, sin la trastienda, se sustituyen.
   newGame: {
     any: [
-      'Llegas puntual. Eso dice mucho de alguien que debe tanto.',
-      'Diez millones. Tranquilidad: aquí nadie tiene prisa. Salvo yo.',
-      'Ponte a gusto. Vas a pasar aquí más tiempo del que crees.',
-      'El casino te da trabajo y tú me pagas. Es un acuerdo muy sencillo.',
-      'Te doy la bienvenida. Las puertas se cierran solas; eso ya lo sabías.',
-      'Empezamos desde cero. Bueno, desde menos diez millones.',
+      'Llegas puntual y sin una ficha. La trastienda te espera; el suelo nunca está limpio.',
+      'Diez millones. Aquí todo el mundo empieza por abajo: por la trastienda.',
+      'Aquí nadie juega con las manos vacías. Pásate antes por la trastienda.',
+      'El casino da trabajo a quien lo busca. Empieza por la trastienda, por favor.',
+      'Te doy la bienvenida. Tus primeras fichas están tiradas en la trastienda.',
+      'Empezamos desde menos diez millones. La trastienda no cierra nunca, por suerte.',
     ],
   },
   sessionResume: {

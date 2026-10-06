@@ -12,6 +12,7 @@ import { drawChips, drawStrip, drawTapete } from './tapeteView';
 import { isBetTypeUnlocked, stateChips, type SelectorChip } from '../game/betting';
 import { drawFloatTexts, drawText } from './sceneText';
 import { prepareCanvas } from './stage';
+import { BACKROOM_SIGN, showBackroomSign } from '../game/onboarding';
 
 /** Resolución interna de la escena (sección 8 del diseño). */
 export const SCENE_WIDTH = 640;
@@ -35,6 +36,15 @@ const BIG_LOSS_FRACTION = 0.25;
  * Puertas entre salas: el hueco oscuro de la izquierda del casino y la puerta metálica de la
  * izquierda de la trastienda (solo su parte alta, para no chocar con el jugador, que está delante).
  */
+/**
+ * Rótulo de la trastienda (sesión 9): arriba a la izquierda, sobre su puerta, a la derecha de la pestaña
+ * del cajón Mesa (x 0-20, que va por encima del canvas) y lejos de la ruleta (empieza en x ≈ 164) y de la
+ * tira de resultados (x 156-168). El aviso de sin fichas, bajo el tapete.
+ */
+const SIGN = { x: 26, y: 40 };
+const NOTICE_SPOT = { x: 320, y: 287 };
+const NOTICE_SECONDS = 2.6;
+
 export const DOORS: Record<Room, { x: number; y: number; width: number; height: number; label: string }> = {
   casino: { x: 30, y: 88, width: 62, height: 168, label: 'TRASTIENDA' },
   trastienda: { x: 44, y: 28, width: 88, height: 222, label: 'SALA' },
@@ -96,6 +106,16 @@ export class Scene {
     this.ctx = canvas.getContext('2d')!;
     this.ctx.imageSmoothingEnabled = false;
     this.effects = new Effects();
+  }
+
+  /** Aviso breve sobre el tapete (sin fichas): texto y segundos que le quedan. */
+  private notice: { text: string; left: number } | null = null;
+  /** Reloj para el parpadeo del rótulo de la trastienda. */
+  private signTime = 0;
+
+  /** Enseña un aviso breve en la mesa, bajo el tapete (p. ej. al intentar apostar sin fichas). */
+  showNotice(text: string): void {
+    this.notice = { text, left: NOTICE_SECONDS };
   }
 
   /** Activa o desactiva todos los efectos de pantalla (ajuste "Filtro CRT"). */
@@ -190,7 +210,42 @@ export class Scene {
       const reach = Math.round((this.armReach / ARM_REACH_SECONDS) * 4);
       this.drawSprite(this.sprites.helpers.get('arm'), ARM_SPOT.x - reach, ARM_SPOT.y, PLAYER_SIZE, -1);
     }
+    if (showBackroomSign(state)) this.drawBackroomSign();
+    this.drawNotice();
     this.canvas.style.cursor = target && !(target.kind === 'zone' && target.locked) ? 'pointer' : 'default';
+  }
+
+  /**
+   * Rótulo de primeros pasos sobre la puerta de la trastienda, con una flecha que apunta a ella. Parpadea
+   * suave (nunca desaparece del todo); con el filtro CRT apagado, quieto. No mira los ajustes de diálogos.
+   */
+  private drawBackroomSign(): void {
+    const ctx = this.ctx;
+    const door = DOORS.casino;
+    const pulse = this.effects.enabled ? 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(this.signTime * 3)) : 1;
+    ctx.globalAlpha = pulse;
+    drawText(ctx, 'value', BACKROOM_SIGN.title, SIGN.x, SIGN.y, 'left');
+    BACKROOM_SIGN.lines.forEach((line, i) => drawText(ctx, 'label', line, SIGN.x, SIGN.y + 14 * (i + 1), 'left'));
+    // Flecha pixel hacia abajo, al centro de la puerta: contorno oscuro y relleno dorado.
+    const ax = Math.round(door.x + door.width / 2);
+    const ay = SIGN.y + 14 * BACKROOM_SIGN.lines.length + 8;
+    const arrow = (color: string, grow: number) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(ax - 1 - grow, ay - grow, 3 + grow * 2, 6 + grow);
+      for (let i = 0; i < 4; i++) ctx.fillRect(ax - 4 + i - grow, ay + 6 + i, 9 - i * 2 + grow * 2, 1 + grow);
+    };
+    arrow('#0b0908', 1);
+    arrow('#f0d27a', 0);
+    ctx.globalAlpha = 1;
+  }
+
+  /** El aviso breve bajo el tapete; se desvanece al final. */
+  private drawNotice(): void {
+    if (!this.notice) return;
+    const ctx = this.ctx;
+    ctx.globalAlpha = Math.min(1, this.notice.left / 0.4);
+    drawText(ctx, 'value', this.notice.text, NOTICE_SPOT.x, NOTICE_SPOT.y);
+    ctx.globalAlpha = 1;
   }
 
   /** Tiradas cuya bola ya ha caído (la tira de resultados no adelanta el resultado). */
@@ -309,6 +364,11 @@ export class Scene {
 
   private advance(state: GameState, dt: number): void {
     this.effects.update(dt);
+    this.signTime += dt;
+    if (this.notice) {
+      this.notice.left -= dt;
+      if (this.notice.left <= 0) this.notice = null;
+    }
     this.armReach = Math.max(0, this.armReach - dt);
     this.lenderTime += dt;
     this.lenderLook = Math.max(0, this.lenderLook - dt);

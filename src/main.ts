@@ -6,6 +6,7 @@ import { ENDING_LINES_ES } from './content/ending.es';
 import { advanceEnding, createEnding, endingAmbient, holdEnding, skipEnding, tickEnding, type EndingState } from './game/ending';
 import { mountTextLayer } from './ui/sceneText';
 import { gameSummary, summaryText, trackPaidAt } from './game/summary';
+import { brokeNotice } from './game/onboarding';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
 import { outcomeSound, setAmbient, setAmbientLevel, setMuted, setVolume, sfx, unlockAudio } from './audio';
@@ -570,7 +571,14 @@ sceneCanvas.addEventListener('click', (event) => {
     return;
   }
   if (target?.kind === 'zone') {
-    if (!target.locked && canBetManually(rooms) && playerBet(state, target.zone.choice, defaultRng)) sfx('roulette');
+    if (target.locked || !canBetManually(rooms)) return;
+    // Sin fichas: en vez de no hacer nada, un aviso en la mesa que manda a la trastienda.
+    const notice = brokeNotice(state);
+    if (notice) {
+      scene.showNotice(notice);
+      return;
+    }
+    if (playerBet(state, target.zone.choice, defaultRng)) sfx('roulette');
     return;
   }
   if (!canCollectTrash(rooms)) return;

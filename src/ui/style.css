@@ -239,10 +239,8 @@ kbd {
   display: flex;
   align-items: flex-start;
   z-index: 10;
-  /* Solo la pestaña y el cuerpo reciben el ratón: el hueco transparente del cajón no tapa nada. */
-  pointer-events: none;
+  /* Solo la pestaña y el cuerpo reciben el ratón (ver `.table-layer > .drawer`, más abajo). */
 }
-.drawer > * { pointer-events: auto; }
 .drawer.left { left: 0; }
 .drawer.right { right: 0; }
 .drawer[data-open='true'] { z-index: 11; }
@@ -414,6 +412,14 @@ kbd {
 /* Una capa de HUD y cajones por mesa. */
 .screen.game > .table-layer { position: absolute; inset: 0; pointer-events: none; }
 .table-layer > * { pointer-events: auto; }
+/*
+ * Sesión 9: el cajón en sí no recibe el ratón, solo su pestaña y su cuerpo. Tiene que ir después de la
+ * regla anterior y ser más específica: con `.drawer { pointer-events: none }` sola, `.table-layer > *` la
+ * anulaba y el cajón Herencias cerrado (encima en el DOM, pegado al borde) se tragaba los clics de la
+ * pestaña Mesa de la mesa 5.
+ */
+.table-layer > .drawer { pointer-events: none; }
+.table-layer > .drawer > * { pointer-events: auto; }
 .screen.game > .table-fade { pointer-events: none; }
 
 /* Aviso de pantallas pequeñas o táctiles. */

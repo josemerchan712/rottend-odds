@@ -30,4 +30,15 @@ describe('barra superior: un solo modo para las cinco mesas', () => {
     expect(css).toContain(".table-layer:has(.drawer.left[data-open='true']) .drawer.left[data-open='false']");
     expect(css).toContain(".table-layer:has(.drawer.right[data-open='true']) .drawer.right[data-open='false']");
   });
+
+  it('el cajón en sí no recibe clics (solo su pestaña y su cuerpo), y esa regla gana a la de la capa', () => {
+    // Sesión 9: `.drawer { pointer-events: none }` sola perdía contra `.table-layer > * { pointer-events: auto }`
+    // (igual de específica y posterior) y el cajón Herencias cerrado tapaba la pestaña Mesa de la mesa 5.
+    const css = readFileSync('src/ui/style.css', 'utf8');
+    const layer = css.indexOf('.table-layer > * { pointer-events: auto; }');
+    const drawer = css.indexOf('.table-layer > .drawer { pointer-events: none; }');
+    expect(layer).toBeGreaterThan(-1);
+    expect(drawer).toBeGreaterThan(layer);
+    expect(css).toContain('.table-layer > .drawer > * { pointer-events: auto; }');
+  });
 });

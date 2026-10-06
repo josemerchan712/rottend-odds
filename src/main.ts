@@ -403,6 +403,31 @@ function anyDrawerOpen(): boolean {
   return layers[activeTable() - 1].querySelector('.drawer[data-open="true"]') !== null;
 }
 
+function closeAllDrawers(): void {
+  closeDrawers(gameUi);
+  closeDrawers2(slotsUi);
+  closeDrawers3(diceUi);
+  closeDrawers4(cardsUi);
+  closeDrawers5(coinUi);
+}
+
+/**
+ * Un clic fuera de los cajones los cierra (sesión 9). Si cae en la escena, solo cierra: no apuesta ni
+ * tira por accidente (el clic se descarta).
+ */
+let swallowSceneClick = false;
+window.addEventListener(
+  'pointerdown',
+  (event) => {
+    if (screen !== 'game' || !state || paused || !anyDrawerOpen()) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.drawer')) return;
+    closeAllDrawers();
+    if (target === sceneCanvas) swallowSceneClick = true;
+  },
+  true,
+);
+
 function closeSettings(): void {
   if (settingsFrom === 'pause' && state) {
     settingsFrom = 'menu';
@@ -512,6 +537,10 @@ function showBanner(title: string, text: string, button: string, action: () => v
 
 // Escena: clic en la basura (zona generosa), resaltado al pasar por encima y tecla E.
 sceneCanvas.addEventListener('click', (event) => {
+  if (swallowSceneClick) {
+    swallowSceneClick = false;
+    return;
+  }
   if (!state || screen !== 'game' || tableFade) return;
   const point = scene.toScene(event.clientX, event.clientY);
   if (activeTable() === 2) {
@@ -718,11 +747,7 @@ window.addEventListener('keydown', (event) => {
       setPaused(true);
       return;
     }
-    closeDrawers(gameUi);
-    closeDrawers2(slotsUi);
-    closeDrawers3(diceUi);
-    closeDrawers4(cardsUi);
-    closeDrawers5(coinUi);
+    closeAllDrawers();
     return;
   }
   if (event.key === 'm' || event.key === 'M' || event.key === 'a' || event.key === 'A') {

@@ -39,7 +39,7 @@ show_result() {
   "${compose[@]}" ps
   echo "Versión desplegada: $(git log -1 --format='%h %s')"
   if [[ -n "$api_domain" ]] && command -v curl > /dev/null; then
-    echo "https://$api_domain/health → $(curl -fsS --max-time 10 "https://$api_domain/health" || echo 'sin respuesta (¿DNS o certificado todavía no listos?)')"
+    echo "https://$api_domain/health → $(curl -fsS --max-time 10 "https://$api_domain/health" 2>/dev/null || echo 'sin respuesta (¿DNS o certificado todavía no listos?)')"
   fi
 }
 
@@ -51,9 +51,9 @@ rollback() {
   git reset --hard "$prev"
   if docker image inspect rottenodds-api:previous > /dev/null 2>&1; then
     docker image tag rottenodds-api:previous rottenodds-api:latest
-    "${compose[@]}" up -d --no-build
+    "${compose[@]}" up -d --no-build || true
   else
-    "${compose[@]}" up -d --build
+    "${compose[@]}" up -d --build || true
   fi
   "${compose[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile > /dev/null 2>&1 || true
   wait_healthy && echo "Vuelta atrás hecha." || echo "La versión anterior tampoco arranca: revisa los logs." >&2
@@ -84,7 +84,8 @@ if docker image inspect rottenodds-api:latest > /dev/null 2>&1; then
 fi
 
 "${compose[@]}" build api
-"${compose[@]}" up -d
+# Si la API nueva no llega a estar sana, `up` falla (Caddy depende de ella): lo decide wait_healthy, no set -e.
+"${compose[@]}" up -d || true
 "${compose[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile > /dev/null 2>&1 || true
 
 if wait_healthy; then

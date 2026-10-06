@@ -1,0 +1,41 @@
+# Perfil de producción (SPRING_PROFILES_ACTIVE=prod): detrás de Caddy en el VPS, con PostgreSQL.
+# Los secretos siguen llegando por variables de entorno (ver .env.prod.example); aquí no hay ninguno.
+
+server:
+  # Caddy termina HTTPS y añade X-Forwarded-For / X-Forwarded-Proto. Tomcat (RemoteIpValve) solo los acepta
+  # si la petición llega desde la IP fija de Caddy en la red interna de Docker: cualquier otro origen que mande
+  # la cabecera se ignora, así que nadie puede falsear su IP para saltarse el límite de intentos.
+  forward-headers-strategy: native
+  tomcat:
+    redirect-context-root: false
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXY_REGEX:172\.28\.0\.10}
+    max-swallow-size: 256KB
+  max-http-request-header-size: 16KB
+  shutdown: graceful
+  error:
+    whitelabel:
+      enabled: false
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  jpa:
+    show-sql: false
+
+# Sin documentación pública de la API en producción (sigue en local y en el repositorio).
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Logs: sin SQL ni parámetros (nombres de jugador) y sin cabeceras. El servidor no registra cuerpos de petición,
+# tokens ni IPs; Tomcat no tiene registro de accesos activado.
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.springframework.security: WARN
+    org.springframework.web: WARN

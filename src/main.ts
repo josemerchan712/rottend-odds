@@ -7,6 +7,7 @@ import { advanceEnding, createEnding, endingAmbient, holdEnding, skipEnding, tic
 import { mountTextLayer } from './ui/sceneText';
 import { gameSummary, summaryText, trackPaidAt } from './game/summary';
 import { brokeNotice } from './game/onboarding';
+import { DEMO_SAVE_KEY, demoFinalState, demoStartState, parseDemoParam, seedState, type DemoTarget } from './game/demo';
 import { loadSession, saveSession, type Session } from './api/session';
 import { keepLocal, syncGame, type SyncOutcome } from './api/sync';
 import { outcomeSound, setAmbient, setAmbientLevel, setMuted, setVolume, sfx, unlockAudio } from './audio';
@@ -50,10 +51,9 @@ import {
 } from './game/slots/table';
 import { updateGame } from './game/update';
 import { HELPER_NET_SECONDS, helperMeters, netText } from './ui/helperMeter';
-import { SLOT_UPGRADE_IDS, UPGRADE_IDS } from './game/config';
-import { createInitialState, type TableId } from './game/state';
+import { SLOT_UPGRADE_IDS } from './game/config';
+import type { TableId } from './game/state';
 import { canSwitchTo } from './game/tables';
-import { payDebt } from './game/debt';
 import { closeDrawers2, mountUi2, render2, toggleDrawer2 } from './ui/render2';
 import { SlotsScene } from './ui/slotsScene';
 import { DiceScene } from './ui/diceScene';
@@ -132,7 +132,9 @@ const { settingsKey, sessionKey, autosaveInterval, maxFrameDt } = CONFIG.tech;
 const DEV_MODE = import.meta.env.DEV ? new URLSearchParams(location.search).get('dev') : null;
 const DEV_TABLE = DEV_MODE === 'mesa2' ? 2 : DEV_MODE === 'mesa3' ? 3 : DEV_MODE === 'mesa4' ? 4 : DEV_MODE === 'mesa5' ? 5 : null;
 const saveKey = DEV_TABLE ? `${CONFIG.tech.saveKey}-dev${DEV_TABLE}` : CONFIG.tech.saveKey;
-if (DEV_TABLE && !loadGame(localStorage, saveKey)) saveGame(localStorage, saveKey, devState(DEV_TABLE), Date.now());
+if (DEV_TABLE && !loadGame(localStorage, saveKey)) saveGame(localStorage, saveKey, seedState(DEV_TABLE), Date.now());
+/** Enlace directo al modo demo público (?demo=mesa1 … mesa5, ?demo=final); también en producción. */
+const DEMO_TARGET = parseDemoParam(location.search);
 
 type Screen = 'press' | 'menu' | 'settings' | 'credits' | 'game' | 'auth' | 'sync' | 'ranking' | 'ending' | 'notice';
 /** Pantallas con la portada de fondo (el resto: la partida o el final). */
@@ -244,6 +246,13 @@ const syncUi = mountSync(screens.sync);
 const rankingUi = mountRanking(screens.ranking);
 const endingUi = mountEnding(screens.ending);
 const pauseUi = mountPause(screens.game);
+/** Aviso discreto del modo demo bajo la barra, con un botón para volver al menú. */
+const demoBadge = document.createElement('div');
+demoBadge.className = 'demo-badge';
+demoBadge.hidden = true;
+demoBadge.innerHTML = '<span>MODO DEMO</span><button class="small" data-ref="demoExit">Salir</button>';
+screens.game.append(demoBadge);
+demoBadge.querySelector<HTMLButtonElement>('[data-ref="demoExit"]')!.addEventListener('click', () => toMenu());
 
 const sprites = loadSprites();
 const scene = new Scene(sceneCanvas, sprites);
@@ -349,6 +358,11 @@ let screen: Screen = 'press';
 let settingsFrom: 'menu' | 'pause' = 'menu';
 /** Partida en pausa (Esc): no avanza nada. */
 let paused = false;
+/**
+ * Modo demo público: la partida en curso vive en su propio hueco (DEMO_SAVE_KEY). No toca la partida
+ * normal, no se sincroniza ni registra tiempos en el ranking.
+ */
+let demoActive = false;
 /** Fundido desde negro de la portada (1 → 0) al entrar desde "Pulsa para entrar". */
 let titleFade = 0;
 /** La carga (sprites y fuente) ha terminado: "Pulsa para entrar" ya responde. */
@@ -378,7 +392,7 @@ function show(next: Screen): void {
   else if (TITLE_SCREENS.includes(next) && !settingsOverGame()) setAmbient('title');
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
   if (next === 'menu') refreshMenu();
-  if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
+  if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null, demoActive);
   if (next === 'game' && state) renderHud(state);
   navs[next]?.reset();
 }
@@ -735,7 +749,7 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'n' || event.key === 'N') {
     settings.muted = !settings.muted;
     applySettings();
-    if (screen === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
+    if (screen === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null, demoActive);
     if (screen === 'game' && state) showNote(settings.muted ? 'Sonido silenciado (N)' : 'Sonido activado (N)');
     return;
   }
@@ -873,7 +887,7 @@ function enterGame(loaded: GameState, start: { kind: 'new' | 'resume'; absenceSe
 /** Solo se guarda la partida mientras se juega: así borrarla desde Ajustes no la resucita. */
 function save(): void {
   if (screen !== 'game' || !state) return;
-  const ok = saveGame(localStorage, saveKey, state, Date.now());
+  const ok = saveGame(localStorage, demoActive ? DEMO_SAVE_KEY : saveKey, state, Date.now());
   setText(gameUi.saveStatus, ok ? `Guardado ${new Date().toLocaleTimeString()}` : 'No se pudo guardar');
 }
 
@@ -908,6 +922,7 @@ menuUi.items.settings.addEventListener('click', () => {
   show('settings');
 });
 menuUi.items.credits.addEventListener('click', () => show('credits'));
+menuUi.items.demo.addEventListener('click', () => enterDemo(null));
 menuUi.items.ending.addEventListener('click', () => playEnding());
 menuUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
 creditsUi.back.addEventListener('click', () => show('menu'));
@@ -952,7 +967,7 @@ function changeSetting(row: SettingRow, delta: number): void {
   else if (row === 'dialogues') settings.dialogues = !settings.dialogues;
   else settings.muted = !settings.muted;
   applySettings();
-  renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null);
+  renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null, demoActive);
 }
 
 function adjustSetting(item: HTMLElement, delta: number): boolean {
@@ -1035,6 +1050,7 @@ const toMenu = () => {
   state = null;
   paused = false;
   pauseUi.root.hidden = true;
+  leaveDemo();
   show('menu');
 };
 /** El botón Menú del HUD abre la pausa (como Esc), no sale de golpe. */
@@ -1247,6 +1263,7 @@ endingUi.toMenu.addEventListener('click', () => {
   if (state) save();
   finishEnding();
   state = null;
+  leaveDemo();
   show('menu');
 });
 endingUi.keepPlaying.addEventListener('click', () => {
@@ -1255,6 +1272,10 @@ endingUi.keepPlaying.addEventListener('click', () => {
   // Vuelve a la partida con todas las mesas activas (sin prestigio ni nada nuevo).
   if (state && game === state) {
     show('game');
+    return;
+  }
+  if (demoActive) {
+    enterDemo({ kind: 'table', table: 5 });
     return;
   }
   const savedAt = loadGame(localStorage, saveKey)?.savedAt ?? Date.now();
@@ -1433,6 +1454,10 @@ function showNote(text: string): void {
 
 /** Al saldar la deuda: aviso y, con sesión iniciada, registro del tiempo. Si falla, el juego sigue. */
 async function reportDebtPaid(): Promise<void> {
+  if (demoActive) {
+    showNote('Deuda saldada (modo demo: no cuenta para el ranking).');
+    return;
+  }
   const s = currentSession();
   if (!ONLINE_ENABLED) {
     showNote('Deuda saldada.');
@@ -1477,7 +1502,33 @@ function enterTitle(): void {
   unlockAudio();
   if (settings.startFullscreen) void enterFullscreen(root);
   titleFade = 1;
+  // Enlace al modo demo: tras el primer clic (audio y pantalla completa), directo a esa mesa o al final.
+  if (DEMO_TARGET) {
+    enterDemo(DEMO_TARGET);
+    return;
+  }
   show(smallScreen && !noticeSeen ? 'notice' : 'menu');
+}
+
+/**
+ * Entra en el modo demo: carga su hueco (o lo crea con la partida de demostración) y, si viene de un
+ * enlace, abre esa mesa; ?demo=final reproduce el final con la partida de demostración.
+ */
+function enterDemo(target: DemoTarget | null): void {
+  demoActive = true;
+  demoBadge.hidden = false;
+  screens.game.classList.add('demo');
+  if (target?.kind === 'final') {
+    startEnding(demoFinalState(), true);
+    return;
+  }
+  enterGame(demoStartState(loadGame(localStorage, DEMO_SAVE_KEY)?.state ?? null, target), { kind: 'resume', absenceSeconds: 0 });
+}
+
+function leaveDemo(): void {
+  demoActive = false;
+  demoBadge.hidden = true;
+  screens.game.classList.remove('demo');
 }
 screens.notice.querySelector<HTMLButtonElement>('[data-ref="noticeContinue"]')!.addEventListener('click', () => {
   try {
@@ -1668,47 +1719,3 @@ startLoop(
   },
   maxFrameDt,
 );
-
-/** Partida de prueba del modo desarrollador: las mesas anteriores con todo comprado y saldadas. */
-function devState(table: 2 | 3 | 4 | 5): GameState {
-  const dev = createInitialState();
-  for (const id of UPGRADE_IDS) dev.upgrades[id] = CONFIG.upgrades[id].maxLevel;
-  dev.helper.profile = 1;
-  dev.balance = CONFIG.debt.amount + 50_000;
-  payDebt(dev);
-  dev.playTime = 8 * 60;
-  dev.slots.balance = 2_000;
-  if (table >= 3) {
-    for (const id of SLOT_UPGRADE_IDS) dev.slots.upgrades[id] = CONFIG.slots.upgrades[id].maxLevel;
-    dev.slots.helper.profile = 1;
-    dev.slots.debtPaid = true;
-    dev.slots.visited = true;
-    dev.slots.playTime = 12 * 60;
-    dev.slots.balance = 50_000;
-    dev.playTime = 20 * 60;
-    dev.dice.balance = 3_000;
-  }
-  if (table >= 4) {
-    for (const id of DICE_UPGRADE_IDS) dev.dice.upgrades[id] = CONFIG.dice.upgrades[id].maxLevel;
-    dev.dice.helper.profile = 1;
-    dev.dice.debtPaid = true;
-    dev.dice.visited = true;
-    dev.dice.playTime = 14 * 60;
-    dev.dice.balance = 60_000;
-    dev.playTime = 34 * 60;
-    dev.cards.balance = 4_000;
-  }
-  if (table === 5) {
-    for (const id of CARD_UPGRADE_IDS) dev.cards.upgrades[id] = CONFIG.cards.upgrades[id].maxLevel;
-    dev.cards.helper.profile = 1;
-    dev.cards.debtPaid = true;
-    dev.cards.visited = true;
-    dev.cards.playTime = 12 * 60;
-    dev.cards.balance = 80_000;
-    dev.playTime = 46 * 60;
-    dev.coin.balance = 8_000; // llega para desbloquear la moneda cargada
-    // Moneda de las otras mesas para probar el cajón Herencias (cuestan cientos de millones).
-    dev.balance = dev.slots.balance = dev.dice.balance = dev.cards.balance = 1e9;
-  }
-  return dev;
-}

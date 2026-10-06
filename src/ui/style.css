@@ -620,3 +620,24 @@ kbd {
 .ending-hint { position: absolute; margin: 0; font-size: 14px; color: #a9a39a; text-shadow: 1px 1px 0 #000; pointer-events: none; }
 .ending-hint.skip { right: 8px; top: 6px; }
 .ending-hint.click { right: 8px; bottom: 6px; }
+
+/* Modo demo (sesión 10): aviso discreto bajo la barra, centrado (no tapa los cajones ni el aviso del ayudante). */
+.demo-badge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 23px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 4px 1px 6px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: #f0d27a;
+  background: rgba(5, 4, 3, 0.85);
+  border: 1px solid #6b5428;
+}
+.demo-badge button { font-size: 14px; padding: 0 5px; }
+/* Con el aviso del demo, las notas del HUD salen un poco más abajo. */
+.screen.game.demo .hud-note { top: 42px; }

@@ -57,20 +57,20 @@ describe('pantalla de inicio', () => {
 describe('menú principal: opciones y navegación', () => {
   const base = { hasSave: false, online: false, loggedIn: false, finished: false };
 
-  it('sin guardado ni servidor: Nueva partida, Ajustes y Créditos', () => {
-    expect(menuItems(base)).toEqual(['newGame', 'settings', 'credits']);
+  it('sin guardado ni servidor: Nueva partida, Ajustes, Modo demo y Créditos', () => {
+    expect(menuItems(base)).toEqual(['newGame', 'settings', 'demo', 'credits']);
   });
 
   it('con guardado sale Continuar arriba; Ver final solo con el juego completado', () => {
-    expect(menuItems({ ...base, hasSave: true })).toEqual(['continue', 'newGame', 'settings', 'credits']);
-    expect(menuItems({ ...base, hasSave: true, finished: true })).toEqual(['continue', 'newGame', 'settings', 'ending', 'credits']);
+    expect(menuItems({ ...base, hasSave: true })).toEqual(['continue', 'newGame', 'settings', 'demo', 'credits']);
+    expect(menuItems({ ...base, hasSave: true, finished: true })).toEqual(['continue', 'newGame', 'settings', 'ending', 'demo', 'credits']);
     // Sin guardado no hay final que ver aunque llegue la marca.
     expect(menuItems({ ...base, finished: true })).not.toContain('ending');
   });
 
   it('con servidor: Ranking e Iniciar sesión; Sincronizar solo con sesión', () => {
-    expect(menuItems({ ...base, online: true })).toEqual(['newGame', 'settings', 'ranking', 'login', 'credits']);
-    expect(menuItems({ ...base, online: true, loggedIn: true, hasSave: true })).toEqual(['continue', 'newGame', 'settings', 'ranking', 'login', 'sync', 'credits']);
+    expect(menuItems({ ...base, online: true })).toEqual(['newGame', 'settings', 'ranking', 'login', 'demo', 'credits']);
+    expect(menuItems({ ...base, online: true, loggedIn: true, hasSave: true })).toEqual(['continue', 'newGame', 'settings', 'ranking', 'login', 'sync', 'demo', 'credits']);
     // Sin servidor, la sesión no importa.
     expect(menuItems({ ...base, loggedIn: true })).not.toContain('sync');
   });

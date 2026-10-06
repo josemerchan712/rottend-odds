@@ -18,6 +18,7 @@ const ITEM_LABELS: Record<MenuItem, string> = {
   login: 'Iniciar sesión',
   sync: 'Sincronizar partida',
   ending: 'Ver final',
+  demo: 'Modo demo',
   credits: 'Créditos',
 };
 
@@ -34,7 +35,7 @@ export function mountMenu(root: HTMLElement): MenuUi {
   const buttons = (Object.keys(ITEM_LABELS) as MenuItem[])
     .map(
       (id) =>
-        `<button class="nav-item title-option" data-item="${id}">${ITEM_LABELS[id]}${id === 'continue' ? '<span class="menu-sub" data-ref="continueInfo"></span>' : ''}</button>`,
+        `<button class="nav-item title-option" data-item="${id}">${ITEM_LABELS[id]}${id === 'continue' ? '<span class="menu-sub" data-ref="continueInfo"></span>' : id === 'demo' ? '<span class="menu-sub">Ver todas las mesas sin jugar</span>' : ''}</button>`,
     )
     .join('');
   root.innerHTML = `
@@ -124,15 +125,17 @@ export function mountSettings(root: HTMLElement): SettingsUi {
   };
 }
 
-export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: boolean): void {
+/** `demo`: la partida en curso es la del modo demo: exportar, importar y borrar quedan desactivados (actúan sobre la normal). */
+export function renderSettings(ui: SettingsUi, settings: Settings, hasSave: boolean, demo = false): void {
   const yesNo = (v: boolean) => (v ? 'Sí' : 'No');
   setText(ui.values.volume, `${Math.round(settings.volume * 100)}%`);
   setText(ui.values.crt, CRT_LABELS[settings.crt]);
   setText(ui.values.fullscreen, yesNo(settings.startFullscreen));
   setText(ui.values.dialogues, yesNo(settings.dialogues));
   setText(ui.values.muted, yesNo(settings.muted));
-  ui.deleteSave.disabled = !hasSave;
-  ui.exportSave.disabled = !hasSave;
+  ui.deleteSave.disabled = !hasSave || demo;
+  ui.exportSave.disabled = !hasSave || demo;
+  ui.importSave.disabled = demo;
 }
 
 // ---------------------------------------------------------------------------

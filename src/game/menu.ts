@@ -51,7 +51,7 @@ export function continueInfo(storage: KeyValueStorage, key: string): ContinueInf
 }
 
 /** Opciones del menú principal, de arriba abajo. */
-export type MenuItem = 'continue' | 'newGame' | 'settings' | 'ranking' | 'login' | 'sync' | 'ending' | 'credits';
+export type MenuItem = 'continue' | 'newGame' | 'settings' | 'ranking' | 'login' | 'sync' | 'ending' | 'demo' | 'credits';
 
 export interface MenuContext {
   hasSave: boolean;
@@ -63,7 +63,7 @@ export interface MenuContext {
   finished: boolean;
 }
 
-/** Qué opciones se ven: Continuar con guardado, lo en línea con servidor y Ver final con el juego completado. */
+/** Qué opciones se ven: Continuar con guardado, lo en línea con servidor, Ver final con el juego completado y siempre el modo demo. */
 export function menuItems(ctx: MenuContext): MenuItem[] {
   const items: MenuItem[] = [];
   if (ctx.hasSave) items.push('continue');
@@ -73,7 +73,8 @@ export function menuItems(ctx: MenuContext): MenuItem[] {
     if (ctx.loggedIn) items.push('sync');
   }
   if (ctx.hasSave && ctx.finished) items.push('ending');
-  items.push('credits');
+  // El modo demo siempre está (también en producción): ver todas las mesas sin jugar.
+  items.push('demo', 'credits');
   return items;
 }
 

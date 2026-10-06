@@ -129,8 +129,33 @@ En `https://rottenodds.josemariamerchan.dev`, con una ventana privada (sin cach�
 - [ ] **Imagen al compartir el enlace**: `https://rottenodds.josemariamerchan.dev/og.png` se abre, y un validador de
   Open Graph (o pegar el enlace en un chat) muestra el título, el subtítulo y la portada. Las redes guardan la
   vista previa en caché: si se cambió la imagen, puede tardar en actualizarse.
+- [ ] **Modo demo**: la opción del menú y `?demo=mesa3` abren el demo con «MODO DEMO» en el HUD; «Salir» vuelve al menú y
+  la partida normal sigue igual.
 - [ ] **Cabeceras**: en F12 → Red → el documento, aparecen la CSP, `X-Frame-Options: DENY` y la
   `Permissions-Policy` de `public/_headers`.
+
+## Modo demo y portfolio
+
+- **Modo demo** (también en producción): opción «Modo demo · Ver todas las mesas sin jugar» del menú, o enlaces directos
+  `https://rottenodds.josemariamerchan.dev/?demo=mesa1` … `?demo=mesa5` y `?demo=final` (el final con una partida de
+  demostración). Siempre piden antes el primer clic en «Pulsa para entrar» (audio y pantalla completa). Usa su propio hueco
+  de guardado: nunca toca la partida normal, no se sincroniza, no registra tiempos en el ranking y su final visto es solo
+  suyo. En el HUD se ve «MODO DEMO» con un botón «Salir».
+- **Modo desarrollador** (`?dev=mesa2…5`): solo con `npm run dev`; el build no lo contiene (lo comprueban un test y el
+  script de capturas).
+- **Capturas para el portfolio**: `npm run build && npm run capture:portfolio` deja en `docs/portfolio/` las capturas en
+  PNG y WebP (1920×1080, escala entera) y los fotogramas de un vídeo corto en `capture-frames/` (ignorado por git). Sin
+  ffmpeg en el PATH, el vídeo se monta así (el script imprime estos comandos):
+
+  ```powershell
+  ffmpeg -y -f concat -safe 0 -i capture-frames/frames.txt -vf "fps=30,scale=1920:1080:flags=neighbor" -c:v libvpx-vp9 -b:v 0 -crf 32 docs/portfolio/video-portfolio.webm
+  ```
+
+  ```powershell
+  ffmpeg -y -f concat -safe 0 -i capture-frames/frames.txt -vf "fps=30,scale=1920:1080:flags=neighbor" -c:v libx264 -pix_fmt yuv420p -crf 20 docs/portfolio/video-portfolio.mp4
+  ```
+
+  (ffmpeg en Windows: `winget install Gyan.FFmpeg`.) Resumen técnico y pies de foto: `docs/portfolio/RESUMEN.md`.
 
 ## Servidor (opcional)
 

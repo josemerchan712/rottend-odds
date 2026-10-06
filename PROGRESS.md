@@ -4,6 +4,27 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 10 (preparación para el portfolio)
+
+- [x] **Modo demo público** (`src/game/demo.ts`): menú «Modo demo · Ver todas las mesas sin jugar» y enlaces
+  `?demo=mesa1…5`, `?demo=final`, también en producción y tras «Pulsa para entrar». Hueco propio
+  (`casino-incremental-save-demo`), sin sincronización ni ranking, final visto propio. «MODO DEMO · Salir» centrado bajo
+  la barra (a la izquierda tapaba la cabecera de los cajones). Reutiliza la semilla del modo desarrollador (`seedState`,
+  ahora en `demo.ts`), que sigue solo en `npm run dev`. Tests `tests/demo.test.ts` (enlaces, hueco, sin sincronizar,
+  sin ?dev= en producción) y comprobación del bundle en el script de capturas.
+  - Decisiones: el demo recuerda su progreso en su hueco (un enlace ?demo=mesaN solo cambia de mesa); en la pausa del demo
+    no se puede exportar, importar ni borrar (esas acciones son de la partida normal); en la mesa 5 la partida demo tiene
+    suerte 12 y herencias a nivel 2 (se ven las cadenas y las herramientas sin regalar el final); ?demo=final usa una
+    partida terminada con cifras de una partida típica (~59 min) para el libro de cuentas.
+- [x] **Capturas** (`npm run capture:portfolio`, Chrome sin interfaz sobre el build, modo demo): 10 capturas en
+  `docs/portfolio/` en PNG y WebP a 1920×1080 (×3 entero): portada con menú, mesa 1 (casino y trastienda), mesas 2-4,
+  cajón de mejoras (mesa 4), mesa 5 con una cadena en marcha, epílogo y libro de cuentas. **Vídeo**: no hay ffmpeg en esta
+  máquina; el script graba ~210 fotogramas (screencast de Chrome: ruleta girando, cambio de mesa, mesa 5 y final) en
+  `capture-frames/` con su duración real e imprime los comandos de ffmpeg para WebM y MP4 (también en DEPLOY.md).
+- [x] **Resumen técnico** `docs/portfolio/RESUMEN.md`: qué es, mesas, tecnologías, retos, transparencia (arte con IA,
+  desarrollo con Claude Code, backend no desplegado), cifras verificadas (336 tests del cliente, 30 del servidor, líneas
+  de código) y pie de foto y texto alternativo de cada captura.
+
 ## Sesión 9 (cajón «Mesa» de la mesa 5 e informe del backend)
 
 - [x] **Bug: la pestaña «MESA» de la mesa 5 no abría con clic** (con M sí). Causa: en la sesión 8 se puso

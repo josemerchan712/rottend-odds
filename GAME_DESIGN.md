@@ -410,6 +410,16 @@ Cada herencia sola (nivel 2) frente a (c): Cero dorado −7,1%, Retener −35,1%
 - **El Dueño** (`src/content/dialogue5.es.ts`, pendiente de revisión): señorial, pausado, casi paternal y absoluto. ≥5 líneas por disparador y fase, ≤90 caracteres; líneas para los hitos (sesión 8: 2 y 3 aciertos; las del jackpot dicen "cuatro caras") y para el pago final.
 - Guardado **v12** (sesión 8: la fatiga de las cadenas pasa a `decay`; una cadena a medias de un guardado anterior se cobra con la regla antigua, ×2 por cara). Antes, v10 (de la v9 se quitan las segundas oportunidades; herencias a 0 y moneda justa). Servidor: versión 10 y validación estructural de las herencias (enteros de 0 al nivel máximo, solo con la mesa abierta) y de la moneda elegida (la cargada exige su mejora). `?dev=mesa5` con hueco de guardado aparte y moneda de las otras mesas para probar las herencias.
 
+## 4i. Modo demo público (sesión 10)
+
+Para enseñar el juego sin jugarlo: opción «Modo demo» del menú (con «Ver todas las mesas sin jugar») y enlaces
+`?demo=mesa1` … `?demo=mesa5` y `?demo=final`, también en producción, siempre tras «Pulsa para entrar». Partida de
+demostración (`src/game/demo.ts`, sobre la semilla del modo desarrollador): mesas 1 a 4 saldadas con todo comprado y
+saldos para apostar; mesa 5 con suerte 12, techo 6, temple 2, moneda cargada, diablillo y las cuatro herencias a nivel 2.
+Hueco de guardado propio (`casino-incremental-save-demo`): no toca la partida normal, no se sincroniza, no registra en el
+ranking y su final visto es suyo; en la pausa de demo, exportar, importar y borrar quedan desactivados (actúan sobre la
+partida normal). «MODO DEMO» con «Salir» bajo la barra. El modo desarrollador (`?dev=`) sigue existiendo solo en `npm run dev`.
+
 ## 4e. Ayudantes: criterio común (sesión 5, auditoría)
 
 **Qué fallaba.** Cada ayudante apostaba una fracción fija del techo (limitada por su parte del saldo) tuviera o no ventaja. Con poca suerte el valor esperado es negativo (ventaja de la casa más la penalización por apostar fuerte) y perdían de forma sistemática: el crupier prudente acababa en negativo el 35% de las ventanas de 2 minutos con suerte baja. El **camarero fantasma** era el peor: elegía objetivo por crecimiento pero con una apuesta fija, así que con "Más de 9", "Doble" y "Doble seis" desbloqueados perseguía el doble seis (p ≈ 8%) incluso mejorado y con suerte alta (11% de ventanas negativas y p10 de −2 techos/min con el prudente), y su agresivo (todo el techo, 60% del saldo) perdía casi todo el saldo con suerte baja (caída máxima del 98-100%).

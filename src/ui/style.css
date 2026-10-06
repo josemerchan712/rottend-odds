@@ -517,9 +517,11 @@ kbd {
 .settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
 .settings-actions .pixel-button { font-size: 14px; padding: 2px 6px 3px; }
 .settings-note { min-height: 14px; margin: 2px 0; font-size: 14px; color: #9fc06a; }
-.settings-account { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 4px; }
+.settings-account { border-top: 1px solid var(--line); padding-top: 2px; }
+.settings-account .settings-actions { margin: 2px 0 0; }
+.settings-footer { display: flex; align-items: center; justify-content: space-between; }
 .settings-account-name { margin: 0; font-size: 14px; color: var(--muted); }
-.settings-link { display: inline-block; margin: 2px 0 4px; font-size: 13px; color: var(--muted); }
+.settings-link { font-size: 13px; color: var(--muted); }
 .settings-link:hover { color: var(--gold); }
 .pixel-button.back { align-self: flex-start; margin-top: 2px; }
 

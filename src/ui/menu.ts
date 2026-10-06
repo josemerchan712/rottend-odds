@@ -117,8 +117,10 @@ export function mountSettings(root: HTMLElement): SettingsUi {
             <button class="nav-item pixel-button danger" data-ref="deleteAccount">Borrar cuenta y datos</button>
           </div>
         </div>
-        <a class="settings-link" href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
-        <button class="nav-item pixel-button back" data-ref="back">Volver (Esc)</button>
+        <div class="settings-footer">
+          <button class="nav-item pixel-button back" data-ref="back">Volver (Esc)</button>
+          <a class="settings-link" href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
+        </div>
       </div>
     </section>`;
   const ids: SettingRow[] = ['volume', 'crt', 'fullscreen', 'dialogues', 'muted'];

@@ -58,8 +58,8 @@ export interface RankingPage {
 export const SERVER_DOWN = 'No se puede conectar con el servidor ahora mismo. El juego sigue funcionando sin conexión';
 
 /** ¿Ha fallado por no poder hablar con el servidor (no por un error de la petición)? Merece un «Reintentar». */
-export function isServerDown(res: { ok: boolean; status: number }): boolean {
-  return !res.ok && (res.status === 0 || (res.status >= 502 && res.status <= 504));
+export function isServerDown(res: { ok?: boolean; status: number }): boolean {
+  return res.ok !== true && (res.status === 0 || (res.status >= 502 && res.status <= 504));
 }
 
 export interface ApiOptions {

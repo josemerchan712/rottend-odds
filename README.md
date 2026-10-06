@@ -2,19 +2,27 @@
 
 *La casa siempre cobra.*
 
-Juego incremental de terror en el navegador: un trabajador del casino debe 10.000.000 de fichas y
-tiene que saldarlas apostando en una ruleta amañada por la suerte. Frontend en TypeScript que
-funciona solo, sin servidor; y un backend opcional en Java/Spring Boot que añade cuentas, guardado
-en la nube, ranking y validación de partidas.
+**Jugar:** https://rottenodds.josemariamerchan.dev · **Modo demo** (todas las mesas sin jugar):
+https://rottenodds.josemariamerchan.dev/?demo=mesa1 (también `?demo=mesa2` … `?demo=mesa5` y `?demo=final`).
 
-El diseño completo está en [GAME_DESIGN.md](GAME_DESIGN.md).
+Juego incremental de terror en el navegador: un trabajador de un casino podrido debe saldar sus deudas mesa a mesa
+en **cinco mesas** amañadas por la suerte (ruleta, tragaperras, dados, blackjack y doble o nada), con mejoras,
+ayudantes que juegan solos y un final. Frontend en TypeScript sin framework, dibujado en **Canvas 2D** pixel art con
+escalado entero, que funciona entero sin servidor; y un backend opcional en Java/Spring Boot que añade cuentas sin
+email, guardado en la nube, ranking y validación de partidas.
+
+**Estado del backend:** preparado y probado en local (PostgreSQL 16, Caddy con HTTPS y Docker Compose de
+producción); despliegue en curso. Mientras tanto, la versión publicada funciona sin servidor.
+
+El diseño completo está en [GAME_DESIGN.md](GAME_DESIGN.md); un resumen técnico para el portfolio, con capturas, en
+[docs/portfolio/RESUMEN.md](docs/portfolio/RESUMEN.md).
 
 ## Arquitectura
 
 ```mermaid
 flowchart LR
   subgraph Navegador
-    UI["UI (src/ui)<br/>HTML/CSS"] --> Logic["Lógica pura (src/game)<br/>ruleta, suerte, mejoras"]
+    UI["UI (src/ui)<br/>Canvas 2D + HTML/CSS"] --> Logic["Lógica pura (src/game)<br/>5 mesas, suerte, mejoras"]
     UI --> Client["Cliente API (src/api)<br/>timeouts, sin excepciones"]
     Logic --> LS[("localStorage<br/>partida · ajustes · sesión")]
   end
@@ -31,7 +39,7 @@ flowchart LR
   Server --> DB[("PostgreSQL<br/>Flyway")]
 
   Shared["shared/config.json<br/>shared/plausibility.json"]
-  Sim["Simulador (sim/)<br/>npm run plausibility"] -- genera --> Shared
+  Sim["Simuladores (sim/)<br/>npm run plausibility"] -- genera --> Shared
   Shared -- "lo importa" --> Logic
   Shared -- "lo empaqueta Maven" --> Val
 ```
@@ -45,10 +53,10 @@ flowchart LR
   (ver [Validación](#validación-de-plausibilidad)).
 
 ```
-src/game/    lógica pura (sin DOM): ruleta, suerte, mejoras, ayudante, guardado
-src/ui/      interfaz provisional en HTML/CSS
+src/game/    lógica pura (sin DOM) de las cinco mesas: suerte, mejoras, ayudantes, guardado, final
+src/ui/      escenas en Canvas 2D (escalado entero) y paneles HTML/CSS por encima
 src/api/     cliente HTTP, sesión y lógica de sincronización
-sim/         simulador de la mesa 1, informes y generador de la tabla de plausibilidad
+sim/         simuladores de las cinco mesas, auditoría de ayudantes y generador de la tabla de plausibilidad
 shared/      números compartidos por juego y servidor
 server/      backend Spring Boot (Java 21, Maven Wrapper)
 tests/       tests del frontend (Vitest)
@@ -56,108 +64,90 @@ scripts/     pipeline de assets (recorte del fondo, troceado, reescalado nearest
 assets/      hojas originales (raw/) y sprites generados (sprites/)
 ```
 
-## Cómo arrancar el proyecto desde cero en otra máquina
+## Cómo arrancarlo
 
-Comprobado con un clon limpio (Windows, Git Bash, Node 24, JDK 21+):
+Requisitos: Node 20+ para el juego; Java 21+ solo si quieres el servidor (Maven no hace falta: va incluido el
+Maven Wrapper, `server/mvnw`). Comprobado con un clon limpio (Windows, Git Bash, Node 24, JDK 21).
+
+### El juego (sin servidor)
 
 ```bash
-git clone <url-del-repositorio> casino-incremental
-cd casino-incremental
-npm ci
-cp .env.example .env
+git clone https://github.com/josemerchan712/rottend-ods.git
 ```
 
-Rellena `.env` (solo hace falta para el backend con Docker: `DB_PASSWORD` y un `JWT_SECRET` de 32+
-caracteres, por ejemplo con `openssl rand -base64 48`). Después:
+```bash
+cd rottend-ods
+```
+
+```bash
+npm ci
+```
 
 ```bash
 npm test
-npm run dev
 ```
 
-El juego queda en http://localhost:5173 y funciona sin servidor. Para el servidor opcional sin Docker
-(H2 en memoria y el secreto de prueba del perfil `test`, solo para desarrollo), en otra terminal:
-
-```bash
-cd server
-./mvnw spring-boot:test-run -Dspring-boot.run.profiles=test
-```
-
-Tarda ~30 s en responder en http://localhost:8080 (`/api/ranking`). Tests del servidor:
-`cd server && ./mvnw test`.
-
-## Cómo arrancarlo
-
-### Frontend (el juego)
-
-Requisitos: Node 20+.
-
-```bash
-npm install
-```
 ```bash
 npm run dev
 ```
 
-Se abre en http://localhost:5173. Otros comandos:
+Se abre en http://localhost:5173 y funciona entero sin servidor: sin `VITE_API_URL` se ocultan *Iniciar sesión*,
+*Sincronizar* y *Ranking*. No hace falta ningún `.env` para jugar ni para construir.
+
+**Llegar rápido a una mesa (solo en desarrollo):** http://localhost:5173/?dev=mesa2 (hasta `?dev=mesa5`) y pulsa
+Continuar. Usa un hueco de guardado aparte (`casino-incremental-save-dev2`…) con las mesas anteriores saldadas y todo
+comprado; tu partida normal no se toca. En el build de producción el parámetro no hace nada (allí está el modo demo,
+`?demo=mesa1` … `?demo=mesa5` y `?demo=final`).
+
+### Con el servidor en local (opcional)
+
+1. Arranca el servidor de una de estas formas:
+   - **Sin Docker** (H2 en memoria, se borra al parar; usa el secreto JWT del perfil de test, que solo sirve para
+     pruebas):
+
+     ```bash
+     cd server && ./mvnw spring-boot:test-run -Dspring-boot.run.profiles=test
+     ```
+
+   - **Con Docker Compose** (PostgreSQL 16 + servidor): copia `.env.example` a `.env`, rellena `DB_PASSWORD` y un
+     `JWT_SECRET` de 32+ caracteres (por ejemplo `openssl rand -base64 48`) y arranca:
+
+     ```bash
+     docker compose up --build
+     ```
+
+   - **Con tu propio PostgreSQL**: define `DB_URL`, `DB_USER`, `DB_PASSWORD` y `JWT_SECRET` y ejecuta
+     `cd server && ./mvnw spring-boot:run`.
+
+   Tarda ~30 s en responder en http://localhost:8080 (`/health` o `/api/ranking`).
+2. Para que el juego lo use, crea `.env.development.local` con `VITE_API_URL=http://localhost:8080` y vuelve a lanzar
+   `npm run dev`. Vite solo lee ese archivo en desarrollo, nunca en `npm run build`.
+
+> **No copies `.env.example` a `.env` para construir la versión publicada.** Vite lee `.env` también al construir:
+> si llevara `VITE_API_URL`, el juego publicado apuntaría a `localhost`. En `.env.example` esa línea va comentada;
+> el `.env` es solo para el servidor con Docker. La URL de producción se define al construir (ver `DEPLOY.md`).
+
+Tests del servidor (H2, no necesitan PostgreSQL): `cd server && ./mvnw test`. Documentación de la API:
+http://localhost:8080/swagger-ui.html (OpenAPI en `/v3/api-docs`); solo en local, en el perfil `prod` están
+desactivadas.
+
+### Otros comandos
 
 | Comando | Qué hace |
 |---|---|
-| `npm test` | Tests de la lógica, la sincronización y los JSON compartidos |
+| `npm test` | Tests de la lógica de las cinco mesas, la interfaz, la sincronización y los JSON compartidos |
 | `npm run build` | Comprobación de tipos y build de producción en `dist/` |
 | `npm run simulate` | Simula miles de partidas de la mesa 1 con varias estrategias e imprime un informe |
 | `npm run simulate:slots` | Lo mismo para la mesa 2 (tragaperras), empezando al pagar la mesa 1 (~5 min con 200 partidas) |
 | `npm run simulate:dice` | Lo mismo para la mesa 3 (dados), empezando al pagar la mesa 2 (~15 min con 200 partidas; `--no-study` lo acorta) |
 | `npm run simulate:cards` | Lo mismo para la mesa 4 (blackjack), empezando al pagar la mesa 3 (~1,5 min con 30 partidas) |
+| `npm run simulate:coin` | Lo mismo para la mesa 5 (doble o nada), empezando al pagar la mesa 4 |
+| `npm run audit:helpers` | Auditoría de los ayudantes de las mesas 1 a 4 (cada uno jugando solo) |
 | `npx tsx sim/cardsRig.ts` | Recalibra la baraja de la mesa 4 (`src/game/cards/rigTable.ts`, ~4 min) |
 | `npm run plausibility` | Regenera `shared/plausibility.json` completa (`--full`): ~80 s si cambia la mesa 1 (en paralelo, un worker por núcleo), ~3 s si no (caché por mesa en `shared/plausibility-cache.json`) |
 | `npm run plausibility:quick` | Versión rápida para desarrollo (200 partidas); el test la rechaza para que se suba la completa |
-| `npm run assets` | Regenera los sprites y los fondos de las mesas 1 a 4 en `assets/sprites/` desde las hojas de `assets/raw/` |
-
-El frontend busca el servidor en `http://localhost:8080`. Para cambiarlo, define `VITE_API_URL`.
-
-**Llegar rápido a la mesa 2, 3 o 4 (solo en desarrollo):** abre http://localhost:5173/?dev=mesa4 (o
-`?dev=mesa2`, `?dev=mesa3`) y pulsa Continuar. Usa un hueco de guardado aparte
-(`casino-incremental-save-dev4`, `-dev2`, `-dev3`) con las mesas anteriores saldadas y todo comprado,
-y moneda de prueba; tu partida normal no se toca. En el build de producción
-el parámetro no hace nada. Para empezar de cero ese hueco, bórralo desde Ajustes con el parámetro puesto.
-
-### Backend
-
-Requisitos: Java 21 o superior. Maven no hace falta: va incluido el Maven Wrapper (`server/mvnw`).
-
-**Opción A: Docker Compose (Postgres + servidor).**
-
-```bash
-cp .env.example .env
-```
-
-Rellena `DB_PASSWORD` y `JWT_SECRET` (32+ caracteres; por ejemplo `openssl rand -base64 48`) y arranca:
-
-```bash
-docker compose up --build
-```
-
-**Opción B: sin Docker, para desarrollo.** Base de datos H2 en memoria, que se borra al parar. Usa la
-configuración del perfil de test, que incluye un secreto JWT que solo sirve para pruebas:
-
-```bash
-cd server && ./mvnw spring-boot:test-run -Dspring-boot.run.profiles=test
-```
-
-**Opción C: con tu propio Postgres.** Define `DB_URL`, `DB_USER`, `DB_PASSWORD` y `JWT_SECRET`, y luego:
-
-```bash
-cd server && ./mvnw spring-boot:run
-```
-
-Tests del servidor (H2, no necesitan Postgres):
-
-```bash
-cd server && ./mvnw test
-```
-
-Documentación de la API: http://localhost:8080/swagger-ui.html (OpenAPI en `/v3/api-docs`). Solo en local: en el perfil `prod` están desactivadas.
+| `npm run assets` | Regenera los sprites y los fondos en `assets/sprites/` desde las hojas de `assets/raw/` |
+| `npm run capture:portfolio` | Capturas y fotogramas del vídeo del portfolio (`docs/portfolio/`) |
 
 ## API
 
@@ -257,7 +247,7 @@ regenera, fallan los tests de los dos lados y el servidor no arranca. Para regen
   dispositivos no se pisen.
 - **Ranking:** se guarda el mejor resultado de cada usuario. Un resultado verificado siempre gana a
   uno sin verificar. Es solo de la mesa 1.
-- **Mesas 2 a 4 en el servidor:** el guardado v7 lleva la tragaperras, los dados y el blackjack. El servidor valida
+- **Mesas 2 a 5 en el servidor:** el guardado (v12) lleva la tragaperras, los dados, el blackjack y el doble o nada. El servidor valida
   su estructura, los niveles de sus mejoras, las de su ayudante sin ayudante y que no haya progreso en
   una (ni esté activa) sin la deuda de la anterior pagada. No tienen capa estadística propia ni ranking.
 
@@ -295,7 +285,7 @@ sistema antitrampas:
 - Despliegue preparado pero no hecho: `docker-compose.prod.yml` (Caddy + API + PostgreSQL 16) y los scripts de
   `deploy/` para un VPS; los pasos están en `DEPLOY.md` («Backend en el VPS»). El `docker-compose.yml` de la raíz
   sigue siendo para desarrollo local.
-- Las mesas 2 a 4 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
+- Las mesas 2 a 5 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
   servidor acepta cualquier saldo.
 
 ## Créditos
@@ -304,4 +294,4 @@ sistema antitrampas:
 IA y procesado para el juego (`npm run assets`). Sonido sintetizado en el navegador. Fuente VT323
 © 2011 The VT323 Project Authors (Peter Hull), con licencia SIL Open Font License 1.1
 (`public/licencias/VT323-OFL.txt`). El título y el subtítulo viven en `src/game/config.ts`
-(`GAME_TITLE`, `GAME_TAGLINE`); el nombre del repositorio y del paquete no cambian.
+(`GAME_TITLE`, `GAME_TAGLINE`); el paquete npm y el Worker conservan el nombre técnico `casino-incremental`.

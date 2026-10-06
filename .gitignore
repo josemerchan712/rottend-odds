@@ -13,3 +13,16 @@ sim/.cache
 # Fotogramas del vídeo del portfolio (npm run capture:portfolio)
 capture-frames/
 .deploy-previous
+# Copias de la base de datos (deploy/backup.sh las deja fuera del repositorio, pero por si acaso)
+*.dump
+*.sql
+*.sql.gz
+# …salvo las migraciones de Flyway, que sí van en el repositorio
+!server/src/main/resources/db/migration/*.sql
+backups/
+# Claves y almacenes de certificados
+id_rsa*
+id_ed25519*
+*.p12
+*.jks
+.claude/settings.local.json

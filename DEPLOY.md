@@ -44,6 +44,23 @@ Desde la carpeta del proyecto (`C:\videojuego`), con Node 20 o superior:
    npm run build
    ```
 
+   **Comprobación antes de desplegar (build sin servidor).** El build no debe llevar ninguna URL de
+   desarrollo: Vite solo lee `.env.development.local` en `npm run dev`, nunca en `npm run build`. Con
+   un build limpio, ninguna de estas dos búsquedas debe encontrar nada:
+
+   ```bash
+   grep -rl "localhost" dist/
+   ```
+
+   ```bash
+   grep -rl "8080" dist/
+   ```
+
+   Y con `npm run preview`, el menú principal no debe mostrar **Ranking** ni **Iniciar sesión** (sin
+   `VITE_API_URL` se ocultan cuentas, sincronización y ranking). Si se ha construido a propósito con
+   `VITE_API_URL` de un servidor público, esas opciones sí deben salir y la URL será la de ese servidor
+   (nunca `localhost`).
+
 3. Probar el build en local (http://localhost:4173):
 
    ```bash

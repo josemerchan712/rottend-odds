@@ -229,7 +229,7 @@ Plantilla: `.env.prod.example`. En el VPS va en `/opt/rottenodds/.env.prod`, con
    ```
 
    ```bash
-   git clone git@github-rottenodds:josemerchan712/casino-incremental.git /opt/rottenodds/app
+   git clone git@github-rottenodds:josemerchan712/rottend-ods.git /opt/rottenodds/app
    ```
 
    ```bash

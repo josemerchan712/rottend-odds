@@ -1,0 +1,10 @@
+[Unit]
+Description=Copia diaria de la base de datos de Rotten Odds (03:30, hora del servidor)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

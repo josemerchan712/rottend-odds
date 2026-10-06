@@ -12,7 +12,7 @@
  * - que ningún texto del cajón abierto queda cortado.
  * Sale con código 1 si algo falla.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -229,7 +229,8 @@ try {
   ws?.close();
   chrome.kill();
   preview.kill();
-  if (process.platform === 'win32' && preview.pid) spawn('taskkill', ['/pid', String(preview.pid), '/T', '/F'], { stdio: 'ignore' });
+  // En Windows el servidor cuelga de un shell: hay que cerrar el árbol entero, y antes de salir (síncrono).
+  if (process.platform === 'win32' && preview.pid) spawnSync('taskkill', ['/pid', String(preview.pid), '/T', '/F'], { stdio: 'ignore' });
 }
 
 for (const e of errors) failures.push(`error en consola: ${e}`);

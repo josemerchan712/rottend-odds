@@ -367,5 +367,5 @@ sesión**, y la consola no muestra errores de CORS ni de CSP al abrir el ranking
 
 ### Privacidad
 
-`public/privacidad.html` (enlazada desde Ajustes) es un **borrador para revisar**: falta la ubicación del centro de
-datos y un contacto. Revísala antes de anunciar las cuentas.
+`public/privacidad.html` (enlazada desde Ajustes) es un **borrador para revisar**: ya indica el servidor (Hetzner,
+Núremberg, Alemania); falta el contacto (`[PONER CONTACTO]`). Revísala antes de anunciar las cuentas.

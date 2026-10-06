@@ -22,38 +22,44 @@
   <main>
     <h1>Privacidad</h1>
     <p class="muted">ROTTEN ODDS · La casa siempre cobra</p>
-    <p class="draft">BORRADOR pendiente de revisión: este texto aún no está revisado legalmente. Última actualización: 6 de octubre de 2026.</p>
+    <p class="draft">BORRADOR pendiente de revisión: este texto aún no está revisado legalmente. Última actualización: 7 de octubre de 2026.</p>
+
+    <p>ROTTEN ODDS es un proyecto personal sin ánimo de lucro: no tiene publicidad, compras ni fines comerciales.</p>
 
     <h2>Sin cuenta</h2>
     <p>Puedes jugar sin cuenta. La partida y los ajustes se guardan solo en tu navegador (<code>localStorage</code>) y no salen de él.
       No usamos cookies, analítica ni publicidad.</p>
 
     <h2>Con cuenta (opcional)</h2>
-    <p>La cuenta solo sirve para guardar la partida en la nube y salir en el ranking. No pedimos email ni ningún dato de contacto.
-      Guardamos únicamente:</p>
+    <p>La cuenta solo sirve para guardar la partida en la nube y salir en el ranking. <strong>No pedimos ni guardamos email</strong>
+      ni ningún otro dato de contacto. En el servidor guardamos únicamente:</p>
     <ul>
-      <li><strong>Nombre de jugador</strong>: es público, sale en el ranking. No uses tu nombre real.</li>
+      <li><strong>Nombre de jugador</strong>: es público, sale en el ranking. <strong>Te pedimos que no uses tu nombre real.</strong></li>
       <li><strong>Contraseña cifrada</strong> (hash BCrypt): nunca guardamos la contraseña en claro.</li>
-      <li><strong>Hash del código de recuperación</strong>: el código solo lo ves tú al crear la cuenta o al restablecerla.</li>
-      <li><strong>Tu partida</strong> si la sincronizas, y tu <strong>resultado en el ranking</strong> (tiempo de juego al saldar la deuda de la mesa 1).</li>
-      <li>La fecha de alta de la cuenta y de la última sincronización.</li>
+      <li><strong>Hash del código de recuperación</strong>: el código en sí solo lo ves tú, al crear la cuenta o al restablecer la contraseña.</li>
+      <li><strong>Tu partida</strong>, si la sincronizas (con su tiempo de juego y su saldo).</li>
+      <li><strong>Tu registro en el ranking</strong>: el tiempo de juego con el que saldaste la deuda de la mesa 1.</li>
+      <li>Las fechas de alta de la cuenta, de la última sincronización y del registro del ranking.</li>
     </ul>
+    <p>Mientras tienes la sesión iniciada, tu navegador guarda un token de sesión (en <code>localStorage</code>, no es una cookie)
+      que caduca a las 24 horas.</p>
 
     <h2>Dirección IP</h2>
-    <p>El servidor usa tu IP solo para limitar los intentos de inicio de sesión, registro y restablecimiento (y la comprobación de
-      nombres), contra ataques de fuerza bruta. Se guarda en memoria unos minutos y no se escribe en la base de datos ni en los logs.</p>
+    <p>El servidor usa tu IP <strong>solo para limitar los intentos</strong> de inicio de sesión, registro, restablecimiento de la
+      contraseña y comprobación de nombres, contra ataques de fuerza bruta. Se mantiene en memoria y se olvida tras unos minutos sin
+      intentos. <strong>No se guarda en la base de datos ni en los registros (logs)</strong> del servidor.</p>
 
-    <h2>Dónde y cuánto tiempo</h2>
-    <p>Los datos están en un servidor alquilado a Hetzner ([UBICACIÓN PENDIENTE: país del centro de datos]), con una copia de seguridad
-      diaria en el mismo servidor que se conserva 14 días. Se guardan mientras exista la cuenta. No se venden ni se ceden a nadie.</p>
+    <h2>Dónde y durante cuánto tiempo</h2>
+    <p>Los datos están en un servidor de <strong>Hetzner</strong> en <strong>Alemania</strong> (centro de datos de Núremberg).
+      Se conservan <strong>hasta que borres tu cuenta</strong>. Cada día se hace una copia de seguridad en el mismo servidor, y
+      <strong>las copias se conservan 14 días</strong>. No vendemos ni cedemos los datos a nadie.</p>
 
     <h2>Tus derechos</h2>
     <p>Desde <strong>Ajustes</strong> en el juego, con la sesión iniciada, puedes <strong>exportar tus datos</strong> (un archivo JSON)
-      y <strong>borrar la cuenta</strong>: se borran la cuenta, la partida en la nube y el resultado del ranking al momento
-      (y desaparecen de las copias de seguridad en 14 días como mucho).</p>
-
-    <h2>Contacto</h2>
-    <p>[CONTACTO PENDIENTE: añadir una dirección o formulario de contacto antes de publicar].</p>
+      y <strong>borrar la cuenta</strong>: la cuenta, la partida en la nube y el registro del ranking se borran al momento, y
+      desaparecen de las copias de seguridad en 14 días como mucho.</p>
+    <p>Para ejercer los derechos de acceso, rectificación o borrado por otra vía: [PONER CONTACTO]. El borrado no hace falta
+      pedirlo: puedes hacerlo tú directamente desde Ajustes, con la cuenta iniciada.</p>
 
     <p class="muted"><a href="/">Volver al juego</a></p>
   </main>

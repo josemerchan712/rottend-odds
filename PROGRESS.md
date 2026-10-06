@@ -35,6 +35,48 @@ no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneD
     invalidan sesiones guardadas ni hay que migrar nada.
   - Esc no cierra la pantalla del código de recuperación (hay que pulsar «Lo he guardado, continuar»).
 
+### Parte B: preparación para un VPS (nada desplegado)
+
+- [x] **Verificación con PostgreSQL real** (Docker, `.env` de prueba con secretos aleatorios que no se imprimieron y ya
+  borrado): Flyway aplica la V1 en Postgres 16; `scripts/e2e/backend.ts` (mismo cliente HTTP que el juego) pasa registro,
+  409 con sugerencias libres, carrera de 6 registros (un 201 y cinco 409), login genérico, guardar, leer, deuda saldada,
+  ranking, restablecer (código de un solo uso), exportar; tras reiniciar los contenedores sigue todo y borrar la cuenta
+  la saca del ranking y libera el nombre.
+  - **Qué falló:** nada del backend con Postgres real. Fallaron cosas alrededor: Docker Desktop no arrancaba (sockets
+    AF_UNIX corruptos en `%LOCALAPPDATA%\Docker\run` y `docker-secrets-engine`: se apartaron las carpetas; y WSL
+    agotaba el tiempo al crear la VM con poca RAM libre); el compose de desarrollo usaba Postgres 17 (producción 16:
+    alineado) y no pasaba `AUTH_RATE_LIMIT` (añadido); y **`deploy.sh` no volvía atrás** con una versión rota porque
+    `docker compose up -d` falla (Caddy depende de la API sana) y `set -e` cortaba antes: corregido y probado.
+- [x] `docker-compose.prod.yml` + `deploy/Caddyfile` + `server/Dockerfile.prod` + `.env.prod.example`. Probado en local
+  con `API_DOMAIN=localhost`: solo Caddy publica puertos, HTTP→HTTPS 308, cabeceras, Swagger 404, 413 con 300 KB,
+  JVM con `MaxRAMPercentage=60` (heap ~616 MB con `mem_limit: 1g`), usuario `casino` (uid 999).
+- [x] IP real: `forward-headers-strategy: native` + `internal-proxies` = IP fija de Caddy (172.28.0.10). Tests
+  `ProdProfileTest` (desde fuera del proxy la cabecera se ignora) y `TrustedProxyTest` (desde el proxy cuenta la IP del
+  cliente). En local con Caddy: la IP falsa no da cubos nuevos y otro cliente tiene el suyo.
+- [x] Perfil `prod`: sin Swagger/api-docs, `/health` público (`{"status":"ok"}`, 503 sin base de datos), logs sin SQL,
+  `RequestSizeFilter` (128 KB; 411 si el cuerpo no trae longitud), CSP `default-src 'none'` y `Referrer-Policy`.
+- [x] `deploy/backup.sh` (custom comprimido, comprobado con `pg_restore --list`, 700/600, 14 días), `deploy/restore.sh`
+  (copia previa, API parada, una transacción) y temporizador systemd. **Probado en local:** copia → borrar cuenta →
+  restaurar → la cuenta, su partida y su puesto vuelven.
+- [x] `deploy/deploy.sh` (pull, build, up, healthcheck, vuelta atrás automática y `rollback` a mano). Probado en local con
+  un clon y un origin de prueba: despliegue bueno, versión rota (datasource inexistente) → vuelve sola a la anterior.
+- [x] Cliente: mensaje «No se puede conectar con el servidor ahora mismo…» también con 502-504 (Caddy sin API), botón
+  Reintentar en el ranking (la sincronización ya lo tenía); en Ajustes, con sesión, «Exportar mis datos» y «Borrar
+  cuenta y datos» (dos confirmaciones con el diálogo del juego); enlace a `public/privacidad.html` (borrador).
+- [x] DEPLOY.md «Backend en el VPS» (DNS, cortafuegos, deploy key de solo lectura, variables, despliegue, copias,
+  comprobaciones con curl desde fuera y build del juego con `VITE_API_URL`), README.
+- Decisiones propias:
+  - Archivos de producción en `deploy/` y `docker-compose.prod.yml` en la raíz (junto al de desarrollo).
+  - Caddy tiene IP fija en una red interna `internal: true` (sin salida a Internet para API y base de datos).
+  - Healthcheck con bash y `/dev/tcp` (la imagen JRE no trae curl: no se instala nada).
+  - Copias en el mismo VPS (`/var/backups/rottenodds`) con systemd timer a las 03:30; se avisa de que no protegen de
+    perder el servidor.
+  - `deploy.sh` exige una copia sin cambios locales y usa `git reset --hard` para volver atrás.
+  - En prod no hay Swagger (más simple que protegerlo); en local sigue.
+  - Privacidad: sin cookies ni analítica; IP solo en memoria para el límite. Faltan la ubicación del centro de datos y
+    un contacto (marcados como pendientes).
+  - `shared/plausibility.json` no cambia (no cambian números).
+
 ## Sesión 10 (preparación para el portfolio)
 
 - [x] **Modo demo público** (`src/game/demo.ts`): menú «Modo demo · Ver todas las mesas sin jugar» y enlaces

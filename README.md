@@ -157,7 +157,7 @@ Tests del servidor (H2, no necesitan Postgres):
 cd server && ./mvnw test
 ```
 
-Documentación de la API: http://localhost:8080/swagger-ui.html (OpenAPI en `/v3/api-docs`).
+Documentación de la API: http://localhost:8080/swagger-ui.html (OpenAPI en `/v3/api-docs`). Solo en local: en el perfil `prod` están desactivadas.
 
 ## API
 
@@ -168,6 +168,7 @@ Documentación de la API: http://localhost:8080/swagger-ui.html (OpenAPI en `/v3
 | GET | `/api/auth/name-available?name=` | — | ¿Nombre libre? Si no, por qué y sugerencias |
 | POST | `/api/auth/reset` | — | Contraseña nueva con nombre + código de recuperación; devuelve un código nuevo |
 | GET | `/api/me` | JWT | Datos del usuario |
+| GET | `/health` | — | `{"status":"ok"}` si responde y llega a la base de datos (healthcheck) |
 | DELETE | `/api/me` | JWT | Borra la cuenta, el guardado y el ranking |
 | GET | `/api/me/export` | JWT | Descarga todos los datos de la cuenta (JSON) |
 | GET | `/api/save` | JWT | Guardado de la nube (404 si no hay) |
@@ -285,12 +286,15 @@ sistema antitrampas:
 - El token JWT se guarda en `localStorage`, así que un fallo de XSS podría robarlo. Mitigado porque
   la interfaz nunca inserta HTML con datos de usuario (los nombres del ranking van con
   `textContent`). No hay refresh token: a las 24 h hay que volver a iniciar sesión.
-- El límite de intentos es por IP y en memoria: se reinicia con el servidor, no se comparte entre
-  varias instancias, y detrás de un proxy habría que configurar la IP real (`X-Forwarded-For`).
+- El límite de intentos es por IP y en memoria: se reinicia con el servidor y no se comparte entre
+  varias instancias. Detrás de Caddy cuenta la IP real: Tomcat solo acepta `X-Forwarded-For` de la IP fija
+  del proxy (`server.tomcat.remoteip.internal-proxies`), así que la cabecera no se puede falsear.
 - Sin email no hay recuperación de cuenta si se pierde el código de recuperación: se avisa al crear la
   cuenta y se puede copiar o descargar.
 - Sin progreso offline ni sincronización automática: se sincroniza con el botón.
-- No hay despliegue: el `Dockerfile` y el `docker-compose.yml` son para desarrollo local.
+- Despliegue preparado pero no hecho: `docker-compose.prod.yml` (Caddy + API + PostgreSQL 16) y los scripts de
+  `deploy/` para un VPS; los pasos están en `DEPLOY.md` («Backend en el VPS»). El `docker-compose.yml` de la raíz
+  sigue siendo para desarrollo local.
 - Las mesas 2 a 4 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
   servidor acepta cualquier saldo.
 

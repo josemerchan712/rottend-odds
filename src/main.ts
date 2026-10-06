@@ -1,6 +1,6 @@
 import '@fontsource/vt323';
 import './ui/style.css';
-import { createApi, ONLINE_ENABLED, type CloudSave, type TokenResponse } from './api/client';
+import { createApi, isServerDown, ONLINE_ENABLED, type CloudSave, type TokenResponse } from './api/client';
 import { creditsHeight, EndingScene, mountEnding, renderEndingUi, renderLedger } from './ui/ending';
 import { ENDING_LINES_ES } from './content/ending.es';
 import { advanceEnding, createEnding, endingAmbient, holdEnding, skipEnding, tickEnding, type EndingState } from './game/ending';
@@ -22,7 +22,7 @@ import { bindControls, closeDrawers, toggleDrawer } from './ui/controls';
 import { Dialogs } from './ui/dialog';
 import { MenuNav } from './ui/menuNav';
 import { TitleScene } from './ui/titleScene';
-import { mountCredits, mountMenu, mountPause, mountSettings, renderMenu, renderSettings, type SettingRow } from './ui/menu';
+import { mountCredits, mountMenu, mountPause, mountSettings, renderAccount, renderMenu, renderSettings, type SettingRow } from './ui/menu';
 import {
   mountAuth,
   mountRanking,
@@ -398,7 +398,10 @@ function show(next: Screen): void {
   else if (TITLE_SCREENS.includes(next) && !settingsOverGame()) setAmbient('title');
   for (const [name, el] of Object.entries(screens)) el.hidden = name !== next;
   if (next === 'menu') refreshMenu();
-  if (next === 'settings') renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null, demoActive);
+  if (next === 'settings') {
+    renderSettings(settingsUi, settings, continueInfo(localStorage, saveKey) !== null, demoActive);
+    renderAccount(settingsUi, demoActive ? null : (currentSession()?.displayName ?? null));
+  }
   if (next === 'game' && state) renderHud(state);
   navs[next]?.reset();
 }
@@ -1010,6 +1013,38 @@ settingsUi.deleteSave.addEventListener('click', async () => {
   renderSettings(settingsUi, settings, false);
 });
 settingsUi.back.addEventListener('click', closeSettings);
+settingsUi.exportData.addEventListener('click', async () => {
+  const s = currentSession();
+  if (!s) return renderAccount(settingsUi, null);
+  setText(settingsUi.saveNote, 'Pidiendo tus datos al servidor…');
+  const res = await api.exportData(s.token);
+  if (!res.ok) return setText(settingsUi.saveNote, res.status === 401 ? 'La sesión ha caducado. Vuelve a iniciar sesión.' : `${res.message}.`);
+  downloadFile(JSON.stringify(res.data, null, 2), 'rotten-odds-mis-datos.json', 'application/json');
+  setText(settingsUi.saveNote, 'Datos de la cuenta descargados.');
+});
+settingsUi.deleteAccount.addEventListener('click', async () => {
+  const s = currentSession();
+  if (!s) return renderAccount(settingsUi, null);
+  const first = await dialogs.confirm(
+    `¿Borrar la cuenta «${s.displayName}»? Se borran la cuenta, la partida guardada en la nube y tu puesto en el ranking. La partida de este navegador se queda.`,
+    { confirm: 'Seguir', danger: true },
+  );
+  navs.settings?.reset(settingsUi.back);
+  if (!first) return;
+  const sure = await dialogs.confirm('Última confirmación: no se puede deshacer y sin email no hay forma de recuperarla.', {
+    confirm: 'Borrar para siempre',
+    danger: true,
+  });
+  navs.settings?.reset(settingsUi.back);
+  if (!sure) return;
+  setText(settingsUi.saveNote, 'Borrando la cuenta…');
+  const res = await api.deleteAccount(s.token);
+  if (!res.ok && res.status !== 401) return setText(settingsUi.saveNote, `${res.message}.`);
+  if (!res.ok) return setText(settingsUi.saveNote, 'La sesión ha caducado: inicia sesión otra vez para borrar la cuenta.');
+  setSession(null);
+  renderAccount(settingsUi, null);
+  setText(settingsUi.saveNote, 'Cuenta y datos del servidor borrados.');
+});
 
 /**
  * Aviso del ayudante en el HUD (cuando juega sin que se le vea): en vez de una línea por apuesta, el
@@ -1521,7 +1556,7 @@ const RANKING_SIZE = 10;
 async function loadRanking(): Promise<void> {
   renderRanking(rankingUi, null, 'Cargando…');
   const res = await api.ranking(rankingPage, RANKING_SIZE);
-  if (!res.ok) return renderRanking(rankingUi, null, `${res.message}.`);
+  if (!res.ok) return renderRanking(rankingUi, null, `${res.message}.`, isServerDown(res));
   renderRanking(rankingUi, res.data, res.data.totalElements === 0 ? 'Todavía nadie ha saldado la deuda.' : '');
 }
 
@@ -1534,6 +1569,7 @@ rankingUi.next.addEventListener('click', () => {
   void loadRanking();
 });
 rankingUi.back.addEventListener('click', () => show('menu'));
+rankingUi.retry.addEventListener('click', () => void loadRanking());
 
 let noteTimer = 0;
 /** Nota breve bajo el HUD (deuda saldada, ranking). */

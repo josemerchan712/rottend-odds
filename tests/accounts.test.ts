@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createApi } from '../src/api/client';
+import { createApi, isServerDown, SERVER_DOWN } from '../src/api/client';
 import { passwordError, playerNameFormatError } from '../src/api/playerName';
 import { AUTH_TEXT, REAL_NAME_WARNING, RECOVERY_WARNING, recoveryFileText } from '../src/ui/online';
 
@@ -102,5 +102,25 @@ describe('textos de la pantalla de cuenta', () => {
     const file = recoveryFileText('Ana', 'ABCD-EFGH-JKLM-NPQR');
     expect(file).toContain('Nombre de jugador: Ana');
     expect(file).toContain('Código: ABCD-EFGH-JKLM-NPQR');
+  });
+});
+
+describe('servidor caído', () => {
+  it('sin conexión o con el proxy sin API (502-504): mensaje claro y se puede reintentar', async () => {
+    const down = createApi({ baseUrl: 'http://test', fetch: (async () => { throw new TypeError('fetch failed'); }) as typeof fetch });
+    const offline = await down.ranking(0, 10);
+    expect(offline.ok).toBe(false);
+    if (!offline.ok) expect(offline.message).toBe(SERVER_DOWN);
+    expect(isServerDown(offline)).toBe(true);
+
+    const { api } = fakeServer({ 'GET /api/ranking?page=0&size=10': () => [502, '<html>Bad Gateway</html>'] });
+    const gateway = await api.ranking(0, 10);
+    expect(isServerDown(gateway)).toBe(true);
+    if (!gateway.ok) expect(gateway.message).toBe(SERVER_DOWN);
+  });
+
+  it('un error de la petición (401, 409, 429) no es «servidor caído»', () => {
+    for (const status of [400, 401, 409, 429, 500]) expect(isServerDown({ ok: false, status })).toBe(false);
+    expect(isServerDown({ ok: true, status: 200 })).toBe(false);
   });
 });

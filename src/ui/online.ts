@@ -258,6 +258,7 @@ export function showSyncStatus(ui: SyncUi, text: string, conflict?: { local: Sav
 
 export interface RankingUi {
   status: HTMLElement;
+  retry: HTMLButtonElement;
   body: HTMLElement;
   prev: HTMLButtonElement;
   next: HTMLButtonElement;
@@ -271,6 +272,7 @@ export function mountRanking(root: HTMLElement): RankingUi {
       <h1>Ranking · Mesa 1</h1>
       <p class="muted">Quién saldó antes la deuda del Encargado (tiempo de juego). Solo resultados verificados.</p>
       <p data-ref="status" role="status"></p>
+      <button data-ref="retry" class="small" hidden>Reintentar</button>
       <table class="ranking">
         <thead><tr><th>#</th><th>Jugador</th><th>Tiempo</th></tr></thead>
         <tbody data-ref="body"></tbody>
@@ -287,6 +289,7 @@ export function mountRanking(root: HTMLElement): RankingUi {
   `;
   return {
     status: ref(root, 'status'),
+    retry: ref(root, 'retry'),
     body: ref(root, 'body'),
     prev: ref(root, 'prev'),
     next: ref(root, 'next'),
@@ -295,8 +298,9 @@ export function mountRanking(root: HTMLElement): RankingUi {
   };
 }
 
-export function renderRanking(ui: RankingUi, page: RankingPage | null, message: string): void {
+export function renderRanking(ui: RankingUi, page: RankingPage | null, message: string, canRetry = false): void {
   setText(ui.status, message);
+  ui.retry.hidden = !canRetry;
   ui.body.replaceChildren(
     ...(page?.content ?? []).map((row) => {
       const tr = document.createElement('tr');

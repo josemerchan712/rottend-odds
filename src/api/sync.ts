@@ -1,5 +1,5 @@
 import type { SaveFile } from '../game/save';
-import type { Api, CloudSave } from './client';
+import { isServerDown, type Api, type CloudSave } from './client';
 
 /** Lo que pasó al sincronizar, para que la interfaz lo cuente o pregunte. */
 export type SyncOutcome =
@@ -47,7 +47,7 @@ async function upload(api: Api, token: string, baseRevision: number | null, loca
 }
 
 function failure(res: { status: number; message: string; details?: string[] }): SyncOutcome {
-  if (res.status === 0) return { kind: 'offline', message: res.message };
+  if (isServerDown(res)) return { kind: 'offline', message: res.message };
   if (res.status === 401) return { kind: 'expired' };
   return { kind: 'rejected', message: res.message, details: res.details ?? [] };
 }

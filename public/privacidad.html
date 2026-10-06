@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Privacidad · ROTTEN ODDS</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0d0a07; color: #d8cbb0; font: 16px/1.55 Georgia, 'Times New Roman', serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { color: #c9a443; font-weight: normal; letter-spacing: 1px; margin: 0 0 4px; }
+    h2 { color: #c9a443; font-size: 18px; font-weight: normal; margin: 28px 0 6px; }
+    .draft { border: 1px dashed #c9a443; padding: 8px 12px; color: #c9a443; font-size: 14px; }
+    .muted { color: #8f846d; font-size: 14px; }
+    ul { padding-left: 20px; }
+    a { color: #c9a443; }
+    code { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacidad</h1>
+    <p class="muted">ROTTEN ODDS · La casa siempre cobra</p>
+    <p class="draft">BORRADOR pendiente de revisión: este texto aún no está revisado legalmente. Última actualización: 6 de octubre de 2026.</p>
+
+    <h2>Sin cuenta</h2>
+    <p>Puedes jugar sin cuenta. La partida y los ajustes se guardan solo en tu navegador (<code>localStorage</code>) y no salen de él.
+      No usamos cookies, analítica ni publicidad.</p>
+
+    <h2>Con cuenta (opcional)</h2>
+    <p>La cuenta solo sirve para guardar la partida en la nube y salir en el ranking. No pedimos email ni ningún dato de contacto.
+      Guardamos únicamente:</p>
+    <ul>
+      <li><strong>Nombre de jugador</strong>: es público, sale en el ranking. No uses tu nombre real.</li>
+      <li><strong>Contraseña cifrada</strong> (hash BCrypt): nunca guardamos la contraseña en claro.</li>
+      <li><strong>Hash del código de recuperación</strong>: el código solo lo ves tú al crear la cuenta o al restablecerla.</li>
+      <li><strong>Tu partida</strong> si la sincronizas, y tu <strong>resultado en el ranking</strong> (tiempo de juego al saldar la deuda de la mesa 1).</li>
+      <li>La fecha de alta de la cuenta y de la última sincronización.</li>
+    </ul>
+
+    <h2>Dirección IP</h2>
+    <p>El servidor usa tu IP solo para limitar los intentos de inicio de sesión, registro y restablecimiento (y la comprobación de
+      nombres), contra ataques de fuerza bruta. Se guarda en memoria unos minutos y no se escribe en la base de datos ni en los logs.</p>
+
+    <h2>Dónde y cuánto tiempo</h2>
+    <p>Los datos están en un servidor alquilado a Hetzner ([UBICACIÓN PENDIENTE: país del centro de datos]), con una copia de seguridad
+      diaria en el mismo servidor que se conserva 14 días. Se guardan mientras exista la cuenta. No se venden ni se ceden a nadie.</p>
+
+    <h2>Tus derechos</h2>
+    <p>Desde <strong>Ajustes</strong> en el juego, con la sesión iniciada, puedes <strong>exportar tus datos</strong> (un archivo JSON)
+      y <strong>borrar la cuenta</strong>: se borran la cuenta, la partida en la nube y el resultado del ranking al momento
+      (y desaparecen de las copias de seguridad en 14 días como mucho).</p>
+
+    <h2>Contacto</h2>
+    <p>[CONTACTO PENDIENTE: añadir una dirección o formulario de contacto antes de publicar].</p>
+
+    <p class="muted"><a href="/">Volver al juego</a></p>
+  </main>
+</body>
+</html>

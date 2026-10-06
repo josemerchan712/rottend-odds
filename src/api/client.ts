@@ -54,6 +54,14 @@ export interface RankingPage {
   totalPages: number;
 }
 
+/** Servidor caído o sin conexión: el juego sigue funcionando sin él. */
+export const SERVER_DOWN = 'No se puede conectar con el servidor ahora mismo. El juego sigue funcionando sin conexión';
+
+/** ¿Ha fallado por no poder hablar con el servidor (no por un error de la petición)? Merece un «Reintentar». */
+export function isServerDown(res: { ok: boolean; status: number }): boolean {
+  return !res.ok && (res.status === 0 || (res.status >= 502 && res.status <= 504));
+}
+
 export interface ApiOptions {
   baseUrl: string;
   timeoutMs: number;
@@ -88,10 +96,12 @@ export function createApi(options: Partial<ApiOptions> = {}) {
       });
       const data: unknown = await res.json().catch(() => undefined);
       if (res.ok) return { ok: true, status: res.status, data: data as T };
+      // 502-504: el proxy (Caddy) responde pero la API no está (reinicio, despliegue…).
+      if (res.status >= 502 && res.status <= 504) return { ok: false, status: res.status, message: SERVER_DOWN };
       const err = (data ?? {}) as { message?: string; details?: string[]; suggestions?: string[] };
       return { ok: false, status: res.status, message: err.message ?? `Error ${res.status}`, details: err.details, suggestions: err.suggestions, data };
     } catch {
-      return { ok: false, status: 0, message: 'No se puede conectar con el servidor' };
+      return { ok: false, status: 0, message: SERVER_DOWN };
     } finally {
       clearTimeout(timer);
     }

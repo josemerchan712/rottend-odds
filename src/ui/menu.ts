@@ -82,6 +82,10 @@ export interface SettingsUi {
   importFile: HTMLInputElement;
   deleteSave: HTMLButtonElement;
   saveNote: HTMLElement;
+  account: HTMLElement;
+  accountName: HTMLElement;
+  exportData: HTMLButtonElement;
+  deleteAccount: HTMLButtonElement;
   back: HTMLButtonElement;
 }
 
@@ -106,6 +110,14 @@ export function mountSettings(root: HTMLElement): SettingsUi {
         </div>
         <input type="file" accept="application/json,.json" data-ref="importFile" hidden />
         <p class="settings-note" data-ref="saveNote"></p>
+        <div class="settings-account" data-ref="account" hidden>
+          <p class="settings-account-name" data-ref="accountName"></p>
+          <div class="settings-actions">
+            <button class="nav-item pixel-button" data-ref="exportData">Exportar mis datos</button>
+            <button class="nav-item pixel-button danger" data-ref="deleteAccount">Borrar cuenta y datos</button>
+          </div>
+        </div>
+        <a class="settings-link" href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
         <button class="nav-item pixel-button back" data-ref="back">Volver (Esc)</button>
       </div>
     </section>`;
@@ -121,8 +133,18 @@ export function mountSettings(root: HTMLElement): SettingsUi {
     importFile: ref(root, 'importFile'),
     deleteSave: ref(root, 'deleteSave'),
     saveNote: ref(root, 'saveNote'),
+    account: ref(root, 'account'),
+    accountName: ref(root, 'accountName'),
+    exportData: ref(root, 'exportData'),
+    deleteAccount: ref(root, 'deleteAccount'),
     back: ref(root, 'back'),
   };
+}
+
+/** Bloque de la cuenta en Ajustes: solo con la sesión iniciada. */
+export function renderAccount(ui: SettingsUi, playerName: string | null): void {
+  ui.account.hidden = playerName === null;
+  setText(ui.accountName, playerName ? `Cuenta: ${playerName}` : '');
 }
 
 /** `demo`: la partida en curso es la del modo demo: exportar, importar y borrar quedan desactivados (actúan sobre la normal). */

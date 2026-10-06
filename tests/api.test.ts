@@ -48,7 +48,7 @@ describe('cliente del servidor', () => {
     const slow = ((_url: string, init?: RequestInit) =>
       new Promise((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('abort'))))) as typeof fetch;
     const api = createApi({ baseUrl: 'http://test', fetch: slow, timeoutMs: 20 });
-    const res = await api.login('a@b.c', 'x');
+    const res = await api.login('Ana', 'x');
     expect(res).toMatchObject({ ok: false, status: 0 });
   });
 

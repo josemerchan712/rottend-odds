@@ -27,10 +27,16 @@ import {
   mountAuth,
   mountRanking,
   mountSync,
+  recoveryFileText,
   renderAuthMode,
   renderRanking,
+  renderSuggestions,
+  showNameHint,
+  showRecoveryCode,
   showSyncStatus,
+  type AuthMode,
 } from './ui/online';
+import { passwordError, playerNameFormatError } from './api/playerName';
 import { mountUi, render, setText } from './ui/render';
 import { Scene } from './ui/scene';
 import { enterFullscreen, fitHuds, layoutStage, mountCrt, toggleFullscreen } from './ui/stage';
@@ -753,8 +759,9 @@ window.addEventListener('keydown', (event) => {
     if (screen === 'game' && state) showNote(settings.muted ? 'Sonido silenciado (N)' : 'Sonido activado (N)');
     return;
   }
-  // Esc en las pantallas en línea: volver al menú.
+  // Esc en las pantallas en línea: volver al menú (salvo con el código de recuperación a la vista: hay que guardarlo).
   if (event.key === 'Escape' && (screen === 'auth' || screen === 'sync' || screen === 'ranking')) {
+    if (screen === 'auth' && authMode === 'code') return;
     show('menu');
     return;
   }
@@ -932,8 +939,7 @@ menuUi.items.login.addEventListener('click', () => {
     show('menu');
     return;
   }
-  registering = false;
-  renderAuthMode(authUi, registering);
+  setAuthMode('login');
   show('auth');
 });
 menuUi.items.sync.addEventListener('click', () => {
@@ -1332,34 +1338,120 @@ function setSession(next: Session | null): void {
   saveSession(localStorage, sessionKey, next);
 }
 
-let registering = false;
-authUi.toggle.addEventListener('click', () => {
-  registering = !registering;
-  renderAuthMode(authUi, registering);
+// Cuenta sin email: entrar, crear cuenta y restablecer la contraseña con el código de recuperación.
+let authMode: AuthMode = 'login';
+let nameCheckTimer: number | undefined;
+let nameCheckSeq = 0;
+let recovery: { playerName: string; code: string } | null = null;
+
+function setAuthMode(mode: AuthMode): void {
+  authMode = mode;
+  window.clearTimeout(nameCheckTimer);
+  nameCheckSeq++;
+  renderAuthMode(authUi, mode);
+}
+
+/** Mientras se escribe el nombre al crear cuenta: formato al momento y disponibilidad con debounce (400 ms). */
+function scheduleNameCheck(): void {
+  window.clearTimeout(nameCheckTimer);
+  const seq = ++nameCheckSeq;
+  if (authMode !== 'register') return;
+  const name = authUi.name.value.trim();
+  renderSuggestions(authUi, []);
+  if (name === '') return showNameHint(authUi, '', 'info');
+  const formatError = playerNameFormatError(name);
+  if (formatError) return showNameHint(authUi, formatError, 'bad');
+  showNameHint(authUi, 'Comprobando…', 'info');
+  nameCheckTimer = window.setTimeout(async () => {
+    const res = await api.nameAvailable(name);
+    if (seq !== nameCheckSeq || authMode !== 'register') return; // ya se ha escrito otra cosa
+    if (!res.ok) return showNameHint(authUi, res.status === 429 ? res.message : '', 'info');
+    if (res.data.available) return showNameHint(authUi, 'Nombre libre', 'ok');
+    showNameHint(authUi, res.data.message ?? 'Ese nombre no se puede usar', 'bad');
+    renderSuggestions(authUi, res.data.suggestions ?? []);
+  }, 400);
+}
+
+authUi.name.addEventListener('input', scheduleNameCheck);
+authUi.suggestions.addEventListener('click', (event) => {
+  const name = (event.target as HTMLElement).closest<HTMLElement>('[data-suggestion]')?.dataset.suggestion;
+  if (!name) return;
+  authUi.name.value = name;
+  setText(authUi.message, '');
+  scheduleNameCheck();
+  authUi.password.focus();
 });
+authUi.toggle.addEventListener('click', () => setAuthMode(authMode === 'login' ? 'register' : 'login'));
+authUi.forgot.addEventListener('click', () => setAuthMode('reset'));
 authUi.back.addEventListener('click', () => show('menu'));
 authUi.form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  const name = authUi.name.value.trim();
+  const password = authUi.password.value;
+  if (authMode !== 'login') {
+    const problem = (authMode === 'register' ? playerNameFormatError(name) : null) ?? passwordError(password, name);
+    if (problem) return setText(authUi.message, problem);
+  }
+  if (authMode === 'reset' && authUi.code.value.trim() === '') return setText(authUi.message, 'Falta el código de recuperación');
   authUi.submit.disabled = true;
   setText(authUi.message, 'Conectando…');
-  const email = authUi.email.value.trim();
-  const password = authUi.password.value;
-  const res = registering
-    ? await api.register(email, password, authUi.displayName.value.trim())
-    : await api.login(email, password);
+  const res =
+    authMode === 'register'
+      ? await api.register(name, password)
+      : authMode === 'reset'
+        ? await api.resetPassword(name, authUi.code.value.trim(), password)
+        : await api.login(name, password);
   authUi.submit.disabled = false;
   if (!res.ok) {
     setText(authUi.message, [res.message, ...(res.details ?? [])].join(' · '));
+    if (res.status === 409) {
+      showNameHint(authUi, 'Prueba con uno de estos, que están libres:', 'bad');
+      renderSuggestions(authUi, res.suggestions ?? []);
+    }
     return;
   }
   authUi.password.value = '';
+  authUi.code.value = '';
   startSession(res.data);
+  if (res.data.recoveryCode) {
+    // Cuenta nueva o contraseña restablecida: el código solo se ve ahora.
+    recovery = { playerName: res.data.playerName, code: res.data.recoveryCode };
+    authMode = 'code';
+    showRecoveryCode(authUi, recovery.code);
+    authUi.copyCode.focus();
+    return;
+  }
+  show('menu');
+});
+authUi.copyCode.addEventListener('click', async () => {
+  if (!recovery) return;
+  const ok = await copyText(recovery.code);
+  setText(authUi.codeMessage, ok ? 'Código copiado. Pégalo en un sitio seguro.' : 'No se pudo copiar: apúntalo a mano o descárgalo.');
+});
+authUi.downloadCode.addEventListener('click', () => {
+  if (!recovery) return;
+  downloadFile(recoveryFileText(recovery.playerName, recovery.code), 'rotten-odds-codigo-recuperacion.txt', 'text/plain');
+  setText(authUi.codeMessage, 'Archivo descargado.');
+});
+authUi.codeDone.addEventListener('click', () => {
+  recovery = null;
+  setText(authUi.codeValue, '');
+  setAuthMode('login');
   show('menu');
 });
 
+/** Descarga un texto como archivo (sin servidor). */
+function downloadFile(text: string, filename: string, type: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function startSession(token: TokenResponse): void {
   // Una cuenta nueva no sabe en qué revisión de la nube se basa la partida local.
-  setSession({ token: token.token, displayName: token.displayName, expiresAt: token.expiresAt, cloudRevision: null });
+  setSession({ token: token.token, displayName: token.playerName, expiresAt: token.expiresAt, cloudRevision: null });
 }
 
 let pendingConflict: { server: CloudSave; local: NonNullable<ReturnType<typeof loadGame>> } | null = null;
@@ -1558,12 +1650,7 @@ settingsUi.exportSave.addEventListener('click', () => {
   if (state) save();
   const file = loadGame(localStorage, saveKey);
   if (!file) return setText(settingsUi.saveNote, 'No hay partida que exportar.');
-  const blob = new Blob([serialize(file.state, Date.now())], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `rotten-odds-partida-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  downloadFile(serialize(file.state, Date.now()), `rotten-odds-partida-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
   setText(settingsUi.saveNote, 'Partida exportada.');
 });
 settingsUi.importSave.addEventListener('click', () => settingsUi.importFile.click());

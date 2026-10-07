@@ -1,6 +1,8 @@
 # Copia de seguridad diaria de la base de datos de Rotten Odds (ver DEPLOY.md).
-# Instalar: sudo cp deploy/systemd/rottenodds-backup.* /etc/systemd/system/ && sudo systemctl daemon-reload
-#           sudo systemctl enable --now rottenodds-backup.timer
+# Instalar (el clon está en ~/rottenodds):
+#   sudo cp ~/rottenodds/deploy/systemd/rottenodds-backup.* /etc/systemd/system/
+#   sudo sed -i "s|^ExecStart=.*|ExecStart=$HOME/rottenodds/deploy/backup.sh|" /etc/systemd/system/rottenodds-backup.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now rottenodds-backup.timer
 [Unit]
 Description=Copia de seguridad de PostgreSQL de Rotten Odds
 Wants=docker.service
@@ -11,5 +13,6 @@ Type=oneshot
 Environment=ENV_FILE=/opt/rottenodds/.env.prod
 Environment=BACKUP_DIR=/var/backups/rottenodds
 Environment=KEEP_DAYS=14
-ExecStart=/opt/rottenodds/app/deploy/backup.sh
+# Ruta del clon: cambia USUARIO (o usa el sed de arriba, que pone tu $HOME).
+ExecStart=/home/USUARIO/rottenodds/deploy/backup.sh
 UMask=0077

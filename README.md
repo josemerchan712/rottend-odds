@@ -11,8 +11,10 @@ ayudantes que juegan solos y un final. Frontend en TypeScript sin framework, dib
 escalado entero, que funciona entero sin servidor; y un backend opcional en Java/Spring Boot que añade cuentas sin
 email, guardado en la nube, ranking y validación de partidas.
 
-**Estado del backend:** preparado y probado en local (PostgreSQL 16, Caddy con HTTPS y Docker Compose de
-producción); despliegue en curso. Mientras tanto, la versión publicada funciona sin servidor.
+**Estado del backend:** desplegado en un VPS de Hetzner (Núremberg, Alemania) con Caddy (HTTPS automático) y
+PostgreSQL 16 en Docker Compose; la versión publicada del juego ya lo usa para cuentas, guardado en la nube y ranking.
+Copia diaria de la base de datos con un temporizador de systemd, guardada 14 días en el mismo servidor (la
+restauración se ha probado en local). Pasos en [DEPLOY.md](DEPLOY.md#backend-en-el-vps).
 
 El diseño completo está en [GAME_DESIGN.md](GAME_DESIGN.md); un resumen técnico para el portfolio, con capturas, en
 [docs/portfolio/RESUMEN.md](docs/portfolio/RESUMEN.md).
@@ -72,11 +74,11 @@ Maven Wrapper, `server/mvnw`). Comprobado con un clon limpio (Windows, Git Bash,
 ### El juego (sin servidor)
 
 ```bash
-git clone https://github.com/josemerchan712/rottend-ods.git
+git clone https://github.com/josemerchan712/rottend-odds.git
 ```
 
 ```bash
-cd rottend-ods
+cd rottend-odds
 ```
 
 ```bash
@@ -91,8 +93,8 @@ npm test
 npm run dev
 ```
 
-Se abre en http://localhost:5173 y funciona entero sin servidor: sin `VITE_API_URL` se ocultan *Iniciar sesión*,
-*Sincronizar* y *Ranking*. No hace falta ningún `.env` para jugar ni para construir.
+Se abre en http://localhost:5173 y funciona entero sin servidor: sin `VITE_API_URL` se ocultan *Cuenta*
+(iniciar sesión y sincronizar) y *Ranking*. No hace falta ningún `.env` para jugar ni para construir.
 
 **Llegar rápido a una mesa (solo en desarrollo):** http://localhost:5173/?dev=mesa2 (hasta `?dev=mesa5`) y pulsa
 Continuar. Usa un hueco de guardado aparte (`casino-incremental-save-dev2`…) con las mesas anteriores saldadas y todo
@@ -282,11 +284,15 @@ sistema antitrampas:
 - Sin email no hay recuperación de cuenta si se pierde el código de recuperación: se avisa al crear la
   cuenta y se puede copiar o descargar.
 - Sin progreso offline ni sincronización automática: se sincroniza con el botón.
-- Despliegue preparado pero no hecho: `docker-compose.prod.yml` (Caddy + API + PostgreSQL 16) y los scripts de
-  `deploy/` para un VPS; los pasos están en `DEPLOY.md` («Backend en el VPS»). El `docker-compose.yml` de la raíz
-  sigue siendo para desarrollo local.
+- Las copias de seguridad están en el mismo servidor que la base de datos: protegen de errores y de una mala
+  migración, no de perder el servidor. La restauración (`deploy/restore.sh`) se ha probado en local, no en el VPS.
 - Las mesas 2 a 5 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
   servidor acepta cualquier saldo.
+
+## Contacto
+
+Problemas, dudas o ejercer los derechos sobre tus datos: [admin@josemariamerchan.dev](mailto:admin@josemariamerchan.dev)
+(también desde *Ajustes → Reportar un problema* en el juego).
 
 ## Créditos
 

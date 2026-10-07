@@ -548,7 +548,7 @@ Pendientes de arte conocidos: idle del jugador, ruleta con la bola y el marcador
 
 - **Pulsa para entrar** tras la barra de carga (texto que respira sobre negro). El primer clic o tecla desbloquea el audio, pide pantalla completa si el ajuste está activo y funde a la portada. Una vez por carga de página.
 - **Portada**: `assets/raw/titulo.*` (ya trae el logo; no se dibuja en código) a pantalla completa, con efectos en código: halo de la lámpara verde que respira (~6 s), 40 motas de polvo lentas y oscilación de 1 px (sin oscilación con el CRT apagado). Subtítulo en la capa de texto (14 px, dorado apagado, contorno) bajo el título. Zumbido propio, más grave que las mesas.
-- **Menú** vertical en la zona oscura a la derecha del pasillo (x 392-568, desde y 166), botones con marco pixel en CSS: Continuar (si hay guardado; debajo «Mesa N · tiempo · deuda X%», «deuda saldada» o «casa saldada»), Nueva partida, Ajustes, Ranking e Iniciar sesión (solo con `VITE_API_URL`; Sincronizar solo con sesión), Ver final (solo con el juego completado), Créditos. Versión abajo a la izquierda, «Pantalla completa» en la esquina. Flechas, Intro, Esc y ratón; un único resaltado y un tic suave al cambiar.
+- **Menú** vertical en la zona oscura a la derecha del pasillo (x 372-568, de y 150 a 352: nunca se corta, sesión 12), botones con marco pixel en CSS: Continuar (si hay guardado; debajo «Mesa N · tiempo · deuda X%», «deuda saldada» o «casa saldada»), Nueva partida, Ajustes, Ranking y **Cuenta** (solo con `VITE_API_URL`), Ver final (solo con el juego completado), Modo demo, Créditos. **Cuenta** sin sesión abre Iniciar sesión; con sesión, un submenú en el mismo sitio con el nombre de jugador, Sincronizar partida, Cerrar sesión y Volver (Esc). Si las opciones no caben con el espaciado normal, el menú pasa a compacto (botones de 19, subtítulo del demo en la misma línea); como red de seguridad, scroll interno con «▾ más». Medidas en `src/game/menuLayout.ts`. «Sesión: nombre» y la versión abajo a la izquierda, «Pantalla completa» en la esquina. Flechas, Intro, Esc y ratón; un único resaltado y un tic suave al cambiar.
 - **Diálogos propios** con el marco pixel (no `confirm()`): nueva partida con guardado, borrar partida, importar una que sobrescribe. Teclado y ratón; Esc cancela; el foco empieza en Cancelar.
 - **Ajustes** (misma estética; se guardan aparte de la partida): volumen, Filtro CRT (Apagado, Suave, Fuerte), iniciar en pantalla completa, diálogos de los prestamistas, silencio (también N), exportar, importar y borrar partida. Izquierda/derecha ajustan la fila resaltada.
 - **Créditos**: arte generado con IA, sonido sintetizado, VT323 con su licencia, autor; el repositorio solo si `REPO_URL` está definido.
@@ -596,17 +596,20 @@ Rediseño en 8 pasos (hecho). Todo vive en un escenario de 640x360 escalado por 
 - Crear un **script de simulación** que juegue la mesa con una estrategia simple y devuelva cuánto tarda en llegar a 10M, para ajustar los costes sin jugar a mano.
 - Despliegue estático (Cloudflare o similar).
 
-### 10.1 Backend opcional (cuentas, nube y ranking)
+### 10.1 Backend (cuentas, nube y ranking)
 
-El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quien inicie sesión:
+El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quien inicie sesión, cuentas, guardado en la
+nube y ranking. **Estado (sesión 12):** desplegado en un VPS de Hetzner (Núremberg) con Caddy (HTTPS automático) y
+PostgreSQL 16 en Docker Compose; la versión publicada del juego ya lo usa. Copia diaria de la base de datos (systemd,
+14 días en el mismo servidor); la restauración se probó en local. Contacto: admin@josemariamerchan.dev.
 
 - **Stack:** Java 21, Spring Boot 3, Spring Security con JWT, Spring Data JPA, Flyway y PostgreSQL. H2 para tests y springdoc-openapi para la documentación.
-- **Cuentas:** email y contraseña (BCrypt, 10+ caracteres), JWT de 24 h y límite de intentos por IP. Un nombre público para el ranking.
+- **Cuentas sin email:** nombre de jugador (público, el del ranking) y contraseña (BCrypt, 10+ caracteres), código de recuperación de un solo uso, JWT de 24 h y límite de intentos por IP. Borrar la cuenta y exportar los datos desde Ajustes.
 - **Guardado en la nube:** un hueco por usuario, con revisiones; si hay conflicto, el jugador elige qué partida conservar.
 - **Ranking de la mesa 1:** quién saldó antes la deuda, por tiempo de juego.
 - **Validación sin re-simular:** capa 1 (imposible → se rechaza) y capa 2 (estadísticamente implausible → se acepta como "no verificado" y no cuenta para el ranking). Detalles en el README.
 - **Números compartidos:** `shared/config.json` es la fuente única de los números que necesita el servidor (deuda, versión del guardado, costes de mejoras, trabajo). `shared/plausibility.json` lo genera el simulador (`npm run plausibility`) y lleva un hash de `config.json`; hay que regenerarlo cada vez que cambie la economía.
-- **En el menú de inicio:** "Iniciar sesión", "Sincronizar partida" y "Ranking". Si el servidor no responde, el juego sigue igual.
+- **En el menú de inicio:** "Ranking" y "Cuenta" (Iniciar sesión, o el submenú con Sincronizar partida y Cerrar sesión). Si el servidor no responde, el juego sigue igual y se puede reintentar.
 - **Limitación asumida:** el tiempo de juego lo reporta el cliente, así que el ranking no es a prueba de trampas.
 
 ## 11. Plan por hitos para Claude Code

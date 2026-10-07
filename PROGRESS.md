@@ -35,6 +35,34 @@ no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneD
   - Ventanas más pequeñas que 640x360 píxeles físicos: el escenario entero se recorta (factor mínimo 1) y sale el aviso de
     pantalla pequeña; el scroll interno no cambia eso.
 
+### Parte B: documentación al estado real
+
+- **Estado real (dicho por el autor):** la API está desplegada en un VPS de Hetzner (Núremberg) con Caddy (HTTPS
+  automático) y PostgreSQL 16 en Docker Compose, y la versión publicada del juego ya la usa. Copia diaria de la base de
+  datos con un temporizador de systemd, 14 días en el mismo servidor. La restauración se probó en local, **no** en el
+  servidor. Repositorio público `josemerchan712/rottend-odds`. Contacto admin@josemariamerchan.dev.
+- [x] README: estado del backend, `rottend-odds` (también al clonar), sin la línea «Despliegue preparado pero no hecho»,
+  copias en el mismo servidor y restauración probada en local, sección «Contacto», menú con *Cuenta*.
+- [x] DEPLOY.md «Backend en el VPS» como se hizo: clon en `~/rottenodds`, secretos en `/opt/rottenodds/.env.prod`,
+  `.service` con `ExecStart` adaptado al clon (con `$HOME`), orden «API → reconstruir el juego con `VITE_API_URL` →
+  comprobar el build (URL de producción sí; `localhost` y `8080` no) → desplegar», y comprobación de que tras un
+  reinicio vuelven solos los tres servicios sanos. Arriba, el estado ya no dice «nada de esto se ha ejecutado».
+- [x] `deploy/systemd/rottenodds-backup.service`: `ExecStart=/home/USUARIO/rottenodds/deploy/backup.sh` y el `sed`
+  para ponerlo con `$HOME` (antes apuntaba a `/opt/rottenodds/app`, que no es donde está el clon).
+- [x] `REPO_URL` = https://github.com/josemerchan712/rottend-odds, en los créditos (texto sin `https://`, enlaces de los
+  créditos con `rel="noopener noreferrer"`).
+  Con las dos líneas nuevas el panel de Créditos ya no cabía (scroll y el título oculto al abrir): ahora mide 420 de
+  ancho, con menos margen entre bloques, y cabe entero; `test:e2e:menu` falla si un panel de esas pantallas tiene scroll.
+- [x] `docs/LICENCIA-BORRADOR.md` con el contacto (sigue fuera de git, sin aplicar).
+- [x] GAME_DESIGN 9 (menú con Cuenta y medidas) y 10.1 (backend desplegado, cuentas sin email).
+- Decisiones propias:
+  - Sin IP, rutas con el nombre de usuario ni nombres de claves: el clon se documenta como `~/rottenodds`, el
+    `.service` con `USUARIO`/`$HOME` y la deploy key con marcadores (`<clave-de-despliegue>`, `<alias>`).
+  - Como el repositorio es público, el clon por HTTPS es el camino documentado; la deploy key queda como alternativa
+    si pasa a privado.
+  - La línea de «Despliegue preparado pero no hecho» se sustituye en Limitaciones por la de las copias en el mismo
+    servidor (es la limitación real que queda).
+
 ## Sesión 11 (cuentas sin email y preparación para un VPS)
 
 ### Parte A: cuentas sin email

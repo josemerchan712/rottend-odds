@@ -22,6 +22,6 @@ export function creditsLines(): CreditLine[] {
     { kind: 'text', text: 'VT323 © 2011 The VT323 Project Authors (Peter Hull)' },
     { kind: 'link', text: 'SIL Open Font License 1.1', href: 'licencias/VT323-OFL.txt' },
   ];
-  if (REPO_URL) lines.push({ kind: 'heading', text: 'Código' }, { kind: 'link', text: REPO_URL, href: REPO_URL });
+  if (REPO_URL) lines.push({ kind: 'heading', text: 'Código' }, { kind: 'link', text: REPO_URL.replace(/^https?:\/\//, ''), href: REPO_URL });
   return lines;
 }

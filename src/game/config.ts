@@ -9,8 +9,8 @@ export const GAME_TAGLINE = 'La casa siempre cobra';
 export const GAME_VERSION: string = pkg.version;
 /** Autor (créditos). */
 export const GAME_AUTHOR = 'José María Merchán Martos';
-/** Enlace al repositorio en los créditos; null = no se muestra (el repositorio es privado). */
-export const REPO_URL: string | null = null;
+/** Repositorio público del código: sale en los créditos (null = no se muestra). */
+export const REPO_URL: string | null = 'https://github.com/josemerchan712/rottend-odds';
 /**
  * Dirección pública del juego, sin barra final. El build la escribe en los metadatos de index.html
  * (og:url, og:image, twitter:image: tienen que ser URLs absolutas para que la vista previa al compartir

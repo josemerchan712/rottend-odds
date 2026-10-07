@@ -578,13 +578,14 @@ kbd {
 .settings-link:hover { color: var(--gold); }
 .pixel-button.back { align-self: flex-start; margin-top: 2px; }
 
-.credits-panel { width: 360px; max-height: 330px; overflow: auto; text-align: center; }
+/* Sesión 12: más ancho y algo más apretado para que quepa entero con el enlace al repositorio (sin scroll). */
+.credits-panel { width: 420px; max-height: 348px; overflow: auto; text-align: center; }
 .credits-body h1, .credit-title { font-size: 26px; margin: 0; color: var(--gold); font-weight: normal; letter-spacing: 2px; }
-.credit-tagline { margin: 0 0 8px; font-size: 16px; color: #b89c58; }
-.credit-heading { margin: 8px 0 1px; font-size: 14px; color: #b9ae92; }
+.credit-tagline { margin: 0 0 4px; font-size: 16px; color: #b89c58; }
+.credit-heading { margin: 6px 0 1px; font-size: 14px; color: #b9ae92; }
 .credit-text, .credit-link { margin: 0; font-size: 16px; color: #e3dcc6; }
 .credit-link a { color: #f0d27a; }
-.credits-panel .pixel-button.back { margin: 10px auto 0; }
+.credits-panel .pixel-button.back { margin: 8px auto 0; }
 
 .pause-layer {
   position: absolute;

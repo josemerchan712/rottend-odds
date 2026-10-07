@@ -230,7 +230,7 @@ export function creditsHtml(lines: CreditLine[] = creditsLines()): string {
   const esc = (s: string) => s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]!);
   return lines
     .map((line) => {
-      if (line.kind === 'link') return `<p class="credit-link"><a href="${esc(line.href ?? '')}" target="_blank" rel="noopener">${esc(line.text)}</a></p>`;
+      if (line.kind === 'link') return `<p class="credit-link"><a href="${esc(line.href ?? '')}" target="_blank" rel="noopener noreferrer">${esc(line.text)}</a></p>`;
       const tag = line.kind === 'title' ? 'h1' : line.kind === 'heading' ? 'h2' : 'p';
       return `<${tag} class="credit-${line.kind}">${esc(line.text)}</${tag}>`;
     })

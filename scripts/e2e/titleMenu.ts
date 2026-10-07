@@ -243,6 +243,8 @@ try {
       await evaluate(`document.querySelector('[data-item="${item}"]').click(); true`);
       await sleep(900);
       for (const t of await clipped()) failures.push(`${mode.id}, ${name}: texto cortado «${t}»`);
+      const scrolled = await evaluate<boolean>(`[...document.querySelectorAll('.screen:not([hidden]) .panel')].some((p) => p.scrollHeight > p.clientHeight + 1)`);
+      if (scrolled) failures.push(`${mode.id}, ${name}: el panel no cabe y tiene scroll`);
       await shot(name);
       await key('Escape', 'Escape', 27);
       await sleep(500);

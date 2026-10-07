@@ -367,5 +367,6 @@ sesión**, y la consola no muestra errores de CORS ni de CSP al abrir el ranking
 
 ### Privacidad
 
-`public/privacidad.html` (enlazada desde Ajustes) es un **borrador para revisar**: ya indica el servidor (Hetzner,
-Núremberg, Alemania); falta el contacto (`[PONER CONTACTO]`). Revísala antes de anunciar las cuentas.
+`privacidad.html` (en la raíz: el build la procesa como segunda página para escribir el contacto, `CONTACT_EMAIL` de
+`src/game/config.ts`; enlazada desde Ajustes) sigue marcada como **borrador pendiente de revisión legal**. El build
+falla si en `dist/` queda algún marcador pendiente (`[PONER …]`, `[… PENDIENTE …]` o una constante `%ASÍ%` sin sustituir).

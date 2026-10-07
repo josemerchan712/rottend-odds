@@ -17,6 +17,11 @@ export const REPO_URL: string | null = null;
  * el enlace funcione). Para otro dominio, cámbiala aquí o define SITE_URL al construir.
  */
 export const SITE_URL = 'https://rottenodds.josemariamerchan.dev';
+/**
+ * Contacto público: página de privacidad (el build la escribe en %CONTACT_EMAIL%) y «Reportar un problema» en
+ * Ajustes. Solo aquí.
+ */
+export const CONTACT_EMAIL = 'admin@josemariamerchan.dev';
 
 /**
  * Mesa 5 (sesión 8): cada acierto de la cadena multiplica lo acumulado por un factor creciente,

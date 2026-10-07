@@ -1013,6 +1013,10 @@ settingsUi.deleteSave.addEventListener('click', async () => {
   renderSettings(settingsUi, settings, false);
 });
 settingsUi.back.addEventListener('click', closeSettings);
+// El enlace abre el correo del jugador con el mensaje preparado (versión y navegador); no se envía nada solo.
+settingsUi.report.addEventListener('click', () =>
+  setText(settingsUi.saveNote, 'Se abre tu programa de correo con el mensaje preparado. No se envía nada automáticamente.'),
+);
 settingsUi.exportData.addEventListener('click', async () => {
   const s = currentSession();
   if (!s) return renderAccount(settingsUi, null);

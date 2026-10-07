@@ -1,5 +1,6 @@
 import { creditsLines, type CreditLine } from '../content/credits.es';
 import { GAME_VERSION } from '../game/config';
+import { reportMailto } from '../game/contact';
 import type { ContinueInfo, MenuItem } from '../game/menu';
 import type { CrtSetting, Settings } from '../game/settings';
 import { formatTime } from '../util/format';
@@ -86,6 +87,7 @@ export interface SettingsUi {
   accountName: HTMLElement;
   exportData: HTMLButtonElement;
   deleteAccount: HTMLButtonElement;
+  report: HTMLAnchorElement;
   back: HTMLButtonElement;
 }
 
@@ -119,7 +121,11 @@ export function mountSettings(root: HTMLElement): SettingsUi {
         </div>
         <div class="settings-footer">
           <button class="nav-item pixel-button back" data-ref="back">Volver (Esc)</button>
-          <a class="settings-link" href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
+          <span class="settings-links">
+            <a class="settings-link" data-ref="report" href="${reportMailto(GAME_VERSION, navigator.userAgent)}"
+              title="Abre tu programa de correo con el mensaje preparado: no se envía nada automáticamente">Reportar un problema</a>
+            <a class="settings-link" href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
+          </span>
         </div>
       </div>
     </section>`;
@@ -139,6 +145,7 @@ export function mountSettings(root: HTMLElement): SettingsUi {
     accountName: ref(root, 'accountName'),
     exportData: ref(root, 'exportData'),
     deleteAccount: ref(root, 'deleteAccount'),
+    report: ref(root, 'report'),
     back: ref(root, 'back'),
   };
 }

@@ -522,6 +522,7 @@ kbd {
 .settings-footer { display: flex; align-items: center; justify-content: space-between; }
 .settings-account-name { margin: 0; font-size: 14px; color: var(--muted); }
 .settings-link { font-size: 13px; color: var(--muted); }
+.settings-links { display: flex; gap: 10px; }
 .settings-link:hover { color: var(--gold); }
 .pixel-button.back { align-self: flex-start; margin-top: 2px; }
 

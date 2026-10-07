@@ -22,7 +22,7 @@ import { bindControls, closeDrawers, toggleDrawer } from './ui/controls';
 import { Dialogs } from './ui/dialog';
 import { MenuNav } from './ui/menuNav';
 import { TitleScene } from './ui/titleScene';
-import { mountCredits, mountMenu, mountPause, mountSettings, renderAccount, renderMenu, renderSettings, type SettingRow } from './ui/menu';
+import { mountCredits, mountMenu, mountPause, mountSettings, renderAccount, renderMenu, renderSettings, showAccountMenu, type SettingRow } from './ui/menu';
 import {
   mountAuth,
   mountRanking,
@@ -380,7 +380,8 @@ let state: GameState | null = null;
 const settings = loadSettings(localStorage, settingsKey);
 /** Navegación con teclado y ratón de cada pantalla de menú. */
 const navs: Partial<Record<Screen, MenuNav>> = {
-  menu: new MenuNav(screens.menu),
+  // Esc en el menú principal: cierra el submenú de la cuenta si está abierto.
+  menu: new MenuNav(screens.menu, { onBack: () => !menuUi.accountMenu.hidden && openAccountMenu(false) }),
   settings: new MenuNav(screens.settings, { onBack: closeSettings, onAdjust: adjustSetting }),
   credits: new MenuNav(screens.credits, { onBack: () => show('menu') }),
   notice: new MenuNav(screens.notice),
@@ -410,7 +411,7 @@ function show(next: Screen): void {
 function refreshMenu(): void {
   const info = continueInfo(localStorage, saveKey);
   const s = currentSession();
-  const items = menuItems({ hasSave: info !== null, online: ONLINE_ENABLED, loggedIn: s !== null, finished: info?.finished ?? false });
+  const items = menuItems({ hasSave: info !== null, online: ONLINE_ENABLED, finished: info?.finished ?? false });
   renderMenu(menuUi, items, info, s?.displayName ?? null);
 }
 
@@ -936,19 +937,29 @@ menuUi.items.demo.addEventListener('click', () => enterDemo(null));
 menuUi.items.ending.addEventListener('click', () => playEnding());
 menuUi.fullscreen.addEventListener('click', () => void toggleFullscreen(root));
 creditsUi.back.addEventListener('click', () => show('menu'));
-menuUi.items.login.addEventListener('click', () => {
-  if (currentSession()) {
-    setSession(null);
-    show('menu');
+// Cuenta: sin sesión abre Iniciar sesión; con sesión, el submenú (Sincronizar partida, Cerrar sesión, Volver).
+menuUi.items.account.addEventListener('click', () => {
+  if (!currentSession()) {
+    setAuthMode('login');
+    show('auth');
     return;
   }
-  setAuthMode('login');
-  show('auth');
+  openAccountMenu(true);
 });
-menuUi.items.sync.addEventListener('click', () => {
+function openAccountMenu(open: boolean): void {
+  showAccountMenu(menuUi, open);
+  navs.menu?.reset(open ? menuUi.sync : menuUi.items.account);
+}
+menuUi.sync.addEventListener('click', () => {
   show('sync');
   void runSync();
 });
+menuUi.logout.addEventListener('click', () => {
+  setSession(null);
+  refreshMenu();
+  navs.menu?.reset(menuUi.items.account);
+});
+menuUi.accountBack.addEventListener('click', () => openAccountMenu(false));
 menuUi.items.ranking.addEventListener('click', () => {
   rankingPage = 0;
   show('ranking');

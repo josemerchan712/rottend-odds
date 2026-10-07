@@ -465,21 +465,73 @@ kbd {
 .pixel-button:focus-visible,
 .title-option:focus-visible { outline: none; }
 
-/* Menú principal: columna en la zona oscura del pasillo, hacia el centro y la derecha. */
+/*
+ * Menú principal: columna en la zona oscura a la derecha del pasillo, bajo el título. Medidas en unidades del
+ * escenario, las mismas que src/game/menuLayout.ts (MENU_TOP 150, MENU_BOTTOM 352; botón 23/separación 6/línea 16 en
+ * normal y 19/5/14 en compacto). La caja empieza 3 antes y mide 3 más por cada lado para que el scroll no recorte los
+ * marcos pixel (box-shadow de 3) de los botones.
+ */
 .title-menu {
   position: absolute;
-  left: 392px;
-  top: 166px;
-  width: 176px;
+  left: 369px;
+  top: 147px;
+  width: 202px;
+  max-height: 208px;
+  padding: 3px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
-.title-option { width: 100%; padding: 3px 8px 4px; }
+.title-menu::-webkit-scrollbar { display: none; }
+.title-option { width: 100%; padding: 3px 8px 4px; flex: none; }
 .title-option::before { content: '\25B8'; display: inline-block; width: 10px; margin-left: -2px; color: transparent; }
 .title-option.focused::before { color: #d4ad48; }
-.title-option .menu-sub { display: block; margin: 2px 0 0 10px; font-size: 14px; color: #b9ae92; white-space: nowrap; }
-.title-account { position: absolute; left: 8px; bottom: 22px; margin: 0; font-size: 14px; color: #b9ae92; text-shadow: 1px 1px 0 #000; }
+.title-option .menu-sub { display: block; margin: 2px 0 0 10px; font-size: 14px; line-height: 1; color: #b9ae92; white-space: nowrap; }
+.title-option .menu-inline { display: none; font-size: 14px; color: #b9ae92; }
+/* Compacto (cuando las opciones no caben en normal): botones de 19, separación de 5 (los marcos de dos botones
+ * solo comparten su borde oscuro), la línea de Continuar pegada y el subtítulo del demo en la misma línea. */
+.title-menu.compact { gap: 5px; }
+.title-menu.compact .title-option { padding: 2px 8px 1px; }
+.title-menu.compact .menu-sub { margin-top: 0; }
+.title-menu.compact [data-item='demo'] .menu-sub { display: none; }
+.title-menu.compact [data-item='demo'] .menu-inline { display: inline; }
+/* Submenú de la cuenta: mismo sitio y misma estética. */
+.title-menu-head { margin: 0 0 1px; padding: 2px 4px; font-size: 16px; line-height: 1; color: #d4ad48; text-shadow: 1px 1px 0 #000; }
+.title-menu-name { display: block; margin-top: 3px; font-size: 14px; color: #e3dcc6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Hay más opciones por debajo (solo si el menú no cabe y tiene scroll). */
+.title-more {
+  position: absolute;
+  left: 372px;
+  top: 344px;
+  width: 196px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+  text-align: center;
+  color: #f6dc8a;
+  background: linear-gradient(to bottom, rgba(8, 6, 4, 0), rgba(8, 6, 4, 0.95) 45%);
+  pointer-events: none;
+}
+.title-account {
+  position: absolute;
+  left: 6px;
+  bottom: 22px;
+  max-width: 340px;
+  margin: 0;
+  padding: 0 3px;
+  font-size: 14px;
+  line-height: 15px;
+  color: #b9ae92;
+  background: rgba(8, 6, 4, 0.72);
+  text-shadow: 1px 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .title-version { position: absolute; left: 8px; bottom: 6px; font-size: 14px; color: #a99c7c; text-shadow: 1px 1px 0 #000; }
 .corner-button {
   position: absolute;

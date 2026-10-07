@@ -2,6 +2,7 @@ import { creditsLines, type CreditLine } from '../content/credits.es';
 import { GAME_VERSION } from '../game/config';
 import { reportMailto } from '../game/contact';
 import type { ContinueInfo, MenuItem } from '../game/menu';
+import { menuDensity } from '../game/menuLayout';
 import type { CrtSetting, Settings } from '../game/settings';
 import { formatTime } from '../util/format';
 import { setText } from './render';
@@ -16,8 +17,7 @@ const ITEM_LABELS: Record<MenuItem, string> = {
   newGame: 'Nueva partida',
   settings: 'Ajustes',
   ranking: 'Ranking',
-  login: 'Iniciar sesión',
-  sync: 'Sincronizar partida',
+  account: 'Cuenta',
   ending: 'Ver final',
   demo: 'Modo demo',
   credits: 'Créditos',
@@ -30,18 +30,36 @@ export interface MenuUi {
   continueInfo: HTMLElement;
   account: HTMLElement;
   fullscreen: HTMLButtonElement;
+  /** Indicador «más abajo» cuando el menú no cabe y tiene scroll. */
+  more: HTMLElement;
+  /** Submenú de la cuenta (con sesión): nombre, Sincronizar partida, Cerrar sesión y Volver. */
+  accountMenu: HTMLElement;
+  accountName: HTMLElement;
+  sync: HTMLButtonElement;
+  logout: HTMLButtonElement;
+  accountBack: HTMLButtonElement;
 }
 
 export function mountMenu(root: HTMLElement): MenuUi {
+  const sub = (id: MenuItem) =>
+    id === 'continue'
+      ? '<span class="menu-sub" data-ref="continueInfo"></span>'
+      : id === 'demo'
+        ? '<span class="menu-inline"> · sin jugar</span><span class="menu-sub">Ver todas las mesas sin jugar</span>'
+        : '';
   const buttons = (Object.keys(ITEM_LABELS) as MenuItem[])
-    .map(
-      (id) =>
-        `<button class="nav-item title-option" data-item="${id}">${ITEM_LABELS[id]}${id === 'continue' ? '<span class="menu-sub" data-ref="continueInfo"></span>' : id === 'demo' ? '<span class="menu-sub">Ver todas las mesas sin jugar</span>' : ''}</button>`,
-    )
+    .map((id) => `<button class="nav-item title-option" data-item="${id}">${ITEM_LABELS[id]}${sub(id)}</button>`)
     .join('');
   root.innerHTML = `
     <div class="title-screen">
       <nav class="title-menu" data-ref="list" aria-label="Menú principal">${buttons}</nav>
+      <nav class="title-menu account-menu" data-ref="accountMenu" aria-label="Cuenta" hidden>
+        <p class="title-menu-head">Cuenta<span class="title-menu-name" data-ref="accountName"></span></p>
+        <button class="nav-item title-option" data-ref="sync">Sincronizar partida</button>
+        <button class="nav-item title-option" data-ref="logout">Cerrar sesión</button>
+        <button class="nav-item title-option" data-ref="accountBack">Volver (Esc)</button>
+      </nav>
+      <span class="title-more" data-ref="more" aria-hidden="true" hidden>▾ más</span>
       <p class="title-account" data-ref="account"></p>
       <span class="title-version">v${GAME_VERSION}</span>
       <button class="corner-button" data-ref="fullscreen" title="Pantalla completa (F)">Pantalla completa</button>
@@ -49,7 +67,22 @@ export function mountMenu(root: HTMLElement): MenuUi {
   const items = Object.fromEntries(
     (Object.keys(ITEM_LABELS) as MenuItem[]).map((id) => [id, root.querySelector<HTMLButtonElement>(`[data-item="${id}"]`)!]),
   ) as Record<MenuItem, HTMLButtonElement>;
-  return { root, list: ref(root, 'list'), items, continueInfo: ref(root, 'continueInfo'), account: ref(root, 'account'), fullscreen: ref(root, 'fullscreen') };
+  const ui: MenuUi = {
+    root,
+    list: ref(root, 'list'),
+    items,
+    continueInfo: ref(root, 'continueInfo'),
+    account: ref(root, 'account'),
+    fullscreen: ref(root, 'fullscreen'),
+    more: ref(root, 'more'),
+    accountMenu: ref(root, 'accountMenu'),
+    accountName: ref(root, 'accountName'),
+    sync: ref(root, 'sync'),
+    logout: ref(root, 'logout'),
+    accountBack: ref(root, 'accountBack'),
+  };
+  ui.list.addEventListener('scroll', () => updateMoreHint(ui));
+  return ui;
 }
 
 /** Línea pequeña bajo Continuar: mesa actual, tiempo jugado y estado de la deuda. */
@@ -58,13 +91,33 @@ export function continueLine(info: ContinueInfo): string {
   return `Mesa ${info.activeTable} · ${formatTime(info.playTime)} · ${debt}`;
 }
 
-/** Enseña solo las opciones que tocan, en su orden, y la línea de Continuar. */
+/** «▾ más» solo si el menú tiene scroll y queda algo por debajo. */
+export function updateMoreHint(ui: MenuUi): void {
+  const nav = ui.accountMenu.hidden ? ui.list : ui.accountMenu;
+  ui.more.hidden = !(nav.scrollHeight > nav.clientHeight + 1 && nav.scrollTop + nav.clientHeight < nav.scrollHeight - 1);
+}
+
+/**
+ * Enseña solo las opciones que tocan, en su orden, con la densidad que cabe (menuLayout.ts), la línea de Continuar
+ * y la sesión abajo a la izquierda. Cierra el submenú de la cuenta.
+ */
 export function renderMenu(ui: MenuUi, items: MenuItem[], info: ContinueInfo | null, displayName: string | null): void {
   for (const [id, button] of Object.entries(ui.items) as [MenuItem, HTMLButtonElement][]) button.hidden = !items.includes(id);
   items.forEach((id) => ui.list.append(ui.items[id]));
-  ui.items.login.firstChild!.textContent = displayName ? 'Cerrar sesión' : 'Iniciar sesión';
+  ui.list.classList.toggle('compact', menuDensity(items) === 'compact');
   setText(ui.account, displayName ? `Sesión: ${displayName}` : '');
+  ui.account.hidden = !displayName;
+  setText(ui.accountName, displayName ?? '');
   if (info) setText(ui.continueInfo, continueLine(info));
+  showAccountMenu(ui, false);
+}
+
+/** Abre o cierra el submenú de la cuenta (ocupa el sitio del menú principal). */
+export function showAccountMenu(ui: MenuUi, open: boolean): void {
+  ui.accountMenu.hidden = !open;
+  ui.list.hidden = open;
+  ui.list.scrollTop = 0;
+  updateMoreHint(ui);
 }
 
 // ---------------------------------------------------------------------------

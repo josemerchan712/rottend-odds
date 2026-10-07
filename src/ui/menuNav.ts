@@ -49,6 +49,7 @@ export class MenuNav {
     this.current?.classList.remove('focused');
     this.current = item;
     item?.classList.add('focused');
+    if (item) revealInScroller(item);
     if (item && sound) sfx('tick');
   }
 
@@ -94,4 +95,17 @@ export class MenuNav {
         return false;
     }
   }
+}
+
+/**
+ * Si la opción está dentro de una lista con scroll (el menú principal cuando no cabe), desplaza solo esa lista
+ * para que se vea entera. No usa scrollIntoView: movería también el escenario, que tiene overflow: hidden.
+ */
+function revealInScroller(item: HTMLElement): void {
+  const list = item.parentElement;
+  if (!list || list.scrollHeight <= list.clientHeight + 1) return;
+  const top = item.offsetTop - (item.offsetParent === list ? 0 : list.offsetTop) - 4;
+  const bottom = top + item.offsetHeight + 8;
+  if (top < list.scrollTop) list.scrollTop = top;
+  else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
 }

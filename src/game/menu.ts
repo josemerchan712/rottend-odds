@@ -50,15 +50,16 @@ export function continueInfo(storage: KeyValueStorage, key: string): ContinueInf
   };
 }
 
-/** Opciones del menú principal, de arriba abajo. */
-export type MenuItem = 'continue' | 'newGame' | 'settings' | 'ranking' | 'login' | 'sync' | 'ending' | 'demo' | 'credits';
+/**
+ * Opciones del menú principal, de arriba abajo. `account` agrupa lo de la cuenta (sesión 12): sin sesión abre
+ * Iniciar sesión; con sesión, un submenú con Sincronizar partida y Cerrar sesión.
+ */
+export type MenuItem = 'continue' | 'newGame' | 'settings' | 'ranking' | 'account' | 'ending' | 'demo' | 'credits';
 
 export interface MenuContext {
   hasSave: boolean;
-  /** ¿Hay servidor (VITE_API_URL)? Sin él no salen Ranking, Iniciar sesión ni Sincronizar. */
+  /** ¿Hay servidor (VITE_API_URL)? Sin él no salen Ranking ni Cuenta. */
   online: boolean;
-  /** ¿Hay sesión iniciada? Sincronizar solo sale con sesión. */
-  loggedIn: boolean;
   /** ¿Completó el juego la partida guardada? */
   finished: boolean;
 }
@@ -68,10 +69,7 @@ export function menuItems(ctx: MenuContext): MenuItem[] {
   const items: MenuItem[] = [];
   if (ctx.hasSave) items.push('continue');
   items.push('newGame', 'settings');
-  if (ctx.online) {
-    items.push('ranking', 'login');
-    if (ctx.loggedIn) items.push('sync');
-  }
+  if (ctx.online) items.push('ranking', 'account');
   if (ctx.hasSave && ctx.finished) items.push('ending');
   // El modo demo siempre está (también en producción): ver todas las mesas sin jugar.
   items.push('demo', 'credits');

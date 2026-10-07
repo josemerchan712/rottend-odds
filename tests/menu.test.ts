@@ -55,7 +55,7 @@ describe('pantalla de inicio', () => {
 });
 
 describe('menú principal: opciones y navegación', () => {
-  const base = { hasSave: false, online: false, loggedIn: false, finished: false };
+  const base = { hasSave: false, online: false, finished: false };
 
   it('sin guardado ni servidor: Nueva partida, Ajustes, Modo demo y Créditos', () => {
     expect(menuItems(base)).toEqual(['newGame', 'settings', 'demo', 'credits']);
@@ -68,11 +68,12 @@ describe('menú principal: opciones y navegación', () => {
     expect(menuItems({ ...base, finished: true })).not.toContain('ending');
   });
 
-  it('con servidor: Ranking e Iniciar sesión; Sincronizar solo con sesión', () => {
-    expect(menuItems({ ...base, online: true })).toEqual(['newGame', 'settings', 'ranking', 'login', 'demo', 'credits']);
-    expect(menuItems({ ...base, online: true, loggedIn: true, hasSave: true })).toEqual(['continue', 'newGame', 'settings', 'ranking', 'login', 'sync', 'demo', 'credits']);
-    // Sin servidor, la sesión no importa.
-    expect(menuItems({ ...base, loggedIn: true })).not.toContain('sync');
+  it('con servidor: Ranking y una sola entrada Cuenta (Sincronizar y Cerrar sesión van en su submenú)', () => {
+    expect(menuItems({ ...base, online: true })).toEqual(['newGame', 'settings', 'ranking', 'account', 'demo', 'credits']);
+    expect(menuItems({ ...base, online: true, hasSave: true, finished: true })).toEqual([
+      'continue', 'newGame', 'settings', 'ranking', 'account', 'ending', 'demo', 'credits',
+    ]);
+    expect(menuItems(base)).not.toContain('account');
   });
 
   it('flechas: da la vuelta por arriba y por abajo; sin foco empieza por el extremo', () => {

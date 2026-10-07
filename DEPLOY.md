@@ -164,8 +164,8 @@ En `https://rottenodds.josemariamerchan.dev`, con una ventana privada (sin cach�
 **Estado: desplegado.** La API corre en un VPS de Hetzner (Núremberg, Alemania; Ubuntu 24.04, x86, 4 GB) con
 **Caddy** (HTTPS automático) delante de la **API** y **PostgreSQL 16**, todo con `docker-compose.prod.yml`. Dominio de la
 API: `rottenodds-api.josemariamerchan.dev`. La versión publicada del juego ya la usa. Hay una copia diaria de la base
-de datos con un temporizador de systemd, guardada 14 días en el mismo servidor. La restauración se probó en local (no en
-el servidor).
+de datos con un temporizador de systemd, guardada 14 días en el mismo servidor. La copia y la restauración se han
+probado en el servidor real.
 
 Qué hace cada pieza:
 
@@ -324,8 +324,8 @@ transacción y la vuelve a arrancar):
 ~/rottenodds/deploy/restore.sh /var/backups/rottenodds/casino-AAAAMMDDTHHMMSSZ.dump
 ```
 
-**Probado solo en local** (6 de octubre de 2026, PostgreSQL 16 en Docker): copia → borrar una cuenta → restaurar → la
-cuenta, su partida y su puesto en el ranking vuelven. En el servidor todavía no se ha probado una restauración.
+**Probado en el servidor real** (Hetzner, con datos de verdad): se creó una cuenta de prueba, se hizo una copia, se
+borró la cuenta, se restauró y la cuenta volvió. Antes se había probado igual en local (PostgreSQL 16 en Docker).
 
 ### Comprobaciones después de desplegar el backend
 

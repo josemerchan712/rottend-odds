@@ -39,10 +39,12 @@ no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneD
 
 - **Estado real (dicho por el autor):** la API está desplegada en un VPS de Hetzner (Núremberg) con Caddy (HTTPS
   automático) y PostgreSQL 16 en Docker Compose, y la versión publicada del juego ya la usa. Copia diaria de la base de
-  datos con un temporizador de systemd, 14 días en el mismo servidor. La restauración se probó en local, **no** en el
-  servidor. Repositorio público `josemerchan712/rottend-odds`. Contacto admin@josemariamerchan.dev.
+  datos con un temporizador de systemd, 14 días en el mismo servidor. La copia y la restauración **se han probado en el
+  servidor real** con datos de verdad (cuenta de prueba → copia → borrar la cuenta → restaurar → la cuenta vuelve;
+  corrección del autor después del primer commit de esta parte). Repositorio público `josemerchan712/rottend-odds`.
+  Contacto admin@josemariamerchan.dev.
 - [x] README: estado del backend, `rottend-odds` (también al clonar), sin la línea «Despliegue preparado pero no hecho»,
-  copias en el mismo servidor y restauración probada en local, sección «Contacto», menú con *Cuenta*.
+  copias en el mismo servidor y copia y restauración probadas en el servidor real, sección «Contacto», menú con *Cuenta*.
 - [x] DEPLOY.md «Backend en el VPS» como se hizo: clon en `~/rottenodds`, secretos en `/opt/rottenodds/.env.prod`,
   `.service` con `ExecStart` adaptado al clon (con `$HOME`), orden «API → reconstruir el juego con `VITE_API_URL` →
   comprobar el build (URL de producción sí; `localhost` y `8080` no) → desplegar», y comprobación de que tras un
@@ -116,7 +118,7 @@ no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneD
   `RequestSizeFilter` (128 KB; 411 si el cuerpo no trae longitud), CSP `default-src 'none'` y `Referrer-Policy`.
 - [x] `deploy/backup.sh` (custom comprimido, comprobado con `pg_restore --list`, 700/600, 14 días), `deploy/restore.sh`
   (copia previa, API parada, una transacción) y temporizador systemd. **Probado en local:** copia → borrar cuenta →
-  restaurar → la cuenta, su partida y su puesto vuelven.
+  restaurar → la cuenta, su partida y su puesto vuelven. (En la sesión 12 se probó también en el servidor real.)
 - [x] `deploy/deploy.sh` (pull, build, up, healthcheck, vuelta atrás automática y `rollback` a mano). Probado en local con
   un clon y un origin de prueba: despliegue bueno, versión rota (datasource inexistente) → vuelve sola a la anterior.
 - [x] Cliente: mensaje «No se puede conectar con el servidor ahora mismo…» también con 502-504 (Caddy sin API), botón

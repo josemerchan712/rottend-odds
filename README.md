@@ -13,8 +13,8 @@ email, guardado en la nube, ranking y validación de partidas.
 
 **Estado del backend:** desplegado en un VPS de Hetzner (Núremberg, Alemania) con Caddy (HTTPS automático) y
 PostgreSQL 16 en Docker Compose; la versión publicada del juego ya lo usa para cuentas, guardado en la nube y ranking.
-Copia diaria de la base de datos con un temporizador de systemd, guardada 14 días en el mismo servidor (la
-restauración se ha probado en local). Pasos en [DEPLOY.md](DEPLOY.md#backend-en-el-vps).
+Copia diaria de la base de datos con un temporizador de systemd, guardada 14 días en el mismo servidor; la copia y
+la restauración se han probado en el servidor real. Pasos en [DEPLOY.md](DEPLOY.md#backend-en-el-vps).
 
 El diseño completo está en [GAME_DESIGN.md](GAME_DESIGN.md); un resumen técnico para el portfolio, con capturas, en
 [docs/portfolio/RESUMEN.md](docs/portfolio/RESUMEN.md).
@@ -285,7 +285,8 @@ sistema antitrampas:
   cuenta y se puede copiar o descargar.
 - Sin progreso offline ni sincronización automática: se sincroniza con el botón.
 - Las copias de seguridad están en el mismo servidor que la base de datos: protegen de errores y de una mala
-  migración, no de perder el servidor. La restauración (`deploy/restore.sh`) se ha probado en local, no en el VPS.
+  migración, no de perder el servidor. La copia y la restauración (`deploy/restore.sh`) se han probado en el VPS con
+  datos reales.
 - Las mesas 2 a 5 no tienen validación estadística: dentro de los niveles y la estructura válidos, el
   servidor acepta cualquier saldo.
 

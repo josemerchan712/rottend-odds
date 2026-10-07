@@ -601,7 +601,7 @@ Rediseño en 8 pasos (hecho). Todo vive en un escenario de 640x360 escalado por 
 El juego funciona sin servidor. El backend (carpeta `server/`) añade, para quien inicie sesión, cuentas, guardado en la
 nube y ranking. **Estado (sesión 12):** desplegado en un VPS de Hetzner (Núremberg) con Caddy (HTTPS automático) y
 PostgreSQL 16 en Docker Compose; la versión publicada del juego ya lo usa. Copia diaria de la base de datos (systemd,
-14 días en el mismo servidor); la restauración se probó en local. Contacto: admin@josemariamerchan.dev.
+14 días en el mismo servidor); la copia y la restauración se han probado en el servidor real. Contacto: admin@josemariamerchan.dev.
 
 - **Stack:** Java 21, Spring Boot 3, Spring Security con JWT, Spring Data JPA, Flyway y PostgreSQL. H2 para tests y springdoc-openapi para la documentación.
 - **Cuentas sin email:** nombre de jugador (público, el del ranking) y contraseña (BCrypt, 10+ caracteres), código de recuperación de un solo uso, JWT de 24 h y límite de intentos por IP. Borrar la cuenta y exportar los datos desde Ajustes.

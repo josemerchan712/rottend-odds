@@ -22,6 +22,7 @@
     "meta": "tsx scripts/meta.ts",
     "assets": "tsx scripts/assets.ts",
     "test:e2e": "tsx scripts/e2e/drawers.ts",
+    "test:e2e:menu": "tsx scripts/e2e/titleMenu.ts",
     "capture:portfolio": "tsx scripts/portfolio/capture.ts"
   },
   "devDependencies": {

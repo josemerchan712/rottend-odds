@@ -4,6 +4,37 @@ Archivo de continuidad: si la sesión se corta, la siguiente retoma desde aquí.
 Reglas: commits pequeños, actualizar este archivo tras cada commit, no repetir simulaciones largas si
 no han cambiado los números. Carpeta de trabajo: `C:\videojuego` (fuera de OneDrive).
 
+## Sesión 12 (menú principal que no se corta y documentación al estado real)
+
+### Parte A: el menú principal se cortaba con la sesión iniciada
+
+- **Diagnóstico** (medido con `scripts/e2e/titleMenu.ts`, en unidades del escenario de 640x360, igual con dpr 1, 1,5 y 2
+  en ventana y en pantalla completa, porque el escenario se escala con un factor entero): el menú empezaba en 166 y medía
+  287 en el peor caso (guardado con final, sesión, servidor: 9 botones y 2 líneas pequeñas) → acababa en 453. Con
+  guardado y sin sesión acababa en 424, y sin guardado con sesión en 379: todos se cortaban. Además la línea de Continuar
+  («Mesa 5 · 58:13 · casa saldada», 166 px) no cabía en el botón de 176 (hueco útil 150).
+- [x] **Cuenta** agrupa lo de la cuenta: sin sesión abre Iniciar sesión; con sesión, un submenú en el mismo sitio y con la
+  misma estética (nombre de jugador, Sincronizar partida, Cerrar sesión, Volver). Teclado, ratón y Esc para volver.
+- [x] **Medidas** en `src/game/menuLayout.ts` (las mismas que style.css): el menú va de 150 (la gota de la «S» del título
+  acaba en 142) a 352, 202 unidades. Normal: botón 23, separación 6, línea 16. Compacto (solo si no cabe en normal):
+  botón 19, separación 5 y la línea de Continuar pegada; el subtítulo del demo pasa a la misma línea («· sin jugar»).
+  Peor caso: 201 de 202. Ancho 196 (antes 176), desde x=372: sigue en la zona oscura, sin tapar el pasillo ni la puerta.
+- [x] **Scroll interno** de seguridad (si algún día no cupiera): sin barra, con «▾ más» abajo mientras quede algo por
+  debajo; la navegación con teclado desplaza solo la lista (no `scrollIntoView`, que movería el escenario).
+- [x] «Sesión: nombre» abajo a la izquierda con fondo oscuro y recorte con «…»; no se solapa con la versión.
+- [x] Tests: `tests/menuLayout.test.ts` (las 32 combinaciones de guardado, sesión, final, servidor y demo caben) y
+  `tests/menu.test.ts`. `npm run test:e2e:menu` (Chrome sin interfaz, sin Docker): mide el menú real en 3 casos × dpr 1,
+  1,5 y 2 × ventana y pantalla completa, comprueba con `elementFromPoint` que todo botón se puede pulsar, el submenú y
+  Esc, y revisa Ajustes, Ranking (respuesta simulada con nombres de 20 caracteres), Créditos, el final, Iniciar sesión y
+  Privacidad sin textos cortados. Capturas antes y después en el scratchpad de la sesión (no en `docs/capturas`).
+- Decisiones propias:
+  - «Con y sin demo» se interpreta como con y sin la entrada «Modo demo» en el menú (hoy siempre sale).
+  - Densidad automática en vez de compacta siempre: los casos habituales conservan el aspecto de antes.
+  - Separación mínima de 5: con 4, el marco pixel (box-shadow de 3) de un botón tapaba el borde dorado del anterior.
+  - Volver de Sincronizar lleva al menú principal (no al submenú de la cuenta).
+  - Ventanas más pequeñas que 640x360 píxeles físicos: el escenario entero se recorta (factor mínimo 1) y sale el aviso de
+    pantalla pequeña; el scroll interno no cambia eso.
+
 ## Sesión 11 (cuentas sin email y preparación para un VPS)
 
 ### Parte A: cuentas sin email

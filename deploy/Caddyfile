@@ -23,3 +23,6 @@
 
 	reverse_proxy api:8080
 }
+
+# Sitios de otros proyectos de este servidor (fragmentos fuera del repo). Si no hay ninguno, Caddy solo avisa.
+import /etc/caddy/sites/*.caddy

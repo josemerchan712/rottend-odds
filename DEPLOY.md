@@ -178,6 +178,10 @@ Qué hace cada pieza:
   falsearla. En `prod` no hay Swagger ni `/v3/api-docs`, y los logs no llevan SQL, tokens, cuerpos ni IPs.
 - **PostgreSQL 16** con volumen nombrado (`rottenodds_db-data`), sin puertos publicados y con healthcheck.
 - Red `internal` sin salida a Internet (API y base de datos) y red `edge` para Caddy. Todo con `restart: unless-stopped`.
+- **Sitios de otros proyectos del mismo servidor**: Caddy carga además los ficheros de `/opt/caddy-sites`
+  (`import /etc/caddy/sites/*.caddy`, montados en solo lectura; si no hay ninguno, solo avisa) y está conectado a la red
+  externa `controlweb_proxy`, que no tiene salida a Internet. Rotten Odds depende de esa red y de esa carpeta: **no las
+  borres sin revertir este cambio** (`docker compose up` falla si la red no existe).
 
 ### Dónde está cada cosa en el VPS
 
@@ -187,6 +191,7 @@ Qué hace cada pieza:
 | Secretos de producción (permisos 600, fuera del repositorio) | `/opt/rottenodds/.env.prod` |
 | Copias de la base de datos (carpeta 700, archivos 600) | `/var/backups/rottenodds` |
 | Temporizador de las copias | `/etc/systemd/system/rottenodds-backup.{service,timer}` |
+| Fragmentos de Caddy de otros proyectos (los instala root; el repositorio no los lleva) | `/opt/caddy-sites` |
 
 Los scripts de `deploy/` leen los secretos de `/opt/rottenodds/.env.prod` por defecto (variable `ENV_FILE`) y trabajan
 sobre el clon en el que están, así que da igual dónde esté el clon.
